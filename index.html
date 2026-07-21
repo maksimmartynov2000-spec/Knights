@@ -239,6 +239,11 @@
             font-size: 10px;
         }
 
+        .btn-skip {
+            background: linear-gradient(180deg, #7f8c8d 0%, #34495e 100%);
+            color: #fff;
+        }
+
         .btn:active { filter: brightness(1.2); }
     </style>
 </head>
@@ -251,7 +256,10 @@
 
         <div id="turn-bar">
             <span id="game-status">Соберите армию на 40 очков!</span>
-            <button class="btn" id="action-btn" onclick="startBattle()">В БОЙ!</button>
+            <div style="display: flex; gap: 4px;">
+                <button class="btn btn-skip" id="skip-btn" onclick="skipTurn()" style="display: none;">ПРОПУСК</button>
+                <button class="btn" id="action-btn" onclick="startBattle()">В БОЙ!</button>
+            </div>
         </div>
 
         <div id="board"></div>
@@ -479,8 +487,18 @@
 
             gameState = 'BATTLE';
             document.getElementById('action-btn').style.display = 'none';
+            document.getElementById('skip-btn').style.display = 'block';
             buildTurnQueue();
             runTurn();
+        }
+
+        function skipTurn() {
+            if (gameState !== 'BATTLE') return;
+            const cur = turnQueue[currentUnitIndex];
+            if (!cur || cur.team !== 'player') return;
+
+            log(`⏭️ ${cur.type.name} пропускает ход`, 'log-skill');
+            nextTurn();
         }
 
         function buildTurnQueue() {
@@ -519,10 +537,14 @@
 
             render();
 
+            const skipBtn = document.getElementById('skip-btn');
+
             if (cur.team === 'player') {
                 document.getElementById('game-status').innerText = `ХОД: ${cur.type.name}`;
+                skipBtn.style.display = 'block';
             } else {
                 document.getElementById('game-status').innerText = `ХОД ВРАГА: ${cur.type.name}...`;
+                skipBtn.style.display = 'none';
                 setTimeout(smartEnemyAI, 400);
             }
         }
@@ -706,6 +728,7 @@
             if (!pAlive || !eAlive) {
                 gameState = 'END';
                 document.getElementById('game-status').innerText = pAlive ? 'Победа!' : 'Поражение!';
+                document.getElementById('skip-btn').style.display = 'none';
                 log(pAlive ? '🎉 ВЫ ПОБЕДИЛИ!' : '☠️ ВАШЕ ВОЙСКО РАЗБИТО!', 'log-skill');
                 render();
                 return true;
