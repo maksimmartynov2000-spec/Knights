@@ -13,7 +13,13 @@
             --text-gold: #f3d179;
         }
 
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; user-select: none; }
+        * { 
+            box-sizing: border-box; 
+            margin: 0; 
+            padding: 0; 
+            font-family: system-ui, -apple-system, sans-serif; 
+            user-select: none; 
+        }
 
         body {
             background: var(--bg-main);
@@ -23,21 +29,23 @@
             align-items: center;
             padding: 4px;
             min-height: 100vh;
+            overflow-x: hidden;
         }
 
-        h1 { color: var(--text-gold); font-size: 14px; text-align: center; margin-bottom: 4px; }
+        h1 { color: var(--text-gold); font-size: 13px; text-align: center; margin-bottom: 4px; }
 
         .wrapper {
             display: flex;
             flex-direction: column;
             gap: 4px;
             width: 100%;
-            max-width: 600px;
+            max-width: 500px;
             background: var(--bg-panel);
             border: 1.5px solid var(--border-gold);
-            padding: 5px;
+            padding: 4px;
             border-radius: 8px;
             box-shadow: 0 6px 25px rgba(0,0,0,0.9);
+            overflow: hidden;
         }
 
         .res-bar {
@@ -45,12 +53,12 @@
             justify-content: space-around;
             background: #000;
             border: 1px solid var(--border-dark);
-            padding: 4px;
+            padding: 4px 2px;
             border-radius: 5px;
-            font-size: 10px;
+            font-size: 9.5px;
             font-weight: bold;
         }
-        .res-item { display: flex; align-items: center; gap: 3px; }
+        .res-item { display: flex; align-items: center; gap: 2px; }
         .gold { color: #f1c40f; }
         .stone { color: #95a5a6; }
 
@@ -58,25 +66,25 @@
         #timeline-bar {
             background: #080604;
             border: 1px solid var(--border-gold);
-            padding: 4px;
+            padding: 3px;
             border-radius: 5px;
             display: flex;
             gap: 4px;
             overflow-x: auto;
             align-items: center;
-            min-height: 38px;
+            min-height: 36px;
         }
 
         .timeline-item {
             background: #1a130d;
             border: 1px solid var(--border-dark);
             border-radius: 4px;
-            padding: 2px 4px;
+            padding: 2px 3px;
             display: flex;
             flex-direction: column;
             align-items: center;
             font-size: 8px;
-            min-width: 36px;
+            min-width: 32px;
             flex-shrink: 0;
         }
         .timeline-item.active {
@@ -86,15 +94,17 @@
         }
         .timeline-item.enemy { border-color: #7f1d1d; }
 
+        /* Игровое поле: исправлена проблема вылезания за экран */
         #board {
             display: grid;
-            grid-template-columns: repeat(13, 1fr);
+            grid-template-columns: repeat(13, minmax(0, 1fr));
             gap: 1px;
             background: #040302;
             padding: 2px;
             border: 1.5px solid var(--border-dark);
             border-radius: 5px;
             width: 100%;
+            box-sizing: border-box;
         }
 
         .cell {
@@ -105,9 +115,13 @@
             display: flex;
             flex-direction: column;
             justify-content: space-between;
-            padding: 1px;
+            align-items: center;
+            padding: 0;
             position: relative;
             cursor: pointer;
+            min-width: 0;
+            min-height: 0;
+            overflow: hidden;
         }
 
         .cell.reachable { background: #112818; border-color: #2ecc71; }
@@ -117,7 +131,7 @@
         .cell.citadel-cell { background: #2c1e12; border-color: #8e44ad; }
         .cell.citadel-enemy { background: #3a121d; border-color: #c0392b; }
 
-        .unit { font-size: 13px; text-align: center; margin: auto; line-height: 1; }
+        .unit { font-size: calc(10px + 0.5vw); text-align: center; margin: auto; line-height: 1; }
         .unit-badge {
             background: rgba(0,0,0,0.85);
             border-radius: 2px;
@@ -125,19 +139,21 @@
             font-size: 6px;
             font-weight: bold;
             line-height: 1;
+            width: 100%;
+            text-align: center;
         }
         .player-unit .unit-badge { color: #3498db; }
         .enemy-unit .unit-badge { color: #e74c3c; }
 
         #log-box {
             width: 100%;
-            height: 40px;
+            height: 38px;
             background: #050403;
             border: 1px solid var(--border-dark);
             border-radius: 4px;
             padding: 3px 5px;
             overflow-y: auto;
-            font-size: 8.5px;
+            font-size: 8px;
             display: flex;
             flex-direction: column;
             gap: 1px;
@@ -147,12 +163,12 @@
             background: #0d0a07;
             border: 1px solid var(--border-dark);
             border-radius: 5px;
-            padding: 5px;
+            padding: 4px;
         }
 
         .shop-grid {
             display: grid;
-            grid-template-columns: repeat(8, 1fr);
+            grid-template-columns: repeat(8, minmax(0, 1fr));
             gap: 2px;
             margin-top: 4px;
         }
@@ -161,13 +177,14 @@
             background: #1a130d;
             border: 1px solid var(--border-dark);
             border-radius: 3px;
-            padding: 2px;
+            padding: 2px 1px;
             display: flex;
             flex-direction: column;
             align-items: center;
             cursor: pointer;
-            font-size: 7.5px;
+            font-size: 7px;
             color: #ccc;
+            min-width: 0;
         }
         .shop-btn:hover { border-color: var(--border-gold); }
         .shop-btn.selected { border-color: #2ecc71; background: #102414; }
@@ -177,10 +194,10 @@
             border: none;
             color: #000;
             font-weight: bold;
-            padding: 4px 8px;
+            padding: 4px 6px;
             border-radius: 3px;
             cursor: pointer;
-            font-size: 9px;
+            font-size: 8.5px;
         }
         .btn-start { background: linear-gradient(180deg, #2ecc71 0%, #27ae60 100%); color: #000; }
         .btn-act { background: linear-gradient(180deg, #3498db 0%, #2980b9 100%); color: #fff; margin-top:2px; }
@@ -210,14 +227,14 @@
         <div id="log-box"></div>
 
         <div class="panel-box">
-            <div id="unit-details" style="font-size: 8.5px; min-height: 34px;">
+            <div id="unit-details" style="font-size: 8px; min-height: 32px;">
                 Выберите юнита, постройку или тип воинов в магазине.
             </div>
             <div id="action-panel" style="display:none; margin-top:3px;"></div>
         </div>
 
         <div class="panel-box">
-            <div style="font-size:9px; color:var(--text-gold); font-weight:bold; display:flex; justify-content:space-between; align-items:center;">
+            <div style="font-size:8.5px; color:var(--text-gold); font-weight:bold; display:flex; justify-content:space-between; align-items:center;">
                 <span>Найм / Строительство у Цитадели</span>
                 <button id="main-phase-btn" class="btn btn-start" onclick="togglePhase()">ГОТОВО / НАЧАТЬ БОЙ ⚔️</button>
             </div>
@@ -780,7 +797,7 @@
                     renderShop();
                 };
                 btn.innerHTML = `
-                    <div style="font-size:12px">${db.icon}</div>
+                    <div style="font-size:11px">${db.icon}</div>
                     <div style="font-weight:bold">${db.costG}💰</div>
                     ${db.costS > 0 ? `<div style="color:#aaa">${db.costS}🪨</div>` : ''}
                 `;
