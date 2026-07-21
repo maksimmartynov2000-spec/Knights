@@ -176,7 +176,7 @@
         
         fireArrow: { name: "Огненные стрелы", desc: "Следующие 3 атаки поджигают цели (+1 маг. урона на 2 хода). Выберите себя для активации.", cdMax: 10 },
         kneeShot: { name: "В колено", desc: "Снижает скорость передвижения цели на 2 на 2 хода.", cdMax: 5 },
-        doubleArrow: { name: "Двойная стрела", desc: "Следующие 2 атаки подрят. Выберите 2 цели.", cdMax: 5 },
+        doubleArrow: { name: "Двойная стрела", desc: "Следующие 2 атаки подряд. Выберите 2 цели.", cdMax: 5 },
         bullseye: { name: "В яблочко", desc: "Следующие 2 атаки имеют +100% базового урона (+10). Выберите себя для активации.", cdMax: 5 },
         arrowRain: { name: "Град стрел", desc: "Запрещает атаковать на 4 хода (можно ходить, жать способности, хилиться), затем дает 5 выстрелов подряд!", cdMax: 10 }
     };
@@ -199,7 +199,7 @@
             actionMeter: 0, speed: base.speed, range: base.range, symbol: base.symbol,
             passivesList: base.passivesList,
             isAlive: true, hasMoved: false, hasActed: false,
-            fullySkippedLastTurn: false, // Флаг полного пропуска прошлого хода
+            fullySkippedLastTurn: false,
             lastAttackedTarget: null, vulnerabilityStack: 0,
             cooldowns: { spear:0, buff:0, heal:0, rage:0, stun:0, fireArrow:0, kneeShot:0, doubleArrow:0, bullseye:0, arrowRain:0 },
             buffs: { 
@@ -460,6 +460,8 @@
         highlightedInitUnit = null;
         activeAction = null;
         pendingTarget = null;
+        doubleArrowShotsLeft = 0;
+        arrowRainShotsLeft = 0;
         document.getElementById('skip-move-btn').style.display = 'none';
         document.getElementById('ability-desc-box').style.display = 'none';
         nextTurn();
@@ -531,7 +533,7 @@
 
         if (!activeUnit || activeUnit.team !== 'player') return;
 
-        // Перемещение завершает ход
+        // Перемещение
         if (activeAction === 'move') {
             if (board[r][c].classList.contains('highlight-move') && !targetUnit) {
                 activeUnit.r = r; activeUnit.c = c;
@@ -542,7 +544,7 @@
             return;
         }
 
-        // Подтверждение действий двойным касанием
+        // Подтверждение действий
         let selfBuffActions = ['fireArrow', 'kneeShot', 'bullseye', 'arrowRain'];
         let targetableActions = ['attack', 'spear', 'stun', 'buff', 'heal', 'rage'];
 
@@ -594,18 +596,18 @@
         if (arrowRainShotsLeft > 0) {
             executeAttack(attacker, defender);
             arrowRainShotsLeft--;
+            pendingTarget = null;
             if (arrowRainShotsLeft > 0) {
                 logMessage(`[ГРАД СТРЕЛ] Осталось выстрелов: ${arrowRainShotsLeft}! Выберите следующую цель.`);
-                pendingTarget = null;
                 showAttackRange(attacker);
                 return;
             }
         } else if (doubleArrowShotsLeft > 0) {
             executeAttack(attacker, defender);
             doubleArrowShotsLeft--;
+            pendingTarget = null;
             if (doubleArrowShotsLeft > 0) {
                 logMessage(`${attacker.name}: выберите 2-ю цель для Двойной стрелы!`);
-                pendingTarget = null;
                 showAttackRange(attacker);
                 return;
             }
@@ -680,7 +682,8 @@
     }
 
     function showAttackRange(unit) {
-        if (unit.hasActed && arrowRainShotsLeft === 0) return;
+        // Разрешаем показ подсветок, если есть оставшиеся выстрелы в очередях
+        if (unit.hasActed && doubleArrowShotsLeft === 0 && arrowRainShotsLeft === 0) return;
         
         if (unit.buffs.noAttackDuration > 0 && arrowRainShotsLeft === 0) {
             logMessage(`${unit.name} пока не может атаковать (запрет атак еще ${unit.buffs.noAttackDuration} ходов)!`);
@@ -827,9 +830,11 @@
                 logMessage(`${u.name} не может выстрелить! Запрет атак еще ${u.buffs.noAttackDuration} ходов.`);
                 return;
             }
-            u.buffs.doubleArrowCharges = 2; doubleArrowShotsLeft = 2; u.cooldowns.doubleArrow = 5;
+            doubleArrowShotsLeft = 2;
+            u.cooldowns.doubleArrow = 5;
             logMessage(`${u.name} готовится выпустить Двойную стрелу! Выберите 1-ю цель.`);
-            showAttackRange(u); return;
+            showAttackRange(u); 
+            return;
         }
 
         if (key === 'spear') { renderBoard(); highlightRangeCells(3, 'enemy'); }
