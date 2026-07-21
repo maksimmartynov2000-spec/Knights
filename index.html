@@ -178,7 +178,7 @@
         kneeShot: { name: "В колено", desc: "Снижает скорость передвижения цели на 2 на 2 хода.", cdMax: 5 },
         doubleArrow: { name: "Двойная стрела", desc: "Следующие 2 атаки подрят. Выберите 2 цели.", cdMax: 5 },
         bullseye: { name: "В яблочко", desc: "Следующие 2 атаки имеют +100% базового урона (+10). Выберите себя для активации.", cdMax: 5 },
-        arrowRain: { name: "Град стрел", desc: "Пропускает 4 хода на подготовку, затем выпускает 5 стрел в любых выбранных врагов!", cdMax: 10 }
+        arrowRain: { name: "Град стрел", desc: "Запрещает атаковать на 4 хода (можно ходить, жать способности, хилиться), затем дает 5 выстрелов подряд!", cdMax: 10 }
     };
 
     function initGame() {
@@ -210,7 +210,7 @@
                 fireArrowCharges: 0,
                 kneeShotCharge: false,
                 bullseyeCharges: 0,
-                chargingArrowRain: 0 // Счетчик пропуска ходов для Града стрел
+                noAttackDuration: 0 // Счетчик запрета на атаки для Града Стрел
             },
             dotBurn: [],
             stunned: false
@@ -373,19 +373,6 @@
         decrementCooldowns(activeUnit);
         processTurnEffects(activeUnit);
 
-        // Проверка подготовки "Града стрел"
-        if (activeUnit.buffs.chargingArrowRain > 0) {
-            activeUnit.buffs.chargingArrowRain--;
-            if (activeUnit.buffs.chargingArrowRain > 0) {
-                logMessage(`${activeUnit.name} готовит Град стрел... (осталось пропустить ${activeUnit.buffs.chargingArrowRain} ходов)`);
-                endCurrentUnitTurn();
-                return;
-            } else {
-                logMessage(`${activeUnit.name} ГОТОВ к Граду стрел! Выберите 5 атак подряд!`);
-                arrowRainShotsLeft = 5;
-            }
-        }
-
         if (activeUnit.stunned) {
             logMessage(`${activeUnit.name} оглушен и пропускает ход!`);
             activeUnit.stunned = false;
@@ -399,13 +386,8 @@
         renderBoard();
 
         if (activeUnit.team === 'player') {
-            if (arrowRainShotsLeft > 0) {
-                // Если сейчас идет разрядка Града Стрел, сразу в атаку
-                showAttackRange(activeUnit);
-            } else {
-                document.getElementById('skip-move-btn').style.display = 'block';
-                showMoveRange(activeUnit);
-            }
+            document.getElementById('skip-move-btn').style.display = 'block';
+            showMoveRange(activeUnit);
         } else {
             document.getElementById('skip-move-btn').style.display = 'none';
             document.getElementById('abilities-section').style.display = 'none';
@@ -427,6 +409,17 @@
         if (unit.buffs.slowDuration > 0) {
             unit.buffs.slowDuration--;
             if (unit.buffs.slowDuration === 0) unit.buffs.slowValue = 0;
+        }
+
+        // Подсчет запрета на атаку (для Града стрел)
+        if (unit.buffs.noAttackDuration > 0) {
+            unit.buffs.noAttackDuration--;
+            if (unit.buffs.noAttackDuration === 0) {
+                arrowRainShotsLeft = 5;
+                logMessage(`${unit.name}: Запрет на атаку снят! ГОТОВ К ГРАДУ СТРЕЛ (5 атак подряд)!`);
+            } else {
+                logMessage(`${unit.name} не может атаковать еще ${unit.buffs.noAttackDuration} ход(а) (накопление Града).`);
+            }
         }
 
         if (unit.buffs.regenDuration > 0) {
@@ -455,7 +448,7 @@
     function endCurrentUnitTurn() {
         if (gamePhase !== 'battle' || !activeUnit) return;
         
-        if (!activeUnit.hasMoved && !activeUnit.hasActed && activeUnit.buffs.chargingArrowRain === 0) {
+        if (!activeUnit.hasMoved && !activeUnit.hasActed) {
             let heal = Math.round(activeUnit.maxHp * 0.2);
             activeUnit.hp = Math.min(activeUnit.maxHp, activeUnit.hp + heal);
             logMessage(`${activeUnit.name} восстановил ${heal} HP (Пассивка: Живой).`);
@@ -543,7 +536,7 @@
                 activeUnit.r = r; activeUnit.c = c;
                 activeUnit.hasMoved = true;
                 logMessage(`${activeUnit.name} переместился.`);
-                endCurrentUnitTurn();
+                showActionOptions(activeUnit);
             }
             return;
         }
@@ -556,7 +549,7 @@
             if (board[r][c].classList.contains('highlight-attack') || board[r][c].classList.contains('highlight-move')) {
                 if (targetUnit) {
                     if (pendingTarget === targetUnit) {
-                        // ВТОРОЙ КЛИК: Подтверждение действие
+                        // ВТОРОЙ КЛИК: Выполнение
                         if (activeAction === 'attack') handleAttackAction(activeUnit, targetUnit);
                         else if (activeAction === 'spear') { executeSpear(activeUnit, targetUnit); endCurrentUnitTurn(); }
                         else if (activeAction === 'stun') { executeStun(activeUnit, targetUnit); endCurrentUnitTurn(); }
@@ -564,7 +557,7 @@
                         else if (activeAction === 'heal') { executeHeal(activeUnit, targetUnit); endCurrentUnitTurn(); }
                         else if (activeAction === 'rage') { executeRage(activeUnit, targetUnit); endCurrentUnitTurn(); }
                         
-                        // Применение скиллов лучника на себя
+                        // Применение на себя
                         else if (activeAction === 'fireArrow') {
                             activeUnit.buffs.fireArrowCharges = 3; activeUnit.cooldowns.fireArrow = 10; activeUnit.hasActed = true;
                             logMessage(`${activeUnit.name} заготовил Огненные стрелы!`); endCurrentUnitTurn();
@@ -579,12 +572,13 @@
                         }
                         else if (activeAction === 'arrowRain') {
                             activeUnit.cooldowns.arrowRain = 10;
-                            activeUnit.buffs.chargingArrowRain = 4; // Ставим 4 пропуска ходов
-                            logMessage(`${activeUnit.name} начнет заготовку Града стрел! Начнется пропуск 4 ходов.`); 
+                            activeUnit.buffs.noAttackDuration = 4; // Запрет атак на 4 хода
+                            activeUnit.hasActed = true;
+                            logMessage(`${activeUnit.name} активировал Град стрел! Вы не можете атаковать 4 хода (перемещение и скиллы доступны).`); 
                             endCurrentUnitTurn();
                         }
                     } else {
-                        // ПЕРВЫЙ КЛИК: Предварительный просмотр
+                        // ПЕРВЫЙ КЛИК: Превью
                         pendingTarget = targetUnit;
                         renderBoard();
                         reapplyHighlights();
@@ -601,7 +595,7 @@
             executeAttack(attacker, defender);
             arrowRainShotsLeft--;
             if (arrowRainShotsLeft > 0) {
-                logMessage(`[ГРАД СТРЕЛ] Выберите еще 1 цель (${arrowRainShotsLeft} выстрелов осталось)!`);
+                logMessage(`[ГРАД СТРЕЛ] Осталось выстрелов: ${arrowRainShotsLeft}! Выберите следующую цель.`);
                 pendingTarget = null;
                 showAttackRange(attacker);
                 return;
@@ -645,15 +639,15 @@
             let addStr = extraPure > 0 ? ` + ${extraPure} чистого урона` : '';
             textEl.innerHTML = `<b>Цель: ${target.name}</b><br>Прогнозируемый урон: <span style="color:#e74c3c; font-weight:bold;">${dmg}${addStr} HP</span> (${def}% защ).<br><i>Кликните повторно для атаки!</i>`;
         } else if (action === 'fireArrow') {
-            textEl.innerHTML = `<b>Подтверждение: Огненные стрелы</b><br>Следующие 3 атаки поджигают цели (1 маг. урон на 2 хода).<br><i>Кликните повторно по себе для активации!</i>`;
+            textEl.innerHTML = `<b>Подтверждение: Огненные стрелы</b><br>Следующие 3 атаки поджигают цели.<br><i>Кликните повторно по себе!</i>`;
         } else if (action === 'kneeShot') {
-            textEl.innerHTML = `<b>Подтверждение: В колено</b><br>Следующая атака снизит перемещение цели на 2 на 2 хода.<br><i>Кликните повторно по себе для активации!</i>`;
+            textEl.innerHTML = `<b>Подтверждение: В колено</b><br>Следующая атака снизит скорость цели на 2.<br><i>Кликните повторно по себе!</i>`;
         } else if (action === 'bullseye') {
-            textEl.innerHTML = `<b>Подтверждение: В яблочко</b><br>Следующие 2 атаки получат +100% базового урона (+10 урона).<br><i>Кликните повторно по себе для активации!</i>`;
+            textEl.innerHTML = `<b>Подтверждение: В яблочко</b><br>Следующие 2 атаки нанесут +100% урона.<br><i>Кликните повторно по себе!</i>`;
         } else if (action === 'arrowRain') {
-            textEl.innerHTML = `<b>Подтверждение: Град стрел</b><br>Пропускает следующие 4 хода, затем производит 5 целевых атак подряд!<br><i>Кликните повторно по себе для запуска!</i>`;
+            textEl.innerHTML = `<b>Подтверждение: Град стрел</b><br>Блокирует обычные атаки на 4 хода, после чего дает 5 выстрелов подряд!<br><i>Кликните повторно по себе для запуска!</i>`;
         } else if (action === 'spear') {
-            textEl.innerHTML = `<b>Цель: ${target.name}</b><br>Будет нанесен урон: <span style="color:#e74c3c; font-weight:bold;">10 HP</span>.<br><i>Кликните повторно!</i>`;
+            textEl.innerHTML = `<b>Цель: ${target.name}</b><br>Урон: <span style="color:#e74c3c; font-weight:bold;">10 HP</span>.<br><i>Кликните повторно!</i>`;
         } else if (action === 'stun') {
             textEl.innerHTML = `<b>Цель: ${target.name}</b><br>Эффект: Пропуск 1 хода.<br><i>Кликните повторно!</i>`;
         } else if (action === 'buff') {
@@ -687,6 +681,13 @@
 
     function showAttackRange(unit) {
         if (unit.hasActed && arrowRainShotsLeft === 0) return;
+        
+        // Проверка блокировки атак (Град Стрел)
+        if (unit.buffs.noAttackDuration > 0 && arrowRainShotsLeft === 0) {
+            logMessage(`${unit.name} пока не может атаковать (запрет атак еще ${unit.buffs.noAttackDuration} ходов)!`);
+            return;
+        }
+
         activeAction = 'attack';
         renderBoard();
 
@@ -823,6 +824,10 @@
         }
 
         if (key === 'doubleArrow') {
+            if (u.buffs.noAttackDuration > 0) {
+                logMessage(`${u.name} не может выстрелить! Запрет атак еще ${u.buffs.noAttackDuration} ходов.`);
+                return;
+            }
             u.buffs.doubleArrowCharges = 2; doubleArrowShotsLeft = 2; u.cooldowns.doubleArrow = 5;
             logMessage(`${u.name} готовится выпустить Двойную стрелу! Выберите 1-ю цель.`);
             showAttackRange(u); return;
@@ -874,7 +879,7 @@
 
         let effRange = getUnitEffectiveRange(ai);
 
-        if (minDist <= effRange) {
+        if (minDist <= effRange && ai.buffs.noAttackDuration === 0) {
             executeAttack(ai, target);
         } else {
             let validCells = getValidMoveCells(ai);
@@ -884,7 +889,9 @@
                 if (dTo < bestDist) { bestDist = dTo; bestCell = pos; }
             });
             ai.r = bestCell.r; ai.c = bestCell.c;
-            if (Math.max(Math.abs(target.r - ai.r), Math.abs(target.c - ai.c)) <= effRange) executeAttack(ai, target);
+            if (Math.max(Math.abs(target.r - ai.r), Math.abs(target.c - ai.c)) <= effRange && ai.buffs.noAttackDuration === 0) {
+                executeAttack(ai, target);
+            }
         }
 
         renderBoard();
@@ -897,7 +904,7 @@
         if (!u) { info.innerText = "Кликните на юнита"; abSec.style.display = 'none'; return; }
 
         let effects = [];
-        if (u.buffs.chargingArrowRain > 0) effects.push(`Зарядка Града (${u.buffs.chargingArrowRain}х)`);
+        if (u.buffs.noAttackDuration > 0) effects.push(`Не атака (${u.buffs.noAttackDuration}х)`);
         if (u.buffs.regenDuration > 0) effects.push(`Лечение (${u.buffs.regenDuration}х)`);
         if (u.buffs.rageDuration > 0) effects.push(`Ярость (${u.buffs.rageDuration}х)`);
         if (u.buffs.customDefenseDuration > 0) effects.push(`Укрепление (${u.buffs.customDefenseDuration}х)`);
@@ -934,7 +941,7 @@
                 document.getElementById('abilities-list').innerHTML = `
                     <button onclick="selectAbility('fireArrow')" ${u.cooldowns.fireArrow > 0 || u.hasActed ? 'disabled' : ''}>Огонь ${u.cooldowns.fireArrow ? '('+u.cooldowns.fireArrow+')' : ''}</button>
                     <button onclick="selectAbility('kneeShot')" ${u.cooldowns.kneeShot > 0 || u.hasActed ? 'disabled' : ''}>В колено ${u.cooldowns.kneeShot ? '('+u.cooldowns.kneeShot+')' : ''}</button>
-                    <button onclick="selectAbility('doubleArrow')" ${u.cooldowns.doubleArrow > 0 || u.hasActed ? 'disabled' : ''}>2x Стрела ${u.cooldowns.doubleArrow ? '('+u.cooldowns.doubleArrow+')' : ''}</button>
+                    <button onclick="selectAbility('doubleArrow')" ${u.cooldowns.doubleArrow > 0 || u.hasActed || u.buffs.noAttackDuration > 0 ? 'disabled' : ''}>2x Стрела ${u.cooldowns.doubleArrow ? '('+u.cooldowns.doubleArrow+')' : ''}</button>
                     <button onclick="selectAbility('bullseye')" ${u.cooldowns.bullseye > 0 || u.hasActed ? 'disabled' : ''}>Яблочко ${u.cooldowns.bullseye ? '('+u.cooldowns.bullseye+')' : ''}</button>
                     <button onclick="selectAbility('arrowRain')" ${u.cooldowns.arrowRain > 0 || u.hasActed ? 'disabled' : ''}>Град стрел ${u.cooldowns.arrowRain ? '('+u.cooldowns.arrowRain+')' : ''}</button>
                 `;
