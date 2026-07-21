@@ -229,7 +229,6 @@
         const GRID_W = 13;
         const GRID_H = 15;
 
-        // Полная база данных юнитов и построек с Инициативой
         const UNITS_DB = {
             warrior: { name:'Воин', icon:'⚔️', costG:40, costS:0, hp:45, dmg:10, move:2, range:1, init:10, type:'Пехота', upgrade:'knight', desc:'+20% бонуса по Кавалерии' },
             knight: { name:'Рыцарь', icon:'🛡️', costG:35, costS:0, hp:70, dmg:16, move:2, range:1, init:11, type:'Пехота', desc:'+50% бонуса по Кавалерии' },
@@ -244,7 +243,6 @@
             vampire: { name:'Вампир', icon:'🧛', costG:90, costS:0, hp:60, dmg:14, move:3, range:1, init:16, type:'Мистик', upgrade:'ancient_vampire', desc:'Лечится при атаке (40%). ТП к Цитадели' },
             ancient_vampire: { name:'Древний Вампир', icon:'🦇', costG:80, costS:0, hp:95, dmg:20, move:3, range:1, init:20, type:'Мистик', desc:'Блинк к врагу. Доп. ход за убийство' },
             
-            // Здания
             wall: { name:'Стена', icon:'🧱', costG:0, costS:40, hp:120, dmg:0, move:0, range:0, init:0, type:'Здание', upgrade:'fort_wall', desc:'Преграда с высоким HP' },
             fort_wall: { name:'Улучш. Стена', icon:'🏰', costG:0, costS:35, hp:220, dmg:0, move:0, range:0, init:0, type:'Здание', desc:'-50% урона от стрел' },
             tower: { name:'Башня', icon:'🏹', costG:20, costS:60, hp:100, dmg:12, move:0, range:3, init:12, type:'Здание', upgrade:'super_tower', desc:'Ручной выстрел в свой ход по Инициативе' },
@@ -260,7 +258,7 @@
         let turnQueue = [];
         let currentTurnIndex = -1;
         let selectedShopKey = null;
-        let currentPhase = 'BUY'; // 'BUY' или 'BATTLE'
+        let currentPhase = 'BUY';
 
         let blinkSelectingEnemy = false;
         let blinkSelectingTile = false;
@@ -317,7 +315,7 @@
 
         function togglePhase() {
             if (currentPhase === 'BUY') {
-                runAI Purchases();
+                runAIPurchases();
                 startBattlePhase();
             } else {
                 passTurn();
@@ -331,7 +329,6 @@
             document.getElementById('main-phase-btn').className = "btn btn-skip";
             document.getElementById('main-phase-btn').innerText = "ПРОПУСТИТЬ ХОД ⏩";
 
-            // Составление очереди по Инициативе
             turnQueue = units.filter(u => UNITS_DB[u.typeKey].init > 0);
             turnQueue.sort((a, b) => UNITS_DB[b.typeKey].init - UNITS_DB[a.typeKey].init);
 
@@ -341,7 +338,6 @@
 
         function processTurn() {
             if (turnQueue.length === 0 || currentTurnIndex >= turnQueue.length) {
-                // Завершение полного круга раунда
                 playerGold += 30; playerStone += 20;
                 enemyGold += 30; enemyStone += 20;
                 updateRes();
@@ -396,7 +392,6 @@
         function handleCellClick(x, y) {
             const clickedUnit = getUnitAt(x, y);
 
-            // Клик в фазе покупок
             if (currentPhase === 'BUY') {
                 if (selectedShopKey && !clickedUnit) {
                     if (isAdjacentToCitadel(x, y, PLAYER_CITADEL)) {
@@ -410,14 +405,12 @@
                 return;
             }
 
-            // Фаза Боя
             const active = turnQueue[currentTurnIndex];
             if (!active || active.team !== 'player') {
                 if (clickedUnit) showUnitDetails(clickedUnit);
                 return;
             }
 
-            // Выбор цели для блинка Древнего Вампира
             if (active.typeKey === 'ancient_vampire') {
                 if (blinkSelectingEnemy && clickedUnit && clickedUnit.team === 'enemy') {
                     if (Math.max(Math.abs(clickedUnit.x - active.x), Math.abs(clickedUnit.y - active.y)) <= 3) {
@@ -442,7 +435,6 @@
                 }
             }
 
-            // Атака Цитадели врага
             if (isCitadelCell(x, y, ENEMY_CITADEL)) {
                 if (canTarget(active, x, y)) {
                     attackCitadel(active, ENEMY_CITADEL);
@@ -451,7 +443,6 @@
                 }
             }
 
-            // Атака врага
             if (clickedUnit && clickedUnit.team === 'enemy') {
                 if (canTarget(active, x, y)) {
                     attack(active, clickedUnit);
@@ -469,7 +460,6 @@
                 }
             }
 
-            // Движение на пустую клетку
             if (!clickedUnit && !isCitadelCell(x, y, PLAYER_CITADEL) && !isCitadelCell(x, y, ENEMY_CITADEL)) {
                 const reachable = getReachableCells(active);
                 if (reachable.some(c => c.x === x && c.y === y)) {
@@ -643,19 +633,16 @@
 
             const db = UNITS_DB[active.typeKey];
 
-            // 1. Апгрейд у своей Цитадели
             if (db.upgrade && isAdjacentToCitadel(active.x, active.y, ENEMY_CITADEL) && enemyGold >= 40) {
                 upgradeUnit(active);
             }
 
-            // 2. Атака Цитадели Игрока
             if (canTarget(active, PLAYER_CITADEL.x + 1, PLAYER_CITADEL.y)) {
                 attackCitadel(active, PLAYER_CITADEL);
                 nextTurn();
                 return;
             }
 
-            // 3. Атака Юнитов Игрока
             const targets = units.filter(p => p.team === 'player' && canTarget(active, p.x, p.y));
             if (targets.length > 0) {
                 attack(active, targets[0]);
@@ -663,7 +650,6 @@
                 return;
             }
 
-            // 4. Движение + Атака ближнего боя
             if (db.range === 1) {
                 const playerUnits = units.filter(p => p.team === 'player');
                 for (let p of playerUnits) {
@@ -678,7 +664,6 @@
                 }
             }
 
-            // 5. Перемещение по направлению к врагу
             const reachable = getReachableCells(active);
             if (reachable.length > 0) {
                 reachable.sort((a, b) => {
