@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Цитадели: Баланс Инициативы</title>
+    <title>Цитадели: Полный Баланс и Способности</title>
     <style>
         :root {
             --bg-main: #090807;
@@ -13,276 +13,140 @@
             --text-gold: #f3d179;
         }
 
-        * { 
-            box-sizing: border-box; 
-            margin: 0; 
-            padding: 0; 
-            font-family: system-ui, -apple-system, sans-serif; 
-            user-select: none; 
-        }
-
-        body {
-            background: var(--bg-main);
-            color: #d8c8b8;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 4px;
-            min-height: 100vh;
-            overflow-x: hidden;
-        }
-
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; user-select: none; }
+        body { background: var(--bg-main); color: #d8c8b8; display: flex; flex-direction: column; align-items: center; padding: 4px; min-height: 100vh; }
         h1 { color: var(--text-gold); font-size: 13px; text-align: center; margin-bottom: 4px; }
 
-        .wrapper {
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-            width: 100%;
-            max-width: 500px;
-            background: var(--bg-panel);
-            border: 1.5px solid var(--border-gold);
-            padding: 4px;
-            border-radius: 8px;
-            box-shadow: 0 6px 25px rgba(0,0,0,0.9);
-            overflow: hidden;
-        }
+        .wrapper { display: flex; flex-direction: column; gap: 4px; width: 100%; max-width: 520px; background: var(--bg-panel); border: 1.5px solid var(--border-gold); padding: 5px; border-radius: 8px; }
 
-        .res-bar {
-            display: flex;
-            justify-content: space-around;
-            background: #000;
-            border: 1px solid var(--border-dark);
-            padding: 4px 2px;
-            border-radius: 5px;
-            font-size: 9.5px;
-            font-weight: bold;
-        }
-        .res-item { display: flex; align-items: center; gap: 2px; }
-        .gold { color: #f1c40f; }
-        .stone { color: #95a5a6; }
+        .res-bar { display: flex; justify-content: space-around; background: #000; border: 1px solid var(--border-dark); padding: 4px; border-radius: 5px; font-size: 10px; font-weight: bold; }
+        .gold { color: #f1c40f; } .stone { color: #95a5a6; }
 
-        .round-bar {
-            background: #18120c;
-            border: 1px solid var(--border-gold);
-            padding: 4px;
-            border-radius: 5px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 9px;
-            color: var(--text-gold);
-            font-weight: bold;
-        }
-
-        #timeline-bar {
-            background: #080604;
-            border: 1px solid var(--border-dark);
-            padding: 3px;
-            border-radius: 5px;
-            display: flex;
-            gap: 4px;
-            overflow-x: auto;
-            align-items: center;
-            min-height: 36px;
-        }
-
-        .timeline-item {
-            background: #1a130d;
-            border: 1px solid var(--border-dark);
-            border-radius: 4px;
-            padding: 2px 3px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            font-size: 8px;
-            min-width: 32px;
-            flex-shrink: 0;
-        }
-        .timeline-item.active {
-            border-color: #2ecc71;
-            background: #0e2a14;
-            box-shadow: 0 0 6px #2ecc71;
-        }
+        #timeline-bar { background: #080604; border: 1px solid var(--border-gold); padding: 3px; border-radius: 5px; display: flex; gap: 4px; overflow-x: auto; align-items: center; min-height: 38px; }
+        .timeline-item { background: #1a130d; border: 1px solid var(--border-dark); border-radius: 4px; padding: 2px 4px; display: flex; flex-direction: column; align-items: center; font-size: 8px; min-width: 36px; flex-shrink: 0; }
+        .timeline-item.active { border-color: #2ecc71; background: #0e2a14; box-shadow: 0 0 6px #2ecc71; }
         .timeline-item.enemy { border-color: #7f1d1d; }
+        .timeline-item.citadel { border-color: #9b59b6; background: #23122c; }
 
-        #board {
-            display: grid;
-            grid-template-columns: repeat(13, minmax(0, 1fr));
-            gap: 1px;
-            background: #040302;
-            padding: 2px;
-            border: 1.5px solid var(--border-dark);
-            border-radius: 5px;
-            width: 100%;
-            box-sizing: border-box;
-        }
-
-        .cell {
-            aspect-ratio: 1 / 1;
-            background: #15100b;
-            border: 1px solid #221810;
-            border-radius: 2px;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0;
-            position: relative;
-            cursor: pointer;
-            min-width: 0;
-            min-height: 0;
-            overflow: hidden;
-        }
-
+        #board { display: grid; grid-template-columns: repeat(13, minmax(0, 1fr)); gap: 1px; background: #040302; padding: 2px; border: 1.5px solid var(--border-dark); border-radius: 5px; width: 100%; }
+        .cell { aspect-ratio: 1 / 1; background: #15100b; border: 1px solid #221810; border-radius: 2px; display: flex; flex-direction: column; justify-content: space-between; align-items: center; position: relative; cursor: pointer; overflow: hidden; }
         .cell.reachable { background: #112818; border-color: #2ecc71; }
         .cell.attackable { background: #3a1212; border-color: #e74c3c; }
-        .cell.javelin-target { background: #4a2800; border-color: #e67e22; }
+        .cell.skill-target { background: #4a2800; border-color: #f39c12; }
         .cell.active-cell { outline: 2px solid var(--text-gold); z-index: 2; }
         .cell.citadel-cell { background: #2c1e12; border-color: #8e44ad; }
         .cell.citadel-enemy { background: #3a121d; border-color: #c0392b; }
 
         .unit { font-size: calc(10px + 0.5vw); text-align: center; margin: auto; line-height: 1; }
-        .unit-badge {
-            background: rgba(0,0,0,0.85);
-            border-radius: 2px;
-            padding: 0 1px;
-            font-size: 6px;
-            font-weight: bold;
-            line-height: 1;
-            width: 100%;
-            text-align: center;
-        }
+        .unit-badge { background: rgba(0,0,0,0.85); border-radius: 2px; padding: 0 1px; font-size: 6.5px; font-weight: bold; width: 100%; text-align: center; }
         .player-unit .unit-badge { color: #3498db; }
         .enemy-unit .unit-badge { color: #e74c3c; }
 
-        #log-box {
-            width: 100%;
-            height: 48px;
-            background: #050403;
-            border: 1px solid var(--border-dark);
-            border-radius: 4px;
-            padding: 3px 5px;
-            overflow-y: auto;
-            font-size: 8px;
-            display: flex;
-            flex-direction: column;
-            gap: 1px;
-        }
+        #log-box { width: 100%; height: 50px; background: #050403; border: 1px solid var(--border-dark); border-radius: 4px; padding: 3px 5px; overflow-y: auto; font-size: 8.5px; display: flex; flex-direction: column; gap: 1px; }
+        .log-hit { color: #e74c3c; } .log-skill { color: #f1c40f; } .log-move { color: #3498db; } .log-heal { color: #2ecc71; }
 
-        .log-hit { color: #e74c3c; }
-        .log-skill { color: #f1c40f; }
-        .log-move { color: #3498db; }
-        .log-heal { color: #2ecc71; }
-
-        .panel-box {
-            background: #0d0a07;
-            border: 1px solid var(--border-dark);
-            border-radius: 5px;
-            padding: 4px;
-        }
-
-        .shop-grid {
-            display: grid;
-            grid-template-columns: repeat(8, minmax(0, 1fr));
-            gap: 2px;
-            margin-top: 4px;
-        }
-
-        .shop-btn {
-            background: #1a130d;
-            border: 1px solid var(--border-dark);
-            border-radius: 3px;
-            padding: 2px 1px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            cursor: pointer;
-            font-size: 7px;
-            color: #ccc;
-            min-width: 0;
-        }
-        .shop-btn:hover { border-color: var(--border-gold); }
+        .panel-box { background: #0d0a07; border: 1px solid var(--border-dark); border-radius: 5px; padding: 4px; }
+        .shop-grid { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 2px; margin-top: 4px; }
+        .shop-btn { background: #1a130d; border: 1px solid var(--border-dark); border-radius: 3px; padding: 2px 1px; display: flex; flex-direction: column; align-items: center; cursor: pointer; font-size: 7px; color: #ccc; }
         .shop-btn.selected { border-color: #2ecc71; background: #102414; }
 
-        .btn {
-            background: linear-gradient(180deg, #c89b3c 0%, #8a651e 100%);
-            border: none;
-            color: #000;
-            font-weight: bold;
-            padding: 4px 6px;
-            border-radius: 3px;
-            cursor: pointer;
-            font-size: 8.5px;
-        }
-        .btn-start { background: linear-gradient(180deg, #2ecc71 0%, #27ae60 100%); color: #000; }
-        .btn-act { background: linear-gradient(180deg, #3498db 0%, #2980b9 100%); color: #fff; margin-top:2px; }
-        .btn-skip { background: linear-gradient(180deg, #e67e22 0%, #d35400 100%); color: #fff; }
+        .skills-container { display: flex; gap: 4px; margin-top: 4px; flex-wrap: wrap; }
+        .btn-skill { background: linear-gradient(180deg, #d35400 0%, #a04000 100%); border: 1px solid #f39c12; color: #fff; font-weight: bold; padding: 3px 6px; border-radius: 3px; cursor: pointer; font-size: 8px; }
+        .btn-skill:hover { background: #e67e22; }
+        .btn { background: linear-gradient(180deg, #c89b3c 0%, #8a651e 100%); border: none; color: #000; font-weight: bold; padding: 4px 6px; border-radius: 3px; cursor: pointer; font-size: 8.5px; }
+        .btn-skip { background: linear-gradient(180deg, #7f8c8d 0%, #34495e 100%); color: #fff; }
     </style>
 </head>
 <body>
 
-    <h1>🏰 ЦИТАДЕЛИ: РАУНДЫ И ИНИЦИАТИВА</h1>
+    <h1>🏰 ЦИТАДЕЛИ: БАЛАНС И СПОСОБНОСТИ</h1>
 
     <div class="wrapper">
         <div class="res-bar">
-            <div class="res-item gold">💰 Монеты: <span id="res-gold">150</span></div>
-            <div class="res-item stone">🪨 Камень: <span id="res-stone">100</span></div>
-            <div class="res-item" style="color:#e74c3c">🏰 Враг: <span id="enemy-cit-hp">500</span></div>
-            <div class="res-item" style="color:#3498db">🏰 Вы: <span id="player-cit-hp">500</span></div>
+            <div class="gold">💰 <span id="res-gold">150</span></div>
+            <div class="stone">🪨 <span id="res-stone">100</span></div>
+            <div style="color:#e74c3c">🏰 Враг: <span id="enemy-cit-hp">500</span></div>
+            <div style="color:#3498db">🏰 Вы: <span id="player-cit-hp">500</span></div>
         </div>
 
-        <div class="round-bar">
-            <span>🔄 РАУНД: <span id="round-num" style="color:#fff;">1</span></span>
-            <span>⏳ ИНИЦИАТИВА РАУНДА: <span id="round-ticks" style="color:#2ecc71;">0 / 20</span></span>
-            <span id="phase-indicator" style="color:#f1c40f;">ФАЗА НАЙМА</span>
+        <div style="font-size: 8.5px; color: var(--text-gold); display:flex; justify-content:space-between; align-items:center;">
+            <span>⏳ ОЧЕРЕДЬ ХОДОВ:</span>
+            <button class="btn btn-skip" onclick="passTurn()">ПРОПУСТИТЬ ХОД ⏩</button>
         </div>
 
         <div id="timeline-bar"></div>
-
         <div id="board"></div>
-
         <div id="log-box"></div>
 
         <div class="panel-box">
-            <div id="unit-details" style="font-size: 8px; min-height: 32px;">
-                Выберите юнита или постройку в магазине.
+            <div id="unit-details" style="font-size: 8.5px; min-height: 38px;">
+                Выберите юнита на поле для просмотра его активных способностей.
             </div>
-            <div id="action-panel" style="display:none; margin-top:3px;"></div>
+            <div id="skills-panel" class="skills-container"></div>
         </div>
 
         <div class="panel-box">
-            <div style="font-size:8.5px; color:var(--text-gold); font-weight:bold; display:flex; justify-content:space-between; align-items:center;">
-                <span>Строительство и Найм (У Цитадели)</span>
-                <button id="main-phase-btn" class="btn btn-start" onclick="togglePhase()">НАЧАТЬ БОЙ ⚔️</button>
+            <div style="font-size:8.5px; color:var(--text-gold); font-weight:bold;">
+                Найм Юнитов (Нажмите на тип, затем на клетку у Цитадели)
             </div>
             <div class="shop-grid" id="shop-list"></div>
         </div>
     </div>
 
     <script>
-        const GRID_W = 13;
-        const GRID_H = 15;
-        const ROUND_MAX_TICKS = 20;
+        const GRID_W = 13, GRID_H = 15;
 
         const UNITS_DB = {
-            warrior: { name:'Воин', icon:'⚔️', costG:40, costS:0, hp:45, dmg:10, move:2, range:1, init:10, type:'Пехота', isBiological: true, javelins:2, upgrade:'knight', desc:'+20% по Кавалерии. Есть 2 дротика (дист. 3, +50% урона).' },
-            knight: { name:'Рыцарь', icon:'🛡️', costG:35, costS:0, hp:70, dmg:16, move:2, range:1, init:11, type:'Пехота', isBiological: true, upgrade:'armored', desc:'+50% по Кавалерии.' },
-            swordsman: { name:'Мечник', icon:'🗡️', costG:45, costS:0, hp:50, dmg:12, move:2, range:1, init:8, type:'Пехота', isBiological: true, upgrade:'armored', desc:'-30% урона от стрел, -20% от ближнего боя.' },
-            armored: { name:'Латник', icon:'🦾', costG:40, costS:0, hp:80, dmg:18, move:2, range:1, init:9, type:'Пехота', isBiological: true, javelins:3, desc:'-50% урона от стрел, -40% от ближнего боя. 3 дротика.' },
-            archer: { name:'Лучник', icon:'🏹', costG:50, costS:0, hp:30, dmg:11, move:2, range:2, init:14, type:'Пехота', isBiological: true, upgrade:'marksman', desc:'Дальний бой (2 кл).' },
-            marksman: { name:'Стрелок', icon:'🎯', costG:45, costS:0, hp:45, dmg:16, move:2, range:3, init:15, type:'Пехота', isBiological: true, desc:'Дальний бой (3 кл).' },
-            rider: { name:'Всадник', icon:'🐎', costG:65, costS:0, hp:55, dmg:15, move:4, range:1, init:18, type:'Кавалерия', isBiological: true, upgrade:'cavalier', desc:'Высокая скорость и инициатива (ходит в 3.6x чаще баллисты).' },
-            cavalier: { name:'Кавалерист', icon:'♞', costG:55, costS:0, hp:85, dmg:22, move:4, range:1, init:19, type:'Кавалерия', isBiological: true, desc:'Элитная кавалерия.' },
-            ballista: { name:'Баллиста', icon:'🏹', costG:70, costS:30, hp:40, dmg:14, move:1, range:2, init:5, type:'Осада', isBiological: false, upgrade:'catapult', desc:'+100% урона по зданиям.' },
-            catapult: { name:'Катапульта', icon:'☄️', costG:60, costS:40, hp:60, dmg:22, move:1, range:4, init:4, type:'Осада', isBiological: false, desc:'Дальнобойная осада (+100% по зданиям).' },
-            vampire: { name:'Вампир', icon:'🧛', costG:90, costS:0, hp:60, dmg:14, move:3, range:1, init:16, type:'Мистик', isBiological: true, upgrade:'ancient_vampire', desc:'Лечится при атаке (40%). ТП к Цитадели.' },
-            ancient_vampire: { name:'Древний Вампир', icon:'🦇', costG:80, costS:0, hp:95, dmg:20, move:3, range:1, init:20, type:'Мистик', isBiological: true, desc:'Доп. ход ТОЛЬКО за полное ДОБИВАНИЕ персонажа.' },
-            
-            wall: { name:'Стена', icon:'🧱', costG:0, costS:40, hp:120, dmg:0, move:0, range:0, init:0, type:'Здание', isBiological: false, upgrade:'fort_wall', desc:'Преграда с высоким HP.' },
-            fort_wall: { name:'Улучш. Стена', icon:'🏰', costG:0, costS:35, hp:220, dmg:0, move:0, range:0, init:0, type:'Здание', isBiological: false, desc:'-50% урона от стрел.' },
-            tower: { name:'Башня', icon:'🏹', costG:20, costS:60, hp:100, dmg:12, move:0, range:3, init:12, type:'Здание', isBiological: false, upgrade:'super_tower', desc:'Ручной выстрел в свой ход.' },
-            super_tower: { name:'Улучш. Башня', icon:'🗼', costG:20, costS:50, hp:180, dmg:18, move:0, range:4, init:13, type:'Здание', isBiological: false, desc:'Увеличена дальность и урон.' }
+            citadel_player: { name:'Цитадель', icon:'🏰', hp:500, dmg:0, move:0, range:0, init:20, desc:'Приносит +40💰 и +25🪨 в свой ход (⚡20).' },
+            citadel_enemy:  { name:'Цитадель Врага', icon:'🏰', hp:500, dmg:0, move:0, range:0, init:20, desc:'Приносит ресурсы врагу.' },
+
+            warrior: {
+                name:'Воин', icon:'⚔️', costG:40, costS:0, hp:55, dmg:12, move:2, range:1, init:10, type:'Пехота',
+                desc:'Универсальный пехотинец.',
+                skills: [
+                    { id:'javelin', name:'🎯 Дротик', desc:'Урон на 3 кл.', range:3, dmgMult:1.2, isFree:false },
+                    { id:'cleave', name:'⚔️ Сквозной удар', desc:'Урон цели и врагу позади', range:1, dmgMult:1.0, isFree:false }
+                ]
+            },
+            knight: {
+                name:'Рыцарь', icon:'🛡️', costG:45, costS:10, hp:85, dmg:15, move:2, range:1, init:9, type:'Пехота',
+                desc:'Тяжелая броня и контроль.',
+                skills: [
+                    { id:'defend', name:'🛡️ Глухая оборона', desc:'-50% урона до сл. хода', range:0, isFree:false },
+                    { id:'bash', name:'💥 Оглушение', desc:'80% урона и -5⚡ врагу', range:1, dmgMult:0.8, isFree:false }
+                ]
+            },
+            archer: {
+                name:'Лучник', icon:'🏹', costG:50, costS:0, hp:35, dmg:12, move:2, range:3, init:14, type:'Стрелок',
+                desc:'Мобильный дальний бой.',
+                skills: [
+                    { id:'power_shot', name:'🎯 Выстрел +50%', desc:'Урон на 4 кл.', range:4, dmgMult:1.5, isFree:false },
+                    { id:'step_back', name:'💨 Отскок', desc:'Откат назад на 1 кл.', range:0, isFree:true }
+                ]
+            },
+            rider: {
+                name:'Всадник', icon:'🐎', costG:65, costS:0, hp:65, dmg:16, move:4, range:1, init:17, type:'Кавалерия',
+                desc:'Высокая скорость фланговых атак.',
+                skills: [
+                    { id:'charge', name:'⚡ Таранный разгон', desc:'+10% урона за клетку шага', range:1, dmgMult:1.0, isFree:false },
+                    { id:'hit_run', name:'🐎 Наскок и отход', desc:'Атака и отскок на 2 кл.', range:1, dmgMult:1.0, isFree:false }
+                ]
+            },
+            ballista: {
+                name:'Баллиста', icon:'🏹', costG:70, costS:35, hp:50, dmg:16, move:1, range:3, init:6, type:'Осада',
+                desc:'Уничтожитель построек.',
+                skills: [
+                    { id:'pierce', name:'Залп по площади', desc:'Урон цели и соседним', range:3, dmgMult:1.0, isFree:false }
+                ]
+            },
+            vampire: {
+                name:'Вампир', icon:'🧛', costG:90, costS:0, hp:70, dmg:16, move:3, range:1, init:16, type:'Мистик',
+                desc:'Исцеляется от урона (60%).',
+                skills: [
+                    { id:'vamp_bite', name:'🩸 Укус', desc:'Атака + Исцеление', range:1, dmgMult:1.2, isFree:false },
+                    { id:'mist_tp', name:'🦇 Туманный Шаг', desc:'Телепорт к Цитадели', range:0, isFree:false }
+                ]
+            }
         };
 
         const PLAYER_CITADEL = { x: 0, y: 11, w: 4, h: 4, hp: 500, maxHp: 500 };
@@ -293,19 +157,18 @@
         let units = [];
         let activeUnit = null;
         let selectedShopKey = null;
-        let currentPhase = 'BUY'; // 'BUY' или 'BATTLE'
-
-        let currentRound = 1;
-        let roundTicksAccumulated = 0;
-
-        let javelinTargeting = false;
-        let aiProcessing = false;
+        let selectedSkillMode = null;
 
         function init() {
             createBoard();
             renderShop();
+
+            units.push({ id: 'cit_p', team: 'player', typeKey: 'citadel_player', hp: 500, maxHp: 500, delay: 0 });
+            units.push({ id: 'cit_e', team: 'enemy', typeKey: 'citadel_enemy', hp: 500, maxHp: 500, delay: 0 });
+
             updateRes();
-            log("Старт игры! Нанимите воинов около Цитадели и нажмите 'НАЧАТЬ БОЙ'.", "log-skill");
+            log("🎮 Битва началась! Нанимайте юнитов и используйте их способности.", "log-skill");
+            processNextTurn();
         }
 
         function updateRes() {
@@ -313,8 +176,6 @@
             document.getElementById('res-stone').innerText = playerStone;
             document.getElementById('player-cit-hp').innerText = `${PLAYER_CITADEL.hp}/${PLAYER_CITADEL.maxHp}`;
             document.getElementById('enemy-cit-hp').innerText = `${ENEMY_CITADEL.hp}/${ENEMY_CITADEL.maxHp}`;
-            document.getElementById('round-num').innerText = currentRound;
-            document.getElementById('round-ticks').innerText = `${Math.min(20, Math.floor(roundTicksAccumulated))} / 20`;
         }
 
         function createBoard() {
@@ -330,176 +191,82 @@
                     b.appendChild(c);
                 }
             }
-            render();
         }
 
         function isCitadelCell(x, y, cit) { return x >= cit.x && x < cit.x + cit.w && y >= cit.y && y < cit.y + cit.h; }
-
-        function isAdjacentToCitadel(x, y, cit) {
-            for (let cy = cit.y - 1; cy <= cit.y + cit.h; cy++) {
-                for (let cx = cit.x - 1; cx <= cit.x + cit.w; cx++) {
-                    if (cx >= 0 && cx < GRID_W && cy >= 0 && cy < GRID_H) {
-                        if (Math.max(Math.abs(cx - x), Math.abs(cy - y)) <= 1) {
-                            if (!isCitadelCell(x, y, cit)) return true;
-                        }
-                    }
-                }
-            }
-            return false;
-        }
-
         function getUnitAt(x, y) { return units.find(u => u.x === x && u.y === y); }
 
-        function togglePhase() {
-            if (currentPhase === 'BUY') {
-                runAIPurchases();
-                startBattlePhase();
-            } else {
-                passTurn();
-            }
-        }
-
-        function startBattlePhase() {
-            currentPhase = 'BATTLE';
-            document.getElementById('phase-indicator').innerText = "ФАЗА БОЯ ⚔️";
-            document.getElementById('phase-indicator').style.color = "#e74c3c";
-            document.getElementById('main-phase-btn').className = "btn btn-skip";
-            document.getElementById('main-phase-btn').innerText = "ПРОПУСТИТЬ ХОД ⏩";
-
-            processNextTurn();
-        }
-
         function processNextTurn() {
-            if (currentPhase !== 'BATTLE') return;
-
             const activeUnits = units.filter(u => UNITS_DB[u.typeKey].init > 0);
-            if (activeUnits.length === 0) {
-                endRoundAndStartBuyPhase();
-                return;
-            }
+            if (activeUnits.length === 0) return;
 
-            // Находим юнита с наименьшей задержкой
             activeUnits.sort((a, b) => a.delay - b.delay || UNITS_DB[b.typeKey].init - UNITS_DB[a.typeKey].init);
             activeUnit = activeUnits[0];
 
-            javelinTargeting = false;
-
+            selectedSkillMode = null;
             renderTimeline();
             render();
 
+            if (activeUnit.typeKey === 'citadel_player') {
+                playerGold += 40; playerStone += 25;
+                updateRes();
+                log("💰 Ваша Цитадель начислила +40 Монет и +25 Камня!", "log-heal");
+                endAction(1.0);
+                return;
+            }
+
+            if (activeUnit.typeKey === 'citadel_enemy') {
+                enemyGold += 40; enemyStone += 25;
+                updateRes();
+                log("🏰 Цитадель врага получила ресурсы.", "log-hit");
+                endAction(1.0);
+                return;
+            }
+
+            showUnitDetails(activeUnit);
             if (activeUnit.team === 'player') {
-                showUnitDetails(activeUnit);
-                log(`Ваш ход: ${UNITS_DB[activeUnit.typeKey].name} (⚡${UNITS_DB[activeUnit.typeKey].init})`, 'log-skill');
+                log(`Ваш ход: ${UNITS_DB[activeUnit.typeKey].name}`, 'log-skill');
             } else {
-                showUnitDetails(activeUnit);
-                log(`Ход врага: ${UNITS_DB[activeUnit.typeKey].name} (⚡${UNITS_DB[activeUnit.typeKey].init})`, 'log-hit');
-                if (!aiProcessing) {
-                    aiProcessing = true;
-                    setTimeout(() => {
-                        aiProcessing = false;
-                        runAITurn();
-                    }, 500);
-                }
+                log(`Ход врага: ${UNITS_DB[activeUnit.typeKey].name}`, 'log-hit');
+                setTimeout(runAITurn, 600);
             }
         }
 
         function endAction(costMultiplier = 1.0) {
             if (activeUnit) {
                 const initVal = UNITS_DB[activeUnit.typeKey].init;
-                const costTicks = (20 / initVal) * costMultiplier; // Базовое время хода
-                activeUnit.delay += costTicks;
-                roundTicksAccumulated += costTicks;
-
-                updateRes();
-
-                // Если суммарная инициатива раунда перевалила за 20 — завершаем раунд!
-                if (roundTicksAccumulated >= ROUND_MAX_TICKS) {
-                    endRoundAndStartBuyPhase();
-                    return;
-                }
+                activeUnit.delay += (100 / initVal) * costMultiplier;
             }
             processNextTurn();
         }
 
-        function endRoundAndStartBuyPhase() {
-            currentRound++;
-            roundTicksAccumulated = 0;
-            currentPhase = 'BUY';
-
-            // Начисление доходов
-            playerGold += 40; playerStone += 25;
-            enemyGold += 40; enemyStone += 25;
-
-            updateRes();
-            log(`🔔 РАУНД ${currentRound} НАЧАЛСЯ! Получены ресурсы (+40💰, +25🪨). Пополните войска!`, "log-skill");
-
-            document.getElementById('phase-indicator').innerText = "ФАЗА НАЙМА";
-            document.getElementById('phase-indicator').style.color = "#f1c40f";
-            document.getElementById('main-phase-btn').className = "btn btn-start";
-            document.getElementById('main-phase-btn').innerText = "ПРОДОЛЖИТЬ БОЙ ⚔️";
-
-            renderShop();
-            render();
-        }
-
         function passTurn() {
-            if (currentPhase === 'BATTLE' && activeUnit && activeUnit.team === 'player') {
-                healOnSkip(activeUnit);
+            if (activeUnit && activeUnit.team === 'player' && !activeUnit.typeKey.startsWith('citadel')) {
                 log(`${UNITS_DB[activeUnit.typeKey].name} пропустил ход.`, "log-move");
                 endAction(1.0);
-            }
-        }
-
-        function healOnSkip(unit) {
-            const db = UNITS_DB[unit.typeKey];
-            const cit = unit.team === 'player' ? PLAYER_CITADEL : ENEMY_CITADEL;
-            const nearCitadel = isAdjacentToCitadel(unit.x, unit.y, cit);
-
-            if (db.isBiological || nearCitadel) {
-                const healAmount = Math.round(unit.maxHp * 0.20);
-                const oldHp = unit.hp;
-                unit.hp = Math.min(unit.maxHp, unit.hp + healAmount);
-                const actualHeal = unit.hp - oldHp;
-                if (actualHeal > 0) {
-                    log(`💖 ${db.name} восстановил +${actualHeal} HP!`, 'log-heal');
-                }
-            } else {
-                log(`⚠️ ${db.name} не может чиниться вдали от своей Цитадели!`, 'log-hit');
             }
         }
 
         function handleCellClick(x, y) {
             const clickedUnit = getUnitAt(x, y);
 
-            if (currentPhase === 'BUY') {
-                if (selectedShopKey && !clickedUnit) {
-                    if (isAdjacentToCitadel(x, y, PLAYER_CITADEL)) {
-                        buyUnit(selectedShopKey, x, y, 'player');
-                        return;
-                    } else {
-                        log("Строить можно только на пустых клетках рядом с Цитаделью!", "log-hit");
-                    }
-                }
-                if (clickedUnit) showUnitDetails(clickedUnit);
-                return;
-            }
-
-            if (!activeUnit || activeUnit.team !== 'player') {
-                if (clickedUnit) showUnitDetails(clickedUnit);
-                return;
-            }
-
-            // Бросок дротика
-            if (javelinTargeting && clickedUnit && clickedUnit.team === 'enemy') {
-                const dist = Math.abs(activeUnit.x - x) + Math.abs(activeUnit.y - y);
-                if (dist <= 3 && activeUnit.javelins > 0) {
-                    throwJavelin(activeUnit, clickedUnit);
-                    endAction(1.0);
+            if (selectedShopKey && !clickedUnit) {
+                if (isAdjacentToCitadel(x, y, PLAYER_CITADEL)) {
+                    buyUnit(selectedShopKey, x, y, 'player');
                     return;
                 }
             }
 
-            // Атака Цитадели Врага
+            if (!activeUnit || activeUnit.team !== 'player' || activeUnit.typeKey.startsWith('citadel')) {
+                if (clickedUnit) showUnitDetails(clickedUnit);
+                return;
+            }
+
+            if (selectedSkillMode) {
+                executeSkill(selectedSkillMode, x, y);
+                return;
+            }
+
             if (isCitadelCell(x, y, ENEMY_CITADEL)) {
                 if (canTarget(activeUnit, x, y)) {
                     attackCitadel(activeUnit, ENEMY_CITADEL);
@@ -508,31 +275,20 @@
                 }
             }
 
-            // Атака Юнита Врага
             if (clickedUnit && clickedUnit.team === 'enemy') {
                 if (canTarget(activeUnit, x, y)) {
                     attack(activeUnit, clickedUnit);
                     endAction(1.0);
                     return;
-                } else if (UNITS_DB[activeUnit.typeKey].range === 1) {
-                    const path = getMoveAndAttackTile(activeUnit, clickedUnit.x, clickedUnit.y);
-                    if (path) {
-                        activeUnit.x = path.x;
-                        activeUnit.y = path.y;
-                        attack(activeUnit, clickedUnit);
-                        endAction(1.0);
-                        return;
-                    }
                 }
             }
 
-            // Перемещение
             if (!clickedUnit && !isCitadelCell(x, y, PLAYER_CITADEL) && !isCitadelCell(x, y, ENEMY_CITADEL)) {
                 const reachable = getReachableCells(activeUnit);
                 if (reachable.some(c => c.x === x && c.y === y)) {
                     activeUnit.x = x;
                     activeUnit.y = y;
-                    log(`Перемещение завершено.`, 'log-move');
+                    log(`Перемещение выполнено.`, 'log-move');
                     endAction(1.0);
                     return;
                 }
@@ -541,290 +297,117 @@
             if (clickedUnit) showUnitDetails(clickedUnit);
         }
 
-        function throwJavelin(attacker, defender) {
-            attacker.javelins--;
-            const aDb = UNITS_DB[attacker.typeKey];
-            const dDb = UNITS_DB[defender.typeKey];
+        function executeSkill(skill, targetX, targetY) {
+            const uDb = UNITS_DB[activeUnit.typeKey];
+            const targetUnit = getUnitAt(targetX, targetY);
 
-            let dmg = Math.round(aDb.dmg * 1.5);
-            defender.hp -= dmg;
-
-            log(`🎯 ${aDb.name} бросил дротик в ${dDb.name} на ${dmg} урона!`, 'log-hit');
-
-            if (defender.hp <= 0) {
-                log(`💥 ${dDb.name} уничтожен!`, 'log-hit');
-                units = units.filter(u => u !== defender);
-            }
-            javelinTargeting = false;
-            checkWin();
-        }
-
-        function buyUnit(key, x, y, team) {
-            const db = UNITS_DB[key];
-            if (team === 'player') {
-                if (playerGold < db.costG || playerStone < db.costS) {
-                    log("Недостаточно ресурсов!", "log-hit");
-                    return;
-                }
-                playerGold -= db.costG;
-                playerStone -= db.costS;
-                updateRes();
-            } else {
-                enemyGold -= db.costG;
-                enemyStone -= db.costS;
-            }
-
-            const newU = {
-                id: Date.now() + Math.random(),
-                team: team,
-                typeKey: key,
-                hp: db.hp,
-                maxHp: db.hp,
-                x: x, y: y,
-                delay: roundTicksAccumulated, // Новые юниты вступают с текущей задержкой
-                javelins: db.javelins || 0,
-                vampSkillUsed: false
-            };
-
-            units.push(newU);
-            log(`${team === 'player' ? 'Вы' : 'Враг'} создали: ${db.name}`, 'log-skill');
-            selectedShopKey = null;
-            renderShop();
-            render();
-        }
-
-        function upgradeUnit(unit) {
-            const db = UNITS_DB[unit.typeKey];
-            if (!db.upgrade) return;
-            const upDb = UNITS_DB[db.upgrade];
-
-            if (!isAdjacentToCitadel(unit.x, unit.y, unit.team === 'player' ? PLAYER_CITADEL : ENEMY_CITADEL)) {
-                log("Для улучшения юнит должен стоять у своей Цитадели!", "log-hit");
+            if (skill.id === 'defend') {
+                activeUnit.isDefending = true;
+                log(`🛡️ ${uDb.name} встал в Глухую Оборону (-50% урона)!`, 'log-skill');
+                endAction(1.0);
                 return;
             }
 
-            if (unit.team === 'player') {
-                if (playerGold < upDb.costG || playerStone < upDb.costS) {
-                    log("Недостаточно ресурсов!", "log-hit");
-                    return;
-                }
-                playerGold -= upDb.costG;
-                playerStone -= upDb.costS;
-                updateRes();
+            if (skill.id === 'mist_tp') {
+                activeUnit.x = PLAYER_CITADEL.x + 4;
+                activeUnit.y = PLAYER_CITADEL.y;
+                log(`🦇 Вампир перенесся к своей Цитадели!`, 'log-skill');
+                render();
+                endAction(1.0);
+                return;
             }
 
-            unit.typeKey = db.upgrade;
-            unit.maxHp = upDb.hp;
-            unit.hp = upDb.hp;
-            if (upDb.javelins) unit.javelins = upDb.javelins;
+            if (targetUnit && targetUnit.team === 'enemy') {
+                let dmg = Math.round(uDb.dmg * (skill.dmgMult || 1.0));
+                targetUnit.hp -= dmg;
+                log(`✨ ${uDb.name} использовал ${skill.name} по ${UNITS_DB[targetUnit.typeKey].name} на ${dmg} урона!`, 'log-hit');
 
-            log(`🌟 ${db.name} улучшен до ${upDb.name}!`, 'log-skill');
-            showUnitDetails(unit);
-            render();
+                if (skill.id === 'vamp_bite') {
+                    const heal = Math.round(dmg * 0.6);
+                    activeUnit.hp = Math.min(activeUnit.maxHp, activeUnit.hp + heal);
+                    log(`🩸 Исцелено +${heal} HP!`, 'log-heal');
+                }
+
+                if (targetUnit.hp <= 0) {
+                    units = units.filter(u => u !== targetUnit);
+                    log(`💥 Враг уничтожен!`, 'log-hit');
+                }
+
+                if (skill.isFree) {
+                    selectedSkillMode = null;
+                    render();
+                } else {
+                    endAction(1.0);
+                }
+            }
         }
 
         function attack(attacker, defender) {
             const aDb = UNITS_DB[attacker.typeKey];
-            const dDb = UNITS_DB[defender.typeKey];
-
             let dmg = aDb.dmg;
+            if (defender.isDefending) dmg = Math.round(dmg * 0.5);
 
-            if (aDb.range === 1) {
-                if (defender.typeKey === 'swordsman') dmg *= 0.8;
-                if (defender.typeKey === 'armored') dmg *= 0.6;
-            }
-
-            if (aDb.type === 'Пехота' && dDb.type === 'Кавалерия') {
-                if (attacker.typeKey === 'warrior') dmg *= 1.2;
-                if (attacker.typeKey === 'knight') dmg *= 1.5;
-            }
-            if (aDb.type === 'Осада' && dDb.type === 'Здание') dmg *= 2.0;
-
-            if (aDb.range > 1) {
-                if (defender.typeKey === 'swordsman') dmg *= 0.7;
-                if (defender.typeKey === 'armored' || defender.typeKey === 'fort_wall') dmg *= 0.5;
-            }
-
-            dmg = Math.round(dmg);
             defender.hp -= dmg;
+            log(`⚔️ ${aDb.name} наносит ${dmg} урона по ${UNITS_DB[defender.typeKey].name}`, 'log-hit');
 
-            if (aDb.type === 'Мистик') {
-                const heal = Math.round(dmg * 0.4);
-                attacker.hp = Math.min(attacker.maxHp, attacker.hp + heal);
-                log(`🧛 ${aDb.name} исцелился на +${heal} HP`, 'log-heal');
-            }
-
-            log(`⚔️ ${aDb.name} нанес ${dmg} урона по ${dDb.name}`, 'log-hit');
-
-            // Проверка строгого ДОБИВАНИЯ (HP <= 0)
             if (defender.hp <= 0) {
-                log(`💥 ${dDb.name} убит!`, 'log-hit');
+                log(`💥 Юнит уничтожен!`, 'log-hit');
                 units = units.filter(u => u !== defender);
-
-                // Дополнительный ход Древнему Вампиру даётся ТОЛЬКО за полное ДОБИВАНИЕ ЖИВОГО персонажа
-                if (attacker.typeKey === 'ancient_vampire' && dDb.isBiological) {
-                    log(`🦇 Древний Вампир ДОБИЛ врага и получает ДОПОЛНИТЕЛЬНЫЙ ХОД!`, 'log-skill');
-                    attacker.delay -= (20 / aDb.init); // Сбрасываем задержку хода
-                }
             }
-
-            checkWin();
         }
 
         function attackCitadel(attacker, citadel) {
             const aDb = UNITS_DB[attacker.typeKey];
             let dmg = aDb.dmg;
-            if (aDb.type === 'Осада') dmg *= 2.0;
-
-            dmg = Math.round(dmg);
             citadel.hp = Math.max(0, citadel.hp - dmg);
-
             log(`💥 ${aDb.name} нанес ${dmg} урона по ЦИТАДЕЛИ!`, 'log-hit');
             updateRes();
-            checkWin();
         }
 
-        function useVampireCitadelTeleport(unit) {
-            if (unit.vampSkillUsed) return;
-            const cit = unit.team === 'player' ? PLAYER_CITADEL : ENEMY_CITADEL;
+        function buyUnit(key, x, y, team) {
+            const db = UNITS_DB[key];
+            if (playerGold < db.costG || playerStone < db.costS) return;
 
+            playerGold -= db.costG;
+            playerStone -= db.costS;
+            updateRes();
+
+            units.push({
+                id: Date.now(), team: team, typeKey: key,
+                hp: db.hp, maxHp: db.hp, x: x, y: y, delay: activeUnit ? activeUnit.delay : 0
+            });
+
+            log(`Вы наняли: ${db.name}`, 'log-skill');
+            selectedShopKey = null;
+            renderShop();
+            render();
+        }
+
+        function isAdjacentToCitadel(x, y, cit) {
             for (let cy = cit.y - 1; cy <= cit.y + cit.h; cy++) {
-                for (let cx = cit.x - 1; cx <= cit.x + cit.w; cx++) {
-                    if (cx >= 0 && cx < GRID_W && cy >= 0 && cy < GRID_H) {
-                        if (!isCitadelCell(cx, cy, cit) && !getUnitAt(cx, cy)) {
-                            unit.x = cx;
-                            unit.y = cy;
-                            unit.vampSkillUsed = true;
-                            log(`🦇 Вампир переместился к Цитадели!`, 'log-skill');
-                            render();
-                            showUnitDetails(unit);
-                            return;
-                        }
-                    }
+                for (let cx = cit.x - 1; cx < cit.x + cit.w; cx++) {
+                    if (Math.max(Math.abs(cx - x), Math.abs(cy - y)) <= 1 && !isCitadelCell(x, y, cit)) return true;
                 }
             }
-        }
-
-        function runAIPurchases() {
-            let adjCells = [];
-            for (let cy = ENEMY_CITADEL.y - 1; cy <= ENEMY_CITADEL.y + ENEMY_CITADEL.h; cy++) {
-                for (let cx = ENEMY_CITADEL.x - 1; cx <= ENEMY_CITADEL.x + ENEMY_CITADEL.w; cx++) {
-                    if (cx >= 0 && cx < GRID_W && cy >= 0 && cy < GRID_H && !isCitadelCell(cx, cy, ENEMY_CITADEL) && !getUnitAt(cx, cy)) {
-                        adjCells.push({x: cx, y: cy});
-                    }
-                }
-            }
-
-            if (adjCells.length > 0 && enemyGold >= 40) {
-                const spawn = adjCells[Math.floor(Math.random() * adjCells.length)];
-                if (enemyGold >= 90) buyUnit('vampire', spawn.x, spawn.y, 'enemy');
-                else if (enemyGold >= 65) buyUnit('rider', spawn.x, spawn.y, 'enemy');
-                else if (enemyGold >= 40) buyUnit('warrior', spawn.x, spawn.y, 'enemy');
-            }
-        }
-
-        function runAITurn() {
-            if (!activeUnit || activeUnit.team !== 'enemy' || currentPhase !== 'BATTLE') return;
-
-            const db = UNITS_DB[activeUnit.typeKey];
-
-            // 1. Атака Цитадели игрока
-            if (canTarget(activeUnit, PLAYER_CITADEL.x + 1, PLAYER_CITADEL.y)) {
-                attackCitadel(activeUnit, PLAYER_CITADEL);
-                endAction(1.0);
-                return;
-            }
-
-            // 2. Атака ближайшего юнита игрока
-            const targets = units.filter(p => p.team === 'player' && canTarget(activeUnit, p.x, p.y));
-            if (targets.length > 0) {
-                attack(activeUnit, targets[0]);
-                endAction(1.0);
-                return;
-            }
-
-            // 3. Шаг и Атака
-            if (db.range === 1) {
-                const playerUnits = units.filter(p => p.team === 'player');
-                for (let p of playerUnits) {
-                    const moveTile = getMoveAndAttackTile(activeUnit, p.x, p.y);
-                    if (moveTile) {
-                        activeUnit.x = moveTile.x;
-                        activeUnit.y = moveTile.y;
-                        attack(activeUnit, p);
-                        endAction(1.0);
-                        return;
-                    }
-                }
-            }
-
-            // 4. Движение к Цитадели игрока
-            const reachable = getReachableCells(activeUnit);
-            if (reachable.length > 0) {
-                reachable.sort((a, b) => {
-                    const dA = Math.abs(a.x - PLAYER_CITADEL.x) + Math.abs(a.y - PLAYER_CITADEL.y);
-                    const dB = Math.abs(b.x - PLAYER_CITADEL.x) + Math.abs(b.y - PLAYER_CITADEL.y);
-                    return dA - dB;
-                });
-                activeUnit.x = reachable[0].x;
-                activeUnit.y = reachable[0].y;
-                log(`${db.name} продвинулся вперед.`, 'log-move');
-            } else {
-                healOnSkip(activeUnit);
-            }
-
-            endAction(1.0);
+            return false;
         }
 
         function canTarget(attacker, tx, ty) {
             const db = UNITS_DB[attacker.typeKey];
-            const dx = Math.abs(attacker.x - tx);
-            const dy = Math.abs(attacker.y - ty);
-
-            if (db.range === 1) return Math.max(dx, dy) === 1;
-            return (dx + dy) <= db.range;
-        }
-
-        function getMoveAndAttackTile(attacker, tx, ty) {
-            const reachable = getReachableCells(attacker);
-            for (let tile of reachable) {
-                if (Math.max(Math.abs(tile.x - tx), Math.abs(tile.y - ty)) === 1) {
-                    return tile;
-                }
-            }
-            return null;
+            const dist = Math.abs(attacker.x - tx) + Math.abs(attacker.y - ty);
+            return dist <= db.range;
         }
 
         function getReachableCells(unit) {
             const db = UNITS_DB[unit.typeKey];
             if (db.move === 0) return [];
-
-            const visited = {};
-            const queue = [{ x: unit.x, y: unit.y, dist: 0 }];
-            const reachable = [];
-
-            while (queue.length > 0) {
-                const curr = queue.shift();
-                if (curr.dist > 0 && !getUnitAt(curr.x, curr.y) && !isCitadelCell(curr.x, curr.y, PLAYER_CITADEL) && !isCitadelCell(curr.x, curr.y, ENEMY_CITADEL)) {
-                    reachable.push({ x: curr.x, y: curr.y });
-                }
-
-                if (curr.dist < db.move) {
-                    const dirs = [{x:0,y:-1},{x:0,y:1},{x:-1,y:0},{x:1,y:0},{x:-1,y:-1},{x:1,y:-1},{x:-1,y:1},{x:1,y:1}];
-                    for (let d of dirs) {
-                        const nx = curr.x + d.x, ny = curr.y + d.y;
-                        if (nx >= 0 && nx < GRID_W && ny >= 0 && ny < GRID_H) {
-                            const key = `${nx},${ny}`;
-                            if (!visited[key]) {
-                                const uOn = getUnitAt(nx, ny);
-                                const isPlayerCit = isCitadelCell(nx, ny, PLAYER_CITADEL);
-                                const isEnemyCit = isCitadelCell(nx, ny, ENEMY_CITADEL);
-
-                                if (!isPlayerCit && !isEnemyCit && (!uOn || uOn.team === unit.team)) {
-                                    visited[key] = true;
-                                    queue.push({ x: nx, y: ny, dist: curr.dist + 1 });
-                                }
-                            }
+            let reachable = [];
+            for (let dy = -db.move; dy <= db.move; dy++) {
+                for (let dx = -db.move; dx <= db.move; dx++) {
+                    let nx = unit.x + dx, ny = unit.y + dy;
+                    if (nx >= 0 && nx < GRID_W && ny >= 0 && ny < GRID_H) {
+                        if (Math.abs(dx) + Math.abs(dy) <= db.move && !getUnitAt(nx, ny)) {
+                            reachable.push({x: nx, y: ny});
                         }
                     }
                 }
@@ -832,185 +415,94 @@
             return reachable;
         }
 
-        function checkWin() {
-            if (ENEMY_CITADEL.hp <= 0) {
-                alert("🎉 ПОБЕДА! Вы разрушили цитадель врага!");
-                location.reload();
-            } else if (PLAYER_CITADEL.hp <= 0) {
-                alert("☠️ ПОРАЖЕНИЕ! Ваша цитадель пала!");
-                location.reload();
+        function runAITurn() {
+            if (!activeUnit || activeUnit.team !== 'enemy') return;
+            const pUnits = units.filter(u => u.team === 'player' && u.x !== undefined);
+            if (pUnits.length > 0) {
+                let target = pUnits[0];
+                if (canTarget(activeUnit, target.x, target.y)) {
+                    attack(activeUnit, target);
+                } else {
+                    activeUnit.x = Math.max(0, activeUnit.x - 1);
+                }
             }
+            endAction(1.0);
         }
 
-        function renderTimeline() {
-            const bar = document.getElementById('timeline-bar');
-            bar.innerHTML = '';
+        function showUnitDetails(unit) {
+            const db = UNITS_DB[unit.typeKey];
+            const sPanel = document.getElementById('skills-panel');
+            sPanel.innerHTML = '';
 
-            const activeUnits = units.filter(u => UNITS_DB[u.typeKey].init > 0);
-            if (activeUnits.length === 0) {
-                bar.innerHTML = `<span style="font-size:8px; color:#aaa; margin:auto;">Нет юнитов для боя</span>`;
-                return;
+            let html = `<b>${db.icon} ${db.name} (${unit.team === 'player' ? 'Ваш' : 'Враг'})</b> | HP: ${unit.hp}/${unit.maxHp} | ⚡Инициатива: ${db.init}<br>`;
+            html += `<span style="color:#f39c12">${db.desc}</span>`;
+            document.getElementById('unit-details').innerHTML = html;
+
+            if (unit.team === 'player' && db.skills) {
+                db.skills.forEach(sk => {
+                    const btn = document.createElement('button');
+                    btn.className = 'btn-skill';
+                    btn.innerText = `${sk.name} ${sk.isFree ? '⚡[Бесплатно]' : ''}`;
+                    btn.onclick = () => {
+                        selectedSkillMode = sk;
+                        log(`Выбран скилл: ${sk.name}. Нажмите на цель!`, 'log-skill');
+                    };
+                    sPanel.appendChild(btn);
+                });
             }
-
-            let previewList = activeUnits.map(u => ({ unit: u, tempDelay: u.delay }));
-            let queueOrder = [];
-
-            for (let i = 0; i < 10; i++) {
-                previewList.sort((a, b) => a.tempDelay - b.tempDelay || UNITS_DB[b.unit.typeKey].init - UNITS_DB[a.unit.typeKey].init);
-                let next = previewList[0];
-                queueOrder.push(next.unit);
-                next.tempDelay += (20 / UNITS_DB[next.unit.typeKey].init);
-            }
-
-            queueOrder.forEach((u, idx) => {
-                const db = UNITS_DB[u.typeKey];
-                const item = document.createElement('div');
-                item.className = `timeline-item ${idx === 0 ? 'active' : ''} ${u.team === 'enemy' ? 'enemy' : ''}`;
-                item.innerHTML = `
-                    <div style="font-size:11px">${db.icon}</div>
-                    <div style="font-weight:bold; color:var(--text-gold)">⚡${db.init}</div>
-                `;
-                bar.appendChild(item);
-            });
         }
 
         function renderShop() {
             const list = document.getElementById('shop-list');
             list.innerHTML = '';
-
-            const buyables = ['warrior', 'swordsman', 'archer', 'rider', 'ballista', 'vampire', 'wall', 'tower'];
-            buyables.forEach(k => {
+            Object.keys(UNITS_DB).filter(k => !k.startsWith('citadel')).forEach(k => {
                 const db = UNITS_DB[k];
                 const btn = document.createElement('div');
                 btn.className = `shop-btn ${selectedShopKey === k ? 'selected' : ''}`;
-                btn.onclick = () => {
-                    selectedShopKey = (selectedShopKey === k) ? null : k;
-                    showDetails(db.name, `Цена: ${db.costG}💰 / ${db.costS}🪨 | Инициатива: ⚡${db.init} | Дальность: ${db.range} кл.<br>${db.desc}`);
-                    renderShop();
-                };
-                btn.innerHTML = `
-                    <div style="font-size:11px">${db.icon}</div>
-                    <div style="font-weight:bold">${db.costG}💰</div>
-                    ${db.costS > 0 ? `<div style="color:#aaa">${db.costS}🪨</div>` : ''}
-                `;
+                btn.onclick = () => { selectedShopKey = (selectedShopKey === k) ? null : k; renderShop(); };
+                btn.innerHTML = `<div style="font-size:11px">${db.icon}</div><div>${db.costG}💰</div>`;
                 list.appendChild(btn);
             });
         }
 
-        function showUnitDetails(unit) {
-            const db = UNITS_DB[unit.typeKey];
-            const actPanel = document.getElementById('action-panel');
-            actPanel.innerHTML = '';
-            actPanel.style.display = 'flex';
-            actPanel.style.gap = '4px';
-
-            let javInfo = unit.javelins !== undefined ? ` | 🎯 Дротики: <b>${unit.javelins}</b>` : '';
-            let html = `<b>${db.icon} ${db.name} (${unit.team === 'player' ? 'Ваш' : 'Враг'})</b> | Тип: ${db.type}<br>`;
-            html += `HP: ${unit.hp}/${unit.maxHp} | Урон: ${db.dmg} | Инициатива: ⚡<b>${db.init}</b>${javInfo}<br>`;
-            html += `<span style="color:#f39c12">${db.desc}</span>`;
-
-            if (unit.team === 'player') {
-                if (db.upgrade) {
-                    const upDb = UNITS_DB[db.upgrade];
-                    const upBtn = document.createElement('button');
-                    upBtn.className = 'btn btn-act';
-                    upBtn.innerText = `Улучшить в ${upDb.name} (${upDb.costG}💰/${upDb.costS}🪨)`;
-                    upBtn.onclick = () => upgradeUnit(unit);
-                    actPanel.appendChild(upBtn);
-                }
-                if (unit.javelins > 0 && currentPhase === 'BATTLE' && activeUnit === unit) {
-                    const javBtn = document.createElement('button');
-                    javBtn.className = 'btn btn-act';
-                    javBtn.innerText = `🎯 Бросить дротик (${unit.javelins})`;
-                    javBtn.onclick = () => { javelinTargeting = true; log("Выберите врага на расстоянии до 3 клеток!", "log-skill"); render(); };
-                    actPanel.appendChild(javBtn);
-                }
-                if (currentPhase === 'BATTLE' && activeUnit === unit && (unit.typeKey === 'vampire' || unit.typeKey === 'ancient_vampire') && !unit.vampSkillUsed) {
-                    const vBtn = document.createElement('button');
-                    vBtn.className = 'btn btn-act';
-                    vBtn.innerText = `🦇 ТП к Цитадели`;
-                    vBtn.onclick = () => useVampireCitadelTeleport(unit);
-                    actPanel.appendChild(vBtn);
-                }
-            }
-
-            document.getElementById('unit-details').innerHTML = html;
-        }
-
-        function showDetails(title, text) {
-            document.getElementById('unit-details').innerHTML = `<b>${title}</b><br>${text}`;
-            document.getElementById('action-panel').style.display = 'none';
+        function renderTimeline() {
+            const bar = document.getElementById('timeline-bar');
+            bar.innerHTML = '';
+            const activeUnits = units.filter(u => UNITS_DB[u.typeKey].init > 0);
+            activeUnits.forEach((u, idx) => {
+                const db = UNITS_DB[u.typeKey];
+                const item = document.createElement('div');
+                item.className = `timeline-item ${idx === 0 ? 'active' : ''} ${u.team === 'enemy' ? 'enemy' : ''}`;
+                item.innerHTML = `<div>${db.icon}</div><b>⚡${db.init}</b>`;
+                bar.appendChild(item);
+            });
         }
 
         function render() {
             document.querySelectorAll('.cell').forEach(c => {
-                const x = parseInt(c.dataset.x);
-                const y = parseInt(c.dataset.y);
+                const x = parseInt(c.dataset.x), y = parseInt(c.dataset.y);
                 c.className = 'cell';
-                c.innerHTML = '';
-
                 if (isCitadelCell(x, y, PLAYER_CITADEL)) c.classList.add('citadel-cell');
                 if (isCitadelCell(x, y, ENEMY_CITADEL)) c.classList.add('citadel-enemy');
             });
 
-            if (currentPhase === 'BATTLE' && activeUnit && activeUnit.team === 'player') {
-                const cell = getCell(activeUnit.x, activeUnit.y);
-                if (cell) cell.classList.add('active-cell');
-
-                if (javelinTargeting) {
-                    units.forEach(u => {
-                        if (u.team === 'enemy' && (Math.abs(activeUnit.x - u.x) + Math.abs(activeUnit.y - u.y)) <= 3) {
-                            const c = getCell(u.x, u.y);
-                            if (c) c.classList.add('javelin-target');
-                        }
-                    });
-                } else {
-                    const reachable = getReachableCells(activeUnit);
-                    reachable.forEach(rc => {
-                        const c = getCell(rc.x, rc.y);
-                        if (c) c.classList.add('reachable');
-                    });
-
-                    units.forEach(u => {
-                        if (u.team === 'enemy' && (canTarget(activeUnit, u.x, u.y) || (UNITS_DB[activeUnit.typeKey].range === 1 && getMoveAndAttackTile(activeUnit, u.x, u.y)))) {
-                            const c = getCell(u.x, u.y);
-                            if (c) c.classList.add('attackable');
-                        }
-                    });
-
-                    if (canTarget(activeUnit, ENEMY_CITADEL.x + 1, ENEMY_CITADEL.y)) {
-                        for (let cy = ENEMY_CITADEL.y; cy < ENEMY_CITADEL.y + ENEMY_CITADEL.h; cy++) {
-                            for (let cx = ENEMY_CITADEL.x; cx < ENEMY_CITADEL.x + ENEMY_CITADEL.w; cx++) {
-                                const c = getCell(cx, cy);
-                                if (c) c.classList.add('attackable');
-                            }
-                        }
-                    }
-                }
+            if (activeUnit && activeUnit.team === 'player' && !activeUnit.typeKey.startsWith('citadel')) {
+                const reachable = getReachableCells(activeUnit);
+                reachable.forEach(rc => {
+                    const c = document.querySelector(`.cell[data-x="${rc.x}"][data-y="${rc.y}"]`);
+                    if (c) c.classList.add('reachable');
+                });
             }
 
             units.forEach(u => {
-                const c = getCell(u.x, u.y);
-                if (c) {
-                    const db = UNITS_DB[u.typeKey];
-                    c.classList.add(u.team === 'player' ? 'player-unit' : 'enemy-unit');
-                    c.innerHTML = `
-                        <div class="unit-badge">${u.hp}/${u.maxHp}</div>
-                        <div class="unit">${db.icon}</div>
-                    `;
+                if (u.x !== undefined && u.y !== undefined) {
+                    const c = document.querySelector(`.cell[data-x="${u.x}"][data-y="${u.y}"]`);
+                    if (c) {
+                        c.classList.add(u.team === 'player' ? 'player-unit' : 'enemy-unit');
+                        c.innerHTML = `<div class="unit-badge">${u.hp}/${u.maxHp}</div><div class="unit">${UNITS_DB[u.typeKey].icon}</div>`;
+                    }
                 }
             });
-        }
-
-        function getCell(x, y) { return document.querySelector(`.cell[data-x="${x}"][data-y="${y}"]`); }
-
-        function log(msg, cls = '') {
-            const box = document.getElementById('log-box');
-            const div = document.createElement('div');
-            if (cls) div.className = cls;
-            div.innerText = msg;
-            box.appendChild(div);
-            box.scrollTop = box.scrollHeight;
         }
 
         init();
