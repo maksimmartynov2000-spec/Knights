@@ -148,7 +148,7 @@
         swordsman: { 
             name: 'Мечник', maxHp: 20, damage: 10, initiative: 8, speed: 2, range: 1, symbol: '⚔️',
             passivesList: [
-                "1. Живой: +20% HP при пропуске хода",
+                "1. Живой: +20% HP при полном пропуске хода",
                 "2. Щит: Защита от стрел 60%",
                 "3. Броня: Защита в ближнем бою 50%",
                 "4. Строй: +10% к Защите за каждого соседнего мечника",
@@ -159,10 +159,10 @@
             name: 'Лучник', maxHp: 20, damage: 10, baseInitiative: 20, speed: 3, range: 4, symbol: '🏹',
             passivesList: [
                 "1. Рефлексы: +5 Инициативы за соседних лучников",
-                "2. Живой: +20% HP при пропуске хода",
+                "2. Живой: +20% HP при полном пропуске хода",
                 "3. Ловкость: 40% шанс увернуться от обычной атаки",
                 "4. Уязвимости: До +3 чистого урона по той же цели",
-                "5. Концентрация: +1 к Дальности, если не ходил прошлый ход"
+                "5. Концентрация: +1 к Дальности при полном пропуске прошлого хода"
             ]
         }
     };
@@ -199,7 +199,7 @@
             actionMeter: 0, speed: base.speed, range: base.range, symbol: base.symbol,
             passivesList: base.passivesList,
             isAlive: true, hasMoved: false, hasActed: false,
-            movedLastTurn: false,
+            fullySkippedLastTurn: false, // Флаг полного пропуска прошлого хода
             lastAttackedTarget: null, vulnerabilityStack: 0,
             cooldowns: { spear:0, buff:0, heal:0, rage:0, stun:0, fireArrow:0, kneeShot:0, doubleArrow:0, bullseye:0, arrowRain:0 },
             buffs: { 
@@ -210,7 +210,7 @@
                 fireArrowCharges: 0,
                 kneeShotCharge: false,
                 bullseyeCharges: 0,
-                noAttackDuration: 0 // Счетчик запрета на атаки для Града Стрел
+                noAttackDuration: 0
             },
             dotBurn: [],
             stunned: false
@@ -411,7 +411,6 @@
             if (unit.buffs.slowDuration === 0) unit.buffs.slowValue = 0;
         }
 
-        // Подсчет запрета на атаку (для Града стрел)
         if (unit.buffs.noAttackDuration > 0) {
             unit.buffs.noAttackDuration--;
             if (unit.buffs.noAttackDuration === 0) {
@@ -448,13 +447,15 @@
     function endCurrentUnitTurn() {
         if (gamePhase !== 'battle' || !activeUnit) return;
         
-        if (!activeUnit.hasMoved && !activeUnit.hasActed) {
+        let fullySkipped = !activeUnit.hasMoved && !activeUnit.hasActed;
+        
+        if (fullySkipped) {
             let heal = Math.round(activeUnit.maxHp * 0.2);
             activeUnit.hp = Math.min(activeUnit.maxHp, activeUnit.hp + heal);
             logMessage(`${activeUnit.name} восстановил ${heal} HP (Пассивка: Живой).`);
         }
 
-        activeUnit.movedLastTurn = activeUnit.hasMoved;
+        activeUnit.fullySkippedLastTurn = fullySkipped;
 
         highlightedInitUnit = null;
         activeAction = null;
@@ -471,7 +472,7 @@
     function getUnitEffectiveRange(unit) {
         let r = unit.range;
         if (unit.typeKey === 'archer') {
-            if (!unit.movedLastTurn) r += 1;
+            if (unit.fullySkippedLastTurn) r += 1;
         }
         return r;
     }
@@ -530,13 +531,13 @@
 
         if (!activeUnit || activeUnit.team !== 'player') return;
 
-        // Перемещение
+        // Перемещение завершает ход
         if (activeAction === 'move') {
             if (board[r][c].classList.contains('highlight-move') && !targetUnit) {
                 activeUnit.r = r; activeUnit.c = c;
                 activeUnit.hasMoved = true;
                 logMessage(`${activeUnit.name} переместился.`);
-                showActionOptions(activeUnit);
+                endCurrentUnitTurn();
             }
             return;
         }
@@ -557,7 +558,6 @@
                         else if (activeAction === 'heal') { executeHeal(activeUnit, targetUnit); endCurrentUnitTurn(); }
                         else if (activeAction === 'rage') { executeRage(activeUnit, targetUnit); endCurrentUnitTurn(); }
                         
-                        // Применение на себя
                         else if (activeAction === 'fireArrow') {
                             activeUnit.buffs.fireArrowCharges = 3; activeUnit.cooldowns.fireArrow = 10; activeUnit.hasActed = true;
                             logMessage(`${activeUnit.name} заготовил Огненные стрелы!`); endCurrentUnitTurn();
@@ -572,7 +572,7 @@
                         }
                         else if (activeAction === 'arrowRain') {
                             activeUnit.cooldowns.arrowRain = 10;
-                            activeUnit.buffs.noAttackDuration = 4; // Запрет атак на 4 хода
+                            activeUnit.buffs.noAttackDuration = 4;
                             activeUnit.hasActed = true;
                             logMessage(`${activeUnit.name} активировал Град стрел! Вы не можете атаковать 4 хода (перемещение и скиллы доступны).`); 
                             endCurrentUnitTurn();
@@ -682,7 +682,6 @@
     function showAttackRange(unit) {
         if (unit.hasActed && arrowRainShotsLeft === 0) return;
         
-        // Проверка блокировки атак (Град Стрел)
         if (unit.buffs.noAttackDuration > 0 && arrowRainShotsLeft === 0) {
             logMessage(`${unit.name} пока не может атаковать (запрет атак еще ${unit.buffs.noAttackDuration} ходов)!`);
             return;
@@ -881,6 +880,7 @@
 
         if (minDist <= effRange && ai.buffs.noAttackDuration === 0) {
             executeAttack(ai, target);
+            endCurrentUnitTurn();
         } else {
             let validCells = getValidMoveCells(ai);
             let bestCell = { r: ai.r, c: ai.c }, bestDist = minDist;
@@ -889,13 +889,10 @@
                 if (dTo < bestDist) { bestDist = dTo; bestCell = pos; }
             });
             ai.r = bestCell.r; ai.c = bestCell.c;
-            if (Math.max(Math.abs(target.r - ai.r), Math.abs(target.c - ai.c)) <= effRange && ai.buffs.noAttackDuration === 0) {
-                executeAttack(ai, target);
-            }
+            ai.hasMoved = true;
+            renderBoard();
+            setTimeout(endCurrentUnitTurn, 700);
         }
-
-        renderBoard();
-        setTimeout(endCurrentUnitTurn, 700);
     }
 
     function updateSidebar() {
