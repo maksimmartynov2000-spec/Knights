@@ -3,44 +3,44 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Средневековье: Битва героев</title>
+    <title>Средневековье</title>
     <style>
         * { box-sizing: border-box; }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background-color: #121212;
             color: #f0f0f0;
             display: flex;
             flex-direction: column;
             align-items: center;
             margin: 0;
-            padding: 10px;
+            padding: 8px;
             overflow-x: hidden;
+            user-select: none;
         }
 
         h1 { 
-            font-size: 20px; 
-            margin: 5px 0; 
+            font-size: 18px; 
+            margin: 4px 0; 
             color: #d4af37; 
             text-align: center; 
             text-shadow: 1px 1px 2px #000; 
         }
 
-        /* Динамическая полоска инициативы */
+        /* Динамическая лента инициативы */
         #initiative-bar {
             width: 100%;
-            max-width: 400px;
-            background: #1c1c1c;
+            max-width: 380px;
+            background: #1a1a1a;
             border: 1px solid #444;
             border-radius: 8px;
-            padding: 6px;
-            margin-bottom: 8px;
+            padding: 4px;
+            margin-bottom: 6px;
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 5px;
             overflow-x: auto;
-            white-space: nowrap;
-            scrollbar-width: none;
+            min-height: 44px;
         }
         #initiative-bar::-webkit-scrollbar { display: none; }
 
@@ -49,24 +49,23 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            min-width: 36px;
-            height: 38px;
+            min-width: 34px;
+            height: 36px;
             border-radius: 6px;
-            background: #2c2c2c;
+            background: #2a2a2a;
             border: 1px solid #555;
             font-size: 10px;
-            padding: 2px;
-            opacity: 0.5;
+            cursor: pointer;
+            flex-shrink: 0;
             transition: all 0.2s;
         }
-        .init-item.player { border-color: #5dade2; color: #5dade2; }
-        .init-item.enemy { border-color: #ec7063; color: #ec7063; }
+        .init-item.player { border-color: #3498db; color: #5dade2; }
+        .init-item.enemy { border-color: #e74c3c; color: #ec7063; }
         .init-item.active {
-            opacity: 1;
-            transform: scale(1.1);
             border-width: 2px;
             box-shadow: 0 0 8px #f1c40f;
             background: #333;
+            transform: scale(1.05);
         }
 
         #game-container {
@@ -74,8 +73,8 @@
             flex-direction: column;
             align-items: center;
             width: 100%;
-            max-width: 400px;
-            gap: 10px;
+            max-width: 380px;
+            gap: 6px;
         }
 
         /* Игровое поле */
@@ -87,7 +86,7 @@
             background-color: #222;
             border: 3px solid #d4af37;
             border-radius: 6px;
-            padding: 4px;
+            padding: 3px;
             width: 100%;
             aspect-ratio: 8 / 12;
             box-shadow: 0 0 15px rgba(212, 175, 55, 0.2);
@@ -96,20 +95,22 @@
         .cell {
             background-color: #2a2a2a;
             display: flex;
-            flex-direction: column;
             align-items: center;
             justify-content: center;
             position: relative;
             cursor: pointer;
             border-radius: 2px;
-            user-select: none;
         }
 
+        /* Зоны расстановки */
+        .cell.setup-player { background-color: rgba(41, 128, 185, 0.25); }
+        .cell.setup-enemy { background-color: rgba(192, 57, 43, 0.25); }
+
+        /* Подсветки */
         .cell.highlight-move {
             background-color: rgba(46, 204, 113, 0.4) !important;
             box-shadow: inset 0 0 6px rgba(46, 204, 113, 0.8);
         }
-
         .cell.highlight-attack {
             box-shadow: inset 0 0 0 2px #e74c3c;
             background-color: rgba(231, 76, 60, 0.3) !important;
@@ -117,27 +118,31 @@
 
         /* Юниты */
         .unit {
-            width: 90%;
-            height: 90%;
+            width: 88%;
+            height: 88%;
             border-radius: 50%;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            font-weight: bold;
-            font-size: 10px;
+            font-size: 11px;
             position: absolute;
             box-shadow: 0 2px 4px rgba(0,0,0,0.6);
             z-index: 2;
         }
-
         .unit.player { background: linear-gradient(135deg, #2980b9, #1f618d); border: 1.5px solid #5dade2; color: white; }
         .unit.enemy { background: linear-gradient(135deg, #c0392b, #922b21); border: 1.5px solid #ec7063; color: white; }
-        .unit.selected { box-shadow: 0 0 8px 2px #f1c40f; transform: scale(1.05); }
+        .unit.selected { box-shadow: 0 0 8px 3px #f1c40f; transform: scale(1.08); }
+        .unit.highlighted-init { animation: pulse 0.8s infinite alternate; }
+
+        @keyframes pulse {
+            from { box-shadow: 0 0 4px #f39c12; }
+            to { box-shadow: 0 0 12px 4px #f1c40f; }
+        }
 
         .unit-hp {
             font-size: 8px;
-            background: rgba(0,0,0,0.75);
+            background: rgba(0,0,0,0.8);
             padding: 0 3px;
             border-radius: 3px;
             margin-top: 1px;
@@ -149,35 +154,51 @@
             background: #1c1c1c;
             border: 1px solid #444;
             border-radius: 6px;
-            padding: 10px;
+            padding: 8px;
         }
 
         #turn-info {
-            font-size: 13px;
+            font-size: 12px;
             font-weight: bold;
             color: #f1c40f;
             margin-bottom: 6px;
             text-align: center;
             background: #141414;
-            padding: 5px;
+            padding: 4px;
             border-radius: 4px;
             border: 1px solid #333;
         }
 
-        .panel-section { margin-bottom: 8px; }
-        .panel-section h3 { margin: 0 0 4px 0; font-size: 12px; color: #d4af37; border-bottom: 1px solid #444; padding-bottom: 2px; }
+        .panel-grid {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 6px;
+        }
 
-        #unit-info { font-size: 11px; color: #ccc; line-height: 1.3; }
+        .panel-section {
+            background: #242424;
+            border-radius: 4px;
+            padding: 6px;
+            border: 1px solid #333;
+        }
+
+        .panel-section h3 { 
+            margin: 0 0 4px 0; 
+            font-size: 11px; 
+            color: #d4af37; 
+            border-bottom: 1px solid #444; 
+            padding-bottom: 2px; 
+        }
+
+        #unit-info { font-size: 10px; color: #ccc; line-height: 1.3; }
 
         #log {
-            height: 70px;
+            height: 60px;
             background: #111;
-            border: 1px solid #333;
             border-radius: 4px;
-            padding: 5px;
+            padding: 4px;
             overflow-y: auto;
-            font-size: 10px;
-            margin-bottom: 8px;
+            font-size: 9px;
             line-height: 1.3;
         }
 
@@ -185,15 +206,13 @@
             background-color: #d4af37;
             color: #1a1a1a;
             border: none;
-            padding: 6px 10px;
+            padding: 6px 8px;
             font-weight: bold;
             font-size: 11px;
             border-radius: 4px;
             cursor: pointer;
             width: 100%;
-            margin-bottom: 4px;
         }
-        button:hover:not(:disabled) { background-color: #f39c12; }
         button:disabled { background-color: #444; color: #777; cursor: not-allowed; }
 
         .ability-grid {
@@ -201,12 +220,36 @@
             grid-template-columns: repeat(3, 1fr);
             gap: 4px;
         }
-        .ability-grid button { font-size: 9px; padding: 5px 2px; margin-bottom: 0; }
+        .ability-grid button { font-size: 9px; padding: 5px 2px; }
+
+        /* Модальное окно описания способности */
+        #ability-modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 10;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background: #222;
+            border: 2px solid #d4af37;
+            border-radius: 8px;
+            padding: 15px;
+            width: 85%;
+            max-width: 320px;
+            color: #fff;
+            box-shadow: 0 0 15px rgba(0,0,0,0.8);
+        }
+        .modal-content h3 { color: #d4af37; margin-top: 0; font-size: 15px; }
+        .modal-content p { font-size: 12px; line-height: 1.4; color: #ddd; }
+        .modal-buttons { display: flex; gap: 8px; margin-top: 12px; }
     </style>
 </head>
 <body>
 
-    <h1>Средневековье: Битва героев</h1>
+    <h1>Средневековье</h1>
     
     <!-- Динамическая полоска инициативы -->
     <div id="initiative-bar"></div>
@@ -215,25 +258,38 @@
         <div id="board"></div>
 
         <div id="sidebar">
-            <div id="turn-info">Инициализация игры...</div>
+            <div id="turn-info">Фаза расстановки</div>
             
-            <div style="display: flex; gap: 8px;">
-                <div class="panel-section" style="flex: 1;">
-                    <h3>Юнит</h3>
-                    <div id="unit-info">Выберите бойца</div>
+            <div class="panel-grid">
+                <div class="panel-section" style="flex: 1.1;">
+                    <h3>Инфо о юните</h3>
+                    <div id="unit-info">Кликните на юнита</div>
                 </div>
-                <div class="panel-section" style="flex: 1.2;">
-                    <h3>Журнал</h3>
+                <div class="panel-section" style="flex: 0.9;">
+                    <h3>Журнал боя</h3>
                     <div id="log"></div>
                 </div>
             </div>
 
-            <div class="panel-section" id="abilities-section" style="display:none;">
-                <h3>Способности мечника</h3>
+            <div class="panel-section" id="abilities-section" style="display:none; margin-bottom: 6px;">
+                <h3>Активные способности мечника</h3>
                 <div class="ability-grid" id="abilities-list"></div>
             </div>
 
-            <button id="end-turn-btn" onclick="endCurrentUnitTurn()" disabled>Пропустить ход</button>
+            <button id="main-action-btn" onclick="handleMainButtonClick()">Начать бой!</button>
+        </div>
+    </div>
+
+    <!-- Модальное окно с описанием способности -->
+    <div id="ability-modal">
+        <div class="modal-content">
+            <h3 id="modal-title">Название способности</h3>
+            <p id="modal-desc">Описание способности...</p>
+            <p id="modal-cd" style="font-size:11px; color:#f1c40f;"></p>
+            <div class="modal-buttons">
+                <button id="modal-apply-btn">Применить</button>
+                <button onclick="closeAbilityModal()" style="background:#555; color:#fff;">Отмена</button>
+            </div>
         </div>
     </div>
 
@@ -244,47 +300,56 @@
     let units = [];
     let currentUnitIndex = 0;
     let selectedUnit = null;
+    let highlightedInitUnit = null;
     let turnQueue = [];
-    let gameActive = false;
+    let gamePhase = 'setup'; // 'setup' или 'battle'
     let activeAction = null; 
+    let pendingAbility = null;
 
     const UNIT_TYPES = {
         swordsman: { name: 'Мечник', maxHp: 20, damage: 10, initiative: 8, speed: 2, range: 1, symbol: '⚔️' },
         archer: { name: 'Лучник', maxHp: 20, damage: 10, initiative: 15, speed: 3, range: 4, symbol: '🏹' }
     };
 
+    // Описания способностей
+    const ABILITY_DATA = {
+        spear: {
+            name: "Бросить копье",
+            desc: "Бросает копье дальностью 3 в противника с уроном 10.",
+            cdMax: 3
+        },
+        buff: {
+            name: "Укрепление",
+            desc: "Дает защиту 30% от стрел и ближнего боя дружественному юниту в дальности 2 на 2 хода.",
+            cdMax: 4
+        },
+        heal: {
+            name: "Лечение",
+            desc: "Накладывает на себя продолжительный эффект восстановления 5хп/ход на следующие 5 ходов.",
+            cdMax: 10
+        },
+        rage: {
+            name: "Ярость",
+            desc: "Накладывает на себя продолжительный эффект +5 к урону на ближайшие 3 хода.",
+            cdMax: 6
+        },
+        stun: {
+            name: "Оглушение",
+            desc: "Накладывает эффект на юнита противника в дальности 1, заставляющий пропустить 1 ход.",
+            cdMax: 4
+        }
+    };
+
     function initGame() {
-        units = [];
-        let aiSetup = [
-            { type: 'archer', r: 0, c: 1 },
-            { type: 'swordsman', r: 0, c: 2 },
-            { type: 'swordsman', r: 0, c: 5 },
-            { type: 'archer', r: 0, c: 6 },
-            { type: 'swordsman', r: 1, c: 3 },
-            { type: 'swordsman', r: 1, c: 4 }
-        ];
-        aiSetup.forEach((data, index) => units.push(createUnit(data.type, 'enemy', data.r, data.c, `ИИ ${index+1}`)));
-
-        let playerSetup = [
-            { type: 'swordsman', r: 11, c: 2 },
-            { type: 'swordsman', r: 11, c: 3 },
-            { type: 'swordsman', r: 11, c: 4 },
-            { type: 'swordsman', r: 11, c: 5 },
-            { type: 'archer', r: 10, c: 2 },
-            { type: 'archer', r: 10, c: 5 }
-        ];
-        playerSetup.forEach((data, index) => units.push(createUnit(data.type, 'player', data.r, data.c, `Игрок ${index+1}`)));
-
         createBoardDOM();
-        startNewRound();
-        gameActive = true;
+        logMessage("Расставьте юнитов на подсвеченных полях (кликом). По 6 у каждой стороны.");
     }
 
-    function createUnit(typeKey, team, r, c, name) {
+    function createUnit(typeKey, team, r, c, idNum) {
         let base = UNIT_TYPES[typeKey];
         return {
             id: Math.random().toString(36).substring(2, 9),
-            name: name,
+            name: `${base.name} #${idNum}`,
             typeKey: typeKey,
             team: team,
             r: r, c: c,
@@ -306,13 +371,33 @@
             for (let c = 0; c < COLS; c++) {
                 const cell = document.createElement('div');
                 cell.className = 'cell';
-                cell.dataset.r = r;
-                cell.dataset.c = c;
+                if (gamePhase === 'setup') {
+                    if (r < 3) cell.classList.add('setup-enemy');
+                    if (r >= 9) cell.classList.add('setup-player');
+                }
                 cell.addEventListener('click', () => handleCellClick(r, c));
                 boardEl.appendChild(cell);
                 board[r][c] = cell;
             }
         }
+        
+        // Начальная дефолтная расстановка при запуске
+        if (units.length === 0) {
+            units.push(createUnit('archer', 'enemy', 0, 1, 1));
+            units.push(createUnit('swordsman', 'enemy', 0, 2, 2));
+            units.push(createUnit('swordsman', 'enemy', 0, 5, 3));
+            units.push(createUnit('archer', 'enemy', 0, 6, 4));
+            units.push(createUnit('swordsman', 'enemy', 1, 3, 5));
+            units.push(createUnit('swordsman', 'enemy', 1, 4, 6));
+
+            units.push(createUnit('swordsman', 'player', 11, 2, 1));
+            units.push(createUnit('swordsman', 'player', 11, 3, 2));
+            units.push(createUnit('swordsman', 'player', 11, 4, 3));
+            units.push(createUnit('swordsman', 'player', 11, 5, 4));
+            units.push(createUnit('archer', 'player', 10, 2, 5));
+            units.push(createUnit('archer', 'player', 10, 5, 6));
+        }
+
         renderBoard();
     }
 
@@ -327,25 +412,52 @@
         units.forEach(u => {
             if (!u.isAlive) return;
             const unitEl = document.createElement('div');
-            unitEl.className = `unit ${u.team} ${selectedUnit === u ? 'selected' : ''}`;
+            let isCurrent = (gamePhase === 'battle' && turnQueue[currentUnitIndex] === u);
+            let isInitHighlighted = (highlightedInitUnit === u);
+            unitEl.className = `unit ${u.team} ${selectedUnit === u ? 'selected' : ''} ${isInitHighlighted ? 'highlighted-init' : ''}`;
             unitEl.innerHTML = `<span>${u.symbol}</span><span class="unit-hp">${u.hp}</span>`;
             board[u.r][u.c].appendChild(unitEl);
         });
 
         updateSidebar();
-        renderInitiativeBar();
+        if (gamePhase === 'battle') renderInitiativeBar();
     }
 
+    /* Динамическая очередность ходов */
     function renderInitiativeBar() {
         const bar = document.getElementById('initiative-bar');
         bar.innerHTML = '';
+        
         turnQueue.forEach((u, idx) => {
             if (!u.isAlive) return;
             const item = document.createElement('div');
             item.className = `init-item ${u.team} ${idx === currentUnitIndex ? 'active' : ''}`;
-            item.innerHTML = `<span>${u.symbol}</span><span style="font-size:8px">${u.hp}</span>`;
+            item.innerHTML = `<span>${u.symbol}</span><span style="font-size:7px">${u.hp}HP</span>`;
+            
+            // Нажатие на юнита в ленте подсвечивает его на поле
+            item.onclick = (e) => {
+                e.stopPropagation();
+                highlightedInitUnit = (highlightedInitUnit === u) ? null : u;
+                renderBoard();
+            };
             bar.appendChild(item);
         });
+    }
+
+    function handleMainButtonClick() {
+        if (gamePhase === 'setup') {
+            gamePhase = 'battle';
+            // Очищаем подсветку зоны расстановки
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    board[r][c].classList.remove('setup-player', 'setup-enemy');
+                }
+            }
+            document.getElementById('main-action-btn').innerText = "Пропустить ход";
+            startNewRound();
+        } else {
+            endCurrentUnitTurn();
+        }
     }
 
     function startNewRound() {
@@ -359,8 +471,8 @@
         let playerAlive = units.some(u => u.team === 'player' && u.isAlive);
         let enemyAlive = units.some(u => u.team === 'enemy' && u.isAlive);
 
-        if (!playerAlive) { alert("Поражение!"); gameActive = false; return; }
-        if (!enemyAlive) { alert("Победа!"); gameActive = false; return; }
+        if (!playerAlive) { alert("Поражение!"); return; }
+        if (!enemyAlive) { alert("Победа!"); return; }
 
         if (currentUnitIndex >= turnQueue.length) {
             startNewRound();
@@ -376,17 +488,17 @@
 
         unit.hasMoved = false;
         unit.hasActed = false;
+        decrementCooldowns(unit);
         processTurnEffects(unit);
 
         if (unit.stunned) {
-            logMessage(`${unit.name} оглушен!`);
+            logMessage(`${unit.name} оглушен и пропускает ход!`);
             unit.stunned = false;
             endCurrentUnitTurn();
             return;
         }
 
-        document.getElementById('turn-info').innerText = `Ходит: ${unit.name} (${unit.team === 'player' ? 'Ваш' : 'ИИ'})`;
-
+        document.getElementById('turn-info').innerText = `Ходит: ${unit.name} (${unit.team === 'player' ? 'Ваш' : 'Противник'})`;
         selectedUnit = unit;
         renderBoard();
 
@@ -394,8 +506,7 @@
             if (!unit.hasMoved) showMoveRange(unit);
         } else {
             document.getElementById('abilities-section').style.display = 'none';
-            document.getElementById('end-turn-btn').disabled = true;
-            // Задержка хода ИИ 0.7 сек
+            document.getElementById('main-action-btn').disabled = true;
             setTimeout(aiTurn, 700);
         }
     }
@@ -404,31 +515,72 @@
         if (unit.buffs.regenDuration > 0) {
             unit.hp = Math.min(unit.maxHp, unit.hp + unit.buffs.regenValue);
             unit.buffs.regenDuration--;
+            logMessage(`${unit.name} восполнил ${unit.buffs.regenValue} HP (Лечение).`);
         }
         if (unit.buffs.rageDuration > 0) {
             unit.buffs.rageDuration--;
-            if (unit.buffs.rageDuration === 0) unit.damage -= unit.buffs.rageValue;
+            if (unit.buffs.rageDuration === 0) {
+                unit.damage -= unit.buffs.rageValue;
+                logMessage(`Эффект "Ярость" у ${unit.name} истек.`);
+            }
         }
         if (unit.buffs.customDefenseDuration > 0) unit.buffs.customDefenseDuration--;
     }
 
     function endCurrentUnitTurn() {
-        if (!gameActive) return;
+        if (gamePhase !== 'battle') return;
         let unit = turnQueue[currentUnitIndex];
+        
+        // Пассивка мечника Живой
         if (unit.typeKey === 'swordsman' && !unit.hasMoved && !unit.hasActed) {
             let heal = Math.round(unit.maxHp * 0.2);
             unit.hp = Math.min(unit.maxHp, unit.hp + heal);
-            logMessage(`${unit.name} пропустил ход и исцелился на ${heal} HP.`);
+            logMessage(`${unit.name} исцелился на ${heal} HP (Живой).`);
         }
+
         selectedUnit = null;
+        highlightedInitUnit = null;
         activeAction = null;
         currentUnitIndex++;
         nextTurn();
     }
 
+    /* Обработка клика по ячейке */
     function handleCellClick(r, c) {
-        if (!gameActive || !selectedUnit || selectedUnit.team !== 'player') return;
         let targetUnit = getUnitAt(r, c);
+
+        // Фаза расстановки
+        if (gamePhase === 'setup') {
+            if (r >= 9) { // Зона игрока
+                if (targetUnit && targetUnit.team === 'player') {
+                    // Смена типа или удаление
+                    if (targetUnit.typeKey === 'swordsman') {
+                        units = units.filter(u => u !== targetUnit);
+                        units.push(createUnit('archer', 'player', r, c, units.length+1));
+                    } else {
+                        units = units.filter(u => u !== targetUnit);
+                    }
+                } else if (!targetUnit) {
+                    units.push(createUnit('swordsman', 'player', r, c, units.length+1));
+                }
+            } else if (r < 3) { // Зона противника
+                if (targetUnit && targetUnit.team === 'enemy') {
+                    if (targetUnit.typeKey === 'swordsman') {
+                        units = units.filter(u => u !== targetUnit);
+                        units.push(createUnit('archer', 'enemy', r, c, units.length+1));
+                    } else {
+                        units = units.filter(u => u !== targetUnit);
+                    }
+                } else if (!targetUnit) {
+                    units.push(createUnit('swordsman', 'enemy', r, c, units.length+1));
+                }
+            }
+            renderBoard();
+            return;
+        }
+
+        // Фаза боя
+        if (!selectedUnit || selectedUnit.team !== 'player') return;
 
         if (activeAction === 'move') {
             if (board[r][c].classList.contains('highlight-move') && !targetUnit) {
@@ -463,8 +615,9 @@
             return;
         }
 
-        if (targetUnit && targetUnit.team === 'player' && targetUnit === selectedUnit && !targetUnit.hasMoved) {
-            showMoveRange(targetUnit);
+        if (targetUnit) {
+            selectedUnit = targetUnit;
+            renderBoard();
         }
     }
 
@@ -502,77 +655,133 @@
     }
 
     function calculateTotalDefense(defender, attackType) {
-        let base = (defender.typeKey === 'swordsman') ? ((attackType === 'ranged') ? 60 : 50) : 0;
-        let adj = 0;
+        let base = 0;
+        if (defender.typeKey === 'swordsman') {
+            base += (attackType === 'ranged') ? 60 : 50;
+            // Строй
+            let adjSwordsmen = 0;
+            for (let dr = -1; dr <= 1; dr++) {
+                for (let dc = -1; dc <= 1; dc++) {
+                    if (dr === 0 && dc === 0) continue;
+                    let n = getUnitAt(defender.r + dr, defender.c + dc);
+                    if (n && n.team === defender.team && n.typeKey === 'swordsman' && n.isAlive) adjSwordsmen++;
+                }
+            }
+            base += adjSwordsmen * 10;
+        }
+
+        // Защитник
         for (let dr = -1; dr <= 1; dr++) {
             for (let dc = -1; dc <= 1; dc++) {
                 if (dr === 0 && dc === 0) continue;
                 let n = getUnitAt(defender.r + dr, defender.c + dc);
-                if (n && n.team === defender.team && n.isAlive) {
-                    if (n.typeKey === 'swordsman') adj += 10;
-                }
+                if (n && n.team === defender.team && n.typeKey === 'swordsman' && n.isAlive) base += 20;
             }
         }
-        base += adj;
+
         if (defender.buffs.customDefenseDuration > 0) base += defender.buffs.customDefenseVal;
         return Math.min(90, base);
     }
 
     function executeAttack(attacker, defender) {
         attacker.hasActed = true;
-        let aType = attacker.typeKey === 'archer' ? 'ranged' : 'melee';
+        let aType = (attacker.typeKey === 'archer') ? 'ranged' : 'melee';
         let def = calculateTotalDefense(defender, aType);
         let dmg = Math.max(1, Math.round(attacker.damage * (1 - def / 100)));
         defender.hp -= dmg;
-        logMessage(`${attacker.name} бьёт ${defender.name} на ${dmg} урона`);
+        logMessage(`${attacker.name} атакует ${defender.name}: ${dmg} урона (${def}% защ)`);
         if (defender.hp <= 0) { defender.hp = 0; defender.isAlive = false; logMessage(`${defender.name} погиб!`); }
     }
 
-    function useAbility(name) {
-        if (!selectedUnit || selectedUnit.team !== 'player') return;
+    /* Модалка с описанием способности */
+    function openAbilityModal(key) {
         let u = selectedUnit;
-        if (name === 'spear' && u.cooldowns.spear === 0) {
+        if (!u || u.cooldowns[key] > 0 || u.hasActed) return;
+        
+        pendingAbility = key;
+        let data = ABILITY_DATA[key];
+        document.getElementById('modal-title').innerText = data.name;
+        document.getElementById('modal-desc').innerText = data.desc;
+        document.getElementById('modal-cd').innerText = `Перезарядка: ${data.cdMax} ходов.`;
+        
+        let applyBtn = document.getElementById('modal-apply-btn');
+        applyBtn.onclick = () => {
+            closeAbilityModal();
+            confirmUseAbility(pendingAbility);
+        };
+        
+        document.getElementById('ability-modal').style.display = 'flex';
+    }
+
+    function closeAbilityModal() {
+        document.getElementById('ability-modal').style.display = 'none';
+        pendingAbility = null;
+    }
+
+    function confirmUseAbility(name) {
+        let u = selectedUnit;
+        if (!u) return;
+
+        if (name === 'spear') {
             activeAction = 'spear'; renderBoard();
-            highlightCellsRange(3, true, true);
-        } else if (name === 'buff' && u.cooldowns.buff === 0) {
+            highlightRangeCells(3, 'enemy');
+        } else if (name === 'buff') {
             activeAction = 'buff'; renderBoard();
-            highlightCellsRange(2, false, false, true);
-        } else if (name === 'heal' && u.cooldowns.heal === 0) {
-            u.buffs.regenDuration = 5; u.buffs.regenValue = 5; u.cooldowns.heal = 10; u.hasActed = true;
-            logMessage(`${u.name} лечится.`); renderBoard(); showActionOptions(u);
-        } else if (name === 'rage' && u.cooldowns.rage === 0) {
-            u.buffs.rageDuration = 3; u.buffs.rageValue = 5; u.damage += 5; u.cooldowns.rage = 6; u.hasActed = true;
-            logMessage(`${u.name} в ярости.`); renderBoard(); showActionOptions(u);
-        } else if (name === 'stun' && u.cooldowns.stun === 0) {
+            highlightRangeCells(2, 'ally');
+        } else if (name === 'heal') {
+            u.buffs.regenDuration = 5; u.buffs.regenValue = 5; u.cooldowns.heal = 10; 
+            u.hasActed = true; // Считается за ход
+            logMessage(`${u.name} применил Лечение`); renderBoard(); showActionOptions(u);
+        } else if (name === 'rage') {
+            u.buffs.rageDuration = 3; u.buffs.rageValue = 5; u.damage += 5; u.cooldowns.rage = 6; 
+            u.hasActed = true; // Считается за ход
+            logMessage(`${u.name} применил Ярость (+5 урона)`); renderBoard(); showActionOptions(u);
+        } else if (name === 'stun') {
             activeAction = 'stun'; renderBoard();
-            highlightCellsRange(1, true, true);
+            highlightRangeCells(1, 'enemy');
         }
     }
 
-    function highlightCellsRange(range, enemyOnly, isAttack, allyOnly = false) {
+    function highlightRangeCells(range, targetType) {
         let u = selectedUnit;
         for (let r = 0; r < ROWS; r++) {
             for (let c = 0; c < COLS; c++) {
                 let dist = Math.max(Math.abs(r - u.r), Math.abs(c - u.c));
                 if (dist > 0 && dist <= range) {
                     let target = getUnitAt(r, c);
-                    if (enemyOnly && target && target.team !== u.team) board[r][c].classList.add('highlight-attack');
-                    if (allyOnly && target && target.team === u.team) board[r][c].classList.add('highlight-move');
+                    if (targetType === 'enemy' && target && target.team !== u.team) board[r][c].classList.add('highlight-attack');
+                    if (targetType === 'ally' && target && target.team === u.team) board[r][c].classList.add('highlight-move');
                 }
             }
         }
     }
 
-    function executeSpear(a, d) { a.hasActed = true; a.cooldowns.spear = 3; d.hp -= 10; logMessage(`Копье нанесло 10 урона`); if(d.hp<=0){d.hp=0;d.isAlive=false;} }
-    function executeReinforce(c, t) { c.hasActed = true; c.cooldowns.buff = 4; t.buffs.customDefenseDuration = 2; t.buffs.customDefenseVal = 30; logMessage(`Укрепление дало защиту`); }
-    function executeStun(a, d) { a.hasActed = true; a.cooldowns.stun = 4; d.stunned = true; logMessage(`Оглушение!`); }
+    function executeSpear(a, d) { 
+        a.hasActed = true; a.cooldowns.spear = 3; 
+        d.hp -= 10; logMessage(`${a.name} метнул копье в ${d.name} (10 урона)`); 
+        if(d.hp <= 0) { d.hp = 0; d.isAlive = false; } 
+    }
+    function executeReinforce(c, t) { 
+        c.hasActed = true; c.cooldowns.buff = 4; 
+        t.buffs.customDefenseDuration = 2; t.buffs.customDefenseVal = 30; 
+        logMessage(`${c.name} применил Укрепление на ${t.name}`); 
+    }
+    function executeStun(a, d) { 
+        a.hasActed = true; a.cooldowns.stun = 4; 
+        d.stunned = true; logMessage(`${a.name} применил Оглушение на ${d.name}`); 
+    }
 
+    function decrementCooldowns(unit) {
+        for (let key in unit.cooldowns) {
+            if (unit.cooldowns[key] > 0) unit.cooldowns[key]--;
+        }
+    }
+
+    /* Логика ИИ */
     function aiTurn() {
-        if (!gameActive) return;
+        if (gamePhase !== 'battle') return;
         let ai = turnQueue[currentUnitIndex];
         if (!ai || !ai.isAlive) { currentUnitIndex++; nextTurn(); return; }
-
-        for (let k in ai.cooldowns) if (ai.cooldowns[k] > 0) ai.cooldowns[k]--;
 
         let enemies = units.filter(u => u.team === 'player' && u.isAlive);
         if (enemies.length === 0) return;
@@ -606,24 +815,47 @@
         setTimeout(() => { currentUnitIndex++; nextTurn(); }, 700);
     }
 
+    /* Обновление сайдбара и активных эффектов */
     function updateSidebar() {
         let u = selectedUnit, info = document.getElementById('unit-info'), abSec = document.getElementById('abilities-section');
-        if (!u) { info.innerText = "Выберите бойца"; abSec.style.display = 'none'; return; }
-        info.innerHTML = `<b>${u.name}</b> (${u.team === 'player' ? 'Ваш' : 'ИИ'})<br>HP: ${u.hp}/${u.maxHp} | Урон: ${u.damage}`;
         
-        if (u.team === 'player' && u === turnQueue[currentUnitIndex]) {
-            document.getElementById('end-turn-btn').disabled = false;
+        if (!u) { 
+            info.innerText = "Кликните на юнита"; 
+            abSec.style.display = 'none'; 
+            return; 
+        }
+
+        // Собираем текст эффектов
+        let effects = [];
+        if (u.buffs.regenDuration > 0) effects.push(`Лечение (${u.buffs.regenDuration}х)`);
+        if (u.buffs.rageDuration > 0) effects.push(`Ярость (${u.buffs.rageDuration}х)`);
+        if (u.buffs.customDefenseDuration > 0) effects.push(`Укрепление (${u.buffs.customDefenseDuration}х)`);
+        if (u.stunned) effects.push(`Оглушен`);
+
+        let effStr = effects.length > 0 ? `<br><span style="color:#2ecc71">Эффекты: ${effects.join(', ')}</span>` : '';
+
+        info.innerHTML = `
+            <b>${u.name}</b> (${u.team === 'player' ? 'Ваш' : 'Враг'})<br>
+            HP: ${u.hp}/${u.maxHp} | Урон: ${u.damage}<br>
+            Скорость: ${u.speed} | Дальность: ${u.range}${effStr}
+        `;
+
+        if (gamePhase === 'battle' && u.team === 'player' && u === turnQueue[currentUnitIndex]) {
+            document.getElementById('main-action-btn').disabled = false;
             if (u.typeKey === 'swordsman') {
                 abSec.style.display = 'block';
                 document.getElementById('abilities-list').innerHTML = `
-                    <button onclick="useAbility('spear')">Копье</button>
-                    <button onclick="useAbility('buff')">Щит</button>
-                    <button onclick="useAbility('heal')">Лек</button>
-                    <button onclick="useAbility('rage')">Ярость</button>
-                    <button onclick="useAbility('stun')">Стан</button>
+                    <button onclick="openAbilityModal('spear')" ${u.cooldowns.spear > 0 || u.hasActed ? 'disabled' : ''}>Бросить копье ${u.cooldowns.spear ? '('+u.cooldowns.spear+')' : ''}</button>
+                    <button onclick="openAbilityModal('buff')" ${u.cooldowns.buff > 0 || u.hasActed ? 'disabled' : ''}>Укрепление ${u.cooldowns.buff ? '('+u.cooldowns.buff+')' : ''}</button>
+                    <button onclick="openAbilityModal('heal')" ${u.cooldowns.heal > 0 || u.hasActed ? 'disabled' : ''}>Лечение ${u.cooldowns.heal ? '('+u.cooldowns.heal+')' : ''}</button>
+                    <button onclick="openAbilityModal('rage')" ${u.cooldowns.rage > 0 || u.hasActed ? 'disabled' : ''}>Ярость ${u.cooldowns.rage ? '('+u.cooldowns.rage+')' : ''}</button>
+                    <button onclick="openAbilityModal('stun')" ${u.cooldowns.stun > 0 || u.hasActed ? 'disabled' : ''}>Оглушение ${u.cooldowns.stun ? '('+u.cooldowns.stun+')' : ''}</button>
                 `;
             } else { abSec.style.display = 'none'; }
-        } else { abSec.style.display = 'none'; document.getElementById('end-turn-btn').disabled = true; }
+        } else { 
+            abSec.style.display = 'none'; 
+            if (gamePhase === 'battle') document.getElementById('main-action-btn').disabled = true; 
+        }
     }
 
     function showActionOptions(u) { if (!u.hasActed) showAttackRange(u); }
