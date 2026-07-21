@@ -1,1 +1,294 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Рыцари: Битва Героев</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: #1a1a1a;
+            color: #fff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+
+        .game-container {
+            width: 600px;
+            background: #2b2b2b;
+            border: 2px solid #555;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+            text-align: center;
+        }
+
+        h1 { margin-top: 0; color: #f1c40f; }
+
+        .arena {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .fighter {
+            width: 45%;
+            background: #3a3a3a;
+            padding: 15px;
+            border-radius: 8px;
+            transition: transform 0.1s;
+        }
+
+        .avatar {
+            font-size: 50px;
+            margin-top: 15px;
+        }
+
+        .bar-container {
+            background: #555;
+            border-radius: 6px;
+            height: 20px;
+            margin: 8px 0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .bar {
+            height: 100%;
+            width: 100%;
+            transition: width 0.3s ease;
+        }
+
+        .hp-bar { background-color: #e74c3c; }
+        .mp-bar { background-color: #3498db; }
+
+        .bar-container span {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 11px;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px #000;
+        }
+
+        .controls {
+            background: #333;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+
+        .control-group {
+            margin-bottom: 10px;
+        }
+
+        .control-group h3 { margin: 5px 0; font-size: 14px; color: #ccc; }
+
+        .actions button {
+            background: #27ae60;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .actions button:hover { background: #2ecc71; }
+        .actions button:disabled { background: #7f8c8d; cursor: not-allowed; }
+
+        .log {
+            height: 120px;
+            background: #111;
+            border-radius: 6px;
+            padding: 10px;
+            overflow-y: auto;
+            text-align: left;
+            font-size: 13px;
+        }
+
+        .log p { margin: 4px 0; }
+        .hit { color: #e74c3c; }
+        .block { color: #3498db; }
+        .crit { color: #f1c40f; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1>Битва Рыцарей</h1>
+
+        <!-- Арена -->
+        <div class="arena">
+            <!-- Игрок -->
+            <div class="fighter" id="player-box">
+                <h2>Игрок (Рыцарь)</h2>
+                <div class="bar-container">
+                    <div class="bar hp-bar" id="player-hp-bar"></div>
+                    <span id="player-hp-text">100 / 100 HP</span>
+                </div>
+                <div class="bar-container">
+                    <div class="bar mp-bar" id="player-mp-bar"></div>
+                    <span id="player-mp-text">50 / 50 MP</span>
+                </div>
+                <div class="avatar">🛡️⚔️</div>
+            </div>
+
+            <!-- Враг -->
+            <div class="fighter" id="enemy-box">
+                <h2>Темный Рыцарь</h2>
+                <div class="bar-container">
+                    <div class="bar hp-bar" id="enemy-hp-bar"></div>
+                    <span id="enemy-hp-text">120 / 120 HP</span>
+                </div>
+                <div class="avatar">😈🗡️</div>
+            </div>
+        </div>
+
+        <!-- Выбор Зон Атаки и Защиты -->
+        <div class="controls" id="controls">
+            <div class="control-group">
+                <h3>Куда бьем:</h3>
+                <label><input type="radio" name="attack" value="head" checked> Голова</label>
+                <label><input type="radio" name="attack" value="body"> Торс</label>
+                <label><input type="radio" name="attack" value="legs"> Ноги</label>
+            </div>
+
+            <div class="control-group">
+                <h3>Что защищаем:</h3>
+                <label><input type="radio" name="defend" value="head"> Голова</label>
+                <label><input type="radio" name="defend" value="body" checked> Торс</label>
+                <label><input type="radio" name="defend" value="legs"> Ноги</label>
+            </div>
+
+            <div class="actions">
+                <button id="btn-attack" onclick="makeTurn('attack')">Обычный Удар</button>
+                <button id="btn-skill" onclick="makeTurn('skill')">Мощный Удар (20 MP)</button>
+            </div>
+        </div>
+
+        <!-- Лог боя -->
+        <div class="log" id="log">
+            <p>Битва начинается! Выберите зоны и нажмите "Обычный Удар".</p>
+        </div>
+    </div>
+
+    <script>
+        // Состояние персонажей
+        const player = {
+            hp: 100, maxHp: 100,
+            mp: 50, maxMp: 50,
+            baseDamage: 15
+        };
+
+        const enemy = {
+            hp: 120, maxHp: 120,
+            baseDamage: 12
+        };
+
+        const zones = ['head', 'body', 'legs'];
+
+        function updateUI() {
+            // Обновляем HP / MP игрока
+            document.getElementById('player-hp-bar').style.width = `${(player.hp / player.maxHp) * 100}%`;
+            document.getElementById('player-hp-text').innerText = `${Math.max(0, player.hp)} / ${player.maxHp} HP`;
+            
+            document.getElementById('player-mp-bar').style.width = `${(player.mp / player.maxMp) * 100}%`;
+            document.getElementById('player-mp-text').innerText = `${player.mp} / ${player.maxMp} MP`;
+
+            // Обновляем HP врага
+            document.getElementById('enemy-hp-bar').style.width = `${(enemy.hp / enemy.maxHp) * 100}%`;
+            document.getElementById('enemy-hp-text').innerText = `${Math.max(0, enemy.hp)} / ${enemy.maxHp} HP`;
+
+            // Блокируем кнопку супер-удара, если нет маны
+            document.getElementById('btn-skill').disabled = player.mp < 20;
+        }
+
+        function logMessage(text, className = '') {
+            const logBox = document.getElementById('log');
+            const p = document.createElement('p');
+            if (className) p.classList.add(className);
+            p.innerText = text;
+            logBox.appendChild(p);
+            logBox.scrollTop = logBox.scrollHeight;
+        }
+
+        function getRandomZone() {
+            return zones[Math.floor(Math.random() * zones.length)];
+        }
+
+        function makeTurn(actionType) {
+            if (player.hp <= 0 || enemy.hp <= 0) return;
+
+            // Выбор игрока
+            const playerAttack = document.querySelector('input[name="attack"]:checked').value;
+            const playerDefend = document.querySelector('input[name="defend"]:checked').value;
+
+            // Выбор бота (случайно)
+            const enemyAttack = getRandomZone();
+            const enemyDefend = getRandomZone();
+
+            logMessage("--- Новый ход ---");
+
+            // === 1. АТАКА ИГРОКА ===
+            let pDamage = player.baseDamage;
+            if (actionType === 'skill') {
+                player.mp -= 20;
+                pDamage *= 1.8;
+            }
+
+            if (playerAttack === enemyDefend) {
+                logMessage(`🛡️ Враг заблокировал ваш удар в ${playerAttack}!`, 'block');
+            } else {
+                const isCrit = Math.random() < 0.2; // Шанс крита 20%
+                if (isCrit) pDamage *= 1.5;
+
+                pDamage = Math.round(pDamage);
+                enemy.hp -= pDamage;
+                logMessage(`⚔️ Вы нанесли ${pDamage} урона в ${playerAttack}${isCrit ? ' (КРИТ!)' : ''}`, isCrit ? 'crit' : 'hit');
+            }
+
+            // Восстановление маны каждый ход
+            if (player.mp < player.maxMp) player.mp = Math.min(player.maxMp, player.mp + 5);
+
+            // Проверка победы
+            if (enemy.hp <= 0) {
+                enemy.hp = 0;
+                updateUI();
+                logMessage("🎉 ПОБЕДА! Вы повергли Темного Рыцаря!", 'crit');
+                return;
+            }
+
+            // === 2. АТАКА ВРАГА ===
+            let eDamage = enemy.baseDamage;
+            if (enemyAttack === playerDefend) {
+                logMessage(`🛡️ Вы заблокировали удар врага в ${enemyAttack}!`, 'block');
+            } else {
+                eDamage = Math.round(eDamage * (0.9 + Math.random() * 0.3));
+                player.hp -= eDamage;
+                logMessage(`💥 Враг нанес вам ${eDamage} урона в ${enemyAttack}!`, 'hit');
+            }
+
+            // Проверка поражения
+            if (player.hp <= 0) {
+                player.hp = 0;
+                logMessage("☠️ ПОРАЖЕНИЕ! Вы пали в бою...", 'hit');
+            }
+
+            updateUI();
+        }
+
+        // Инициализация при загрузке страницы
+        updateUI();
+    </script>
+</body>
+</html>
 
