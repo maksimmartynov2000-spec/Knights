@@ -146,7 +146,7 @@
 
     const UNIT_TYPES = {
         swordsman: { 
-            name: 'Мечник', maxHp: 20, damage: 10, initiative: 8, speed: 2, range: 1, symbol: '⚔️',
+            name: 'Мечник', maxHp: 50, damage: 10, initiative: 8, speed: 2, range: 1, symbol: '⚔️',
             passivesList: [
                 "1. Живой: +20% HP при полном пропуске хода",
                 "2. Щит: Защита от стрел 60%",
@@ -169,16 +169,16 @@
 
     const ABILITY_DATA = {
         spear: { name: "Бросить копье", desc: "Урон 10, дальность 3. Выберите врага.", cdMax: 3 },
-        buff: { name: "Укрепление", desc: "+30% защиты союзнику на 2 хода (дальность 2).", cdMax: 4 },
-        heal: { name: "Лечение", desc: "+5 HP/ход на 5 ходов союзнику в пределах 2 клеток.", cdMax: 10 },
-        rage: { name: "Ярость", desc: "+5 урона на 3 хода союзнику в пределах 2 клеток.", cdMax: 6 },
-        stun: { name: "Оглушение", desc: "Враг пропускает 1 ход (дальность 1).", cdMax: 4 },
+        buff: { name: "Укрепление", desc: "+30% защиты союзнику на 2 хода (дальность 2).", cdMax: 3 },
+        heal: { name: "Лечение", desc: "+5 HP/ход на 5 ходов союзнику в пределах 2 клеток.", cdMax: 3 },
+        rage: { name: "Ярость", desc: "+5 урона на 3 хода союзнику в пределах 2 клеток.", cdMax: 3 },
+        stun: { name: "Оглушение", desc: "Враг пропускает 1 ход (дальность 1).", cdMax: 3 },
         
-        fireArrow: { name: "Огненные стрелы", desc: "Следующие 3 атаки поджигают цели (+1 маг. урона на 2 хода). Выберите себя для активации.", cdMax: 10 },
-        kneeShot: { name: "В колено", desc: "Снижает скорость передвижения цели на 2 на 2 хода.", cdMax: 5 },
-        doubleArrow: { name: "Двойная стрела", desc: "Следующие 2 атаки подряд. Выберите 2 цели.", cdMax: 5 },
-        bullseye: { name: "В яблочко", desc: "Следующие 2 атаки имеют +100% базового урона (+10). Выберите себя для активации.", cdMax: 5 },
-        arrowRain: { name: "Град стрел", desc: "Запрещает атаковать на 4 хода (можно ходить, жать способности, хилиться), затем дает 5 выстрелов подряд!", cdMax: 10 }
+        fireArrow: { name: "Огненные стрелы", desc: "Следующие 3 атаки поджигают цели (+1 маг. урона на 2 хода). Заряды НЕ сбрасываются.", cdMax: 10 },
+        kneeShot: { name: "В колено", desc: "Следующая атака снизит скорость цели на 2 на 2 хода. Заряд НЕ сбрасывается.", cdMax: 10 },
+        doubleArrow: { name: "Двойная стрела", desc: "Выполнить 2 атаки подряд за один ход.", cdMax: 10 },
+        bullseye: { name: "В яблочко", desc: "Следующие 2 атаки имеют +100% базового урона (+10). Заряды НЕ сбрасываются.", cdMax: 10 },
+        arrowRain: { name: "Град стрел", desc: "Запрещает атаковать на 4 хода, затем дает 5 выстрелов подряд!", cdMax: 10 }
     };
 
     function initGame() {
@@ -561,22 +561,22 @@
                         else if (activeAction === 'rage') { executeRage(activeUnit, targetUnit); endCurrentUnitTurn(); }
                         
                         else if (activeAction === 'fireArrow') {
-                            activeUnit.buffs.fireArrowCharges = 3; activeUnit.cooldowns.fireArrow = 10; activeUnit.hasActed = true;
-                            logMessage(`${activeUnit.name} заготовил Огненные стрелы!`); endCurrentUnitTurn();
+                            activeUnit.buffs.fireArrowCharges += 3; activeUnit.cooldowns.fireArrow = 10; activeUnit.hasActed = true;
+                            logMessage(`${activeUnit.name} заготовил Огненные стрелы! (Зарядов: ${activeUnit.buffs.fireArrowCharges})`); endCurrentUnitTurn();
                         }
                         else if (activeAction === 'kneeShot') {
-                            activeUnit.buffs.kneeShotCharge = true; activeUnit.cooldowns.kneeShot = 5; activeUnit.hasActed = true;
+                            activeUnit.buffs.kneeShotCharge = true; activeUnit.cooldowns.kneeShot = 10; activeUnit.hasActed = true;
                             logMessage(`${activeUnit.name} заготовил выстрел В колено!`); endCurrentUnitTurn();
                         }
                         else if (activeAction === 'bullseye') {
-                            activeUnit.buffs.bullseyeCharges = 2; activeUnit.cooldowns.bullseye = 5; activeUnit.hasActed = true;
-                            logMessage(`${activeUnit.name} активировал "В яблочко" (+100% урона)!`); endCurrentUnitTurn();
+                            activeUnit.buffs.bullseyeCharges += 2; activeUnit.cooldowns.bullseye = 10; activeUnit.hasActed = true;
+                            logMessage(`${activeUnit.name} активировал "В яблочко"! (Зарядов: ${activeUnit.buffs.bullseyeCharges})`); endCurrentUnitTurn();
                         }
                         else if (activeAction === 'arrowRain') {
                             activeUnit.cooldowns.arrowRain = 10;
                             activeUnit.buffs.noAttackDuration = 4;
                             activeUnit.hasActed = true;
-                            logMessage(`${activeUnit.name} активировал Град стрел! Вы не можете атаковать 4 хода (перемещение и скиллы доступны).`); 
+                            logMessage(`${activeUnit.name} активировал Град стрел! Нельзя атаковать 4 хода.`); 
                             endCurrentUnitTurn();
                         }
                     } else {
@@ -641,13 +641,13 @@
             let addStr = extraPure > 0 ? ` + ${extraPure} чистого урона` : '';
             textEl.innerHTML = `<b>Цель: ${target.name}</b><br>Прогнозируемый урон: <span style="color:#e74c3c; font-weight:bold;">${dmg}${addStr} HP</span> (${def}% защ).<br><i>Кликните повторно для атаки!</i>`;
         } else if (action === 'fireArrow') {
-            textEl.innerHTML = `<b>Подтверждение: Огненные стрелы</b><br>Следующие 3 атаки поджигают цели.<br><i>Кликните повторно по себе!</i>`;
+            textEl.innerHTML = `<b>Подтверждение: Огненные стрелы</b><br>Добавит +3 заряда поджога к текущим (${activeUnit.buffs.fireArrowCharges}).<br><i>Кликните повторно по себе!</i>`;
         } else if (action === 'kneeShot') {
             textEl.innerHTML = `<b>Подтверждение: В колено</b><br>Следующая атака снизит скорость цели на 2.<br><i>Кликните повторно по себе!</i>`;
         } else if (action === 'bullseye') {
-            textEl.innerHTML = `<b>Подтверждение: В яблочко</b><br>Следующие 2 атаки нанесут +100% урона.<br><i>Кликните повторно по себе!</i>`;
+            textEl.innerHTML = `<b>Подтверждение: В яблочко</b><br>Добавит +2 заряда усиления урона (+100%).<br><i>Кликните повторно по себе!</i>`;
         } else if (action === 'arrowRain') {
-            textEl.innerHTML = `<b>Подтверждение: Град стрел</b><br>Блокирует обычные атаки на 4 хода, после чего дает 5 выстрелов подряд!<br><i>Кликните повторно по себе для запуска!</i>`;
+            textEl.innerHTML = `<b>Подтверждение: Град стрел</b><br>Блокирует атаки на 4 хода, затем дает 5 выстрелов подряд!<br><i>Кликните повторно по себе!</i>`;
         } else if (action === 'spear') {
             textEl.innerHTML = `<b>Цель: ${target.name}</b><br>Урон: <span style="color:#e74c3c; font-weight:bold;">10 HP</span>.<br><i>Кликните повторно!</i>`;
         } else if (action === 'stun') {
@@ -682,7 +682,6 @@
     }
 
     function showAttackRange(unit) {
-        // Разрешаем показ подсветок, если есть оставшиеся выстрелы в очередях
         if (unit.hasActed && doubleArrowShotsLeft === 0 && arrowRainShotsLeft === 0) return;
         
         if (unit.buffs.noAttackDuration > 0 && arrowRainShotsLeft === 0) {
@@ -772,7 +771,7 @@
         if (attacker.buffs.bullseyeCharges > 0) {
             baseDmg += 10;
             attacker.buffs.bullseyeCharges--;
-            logMessage(`${attacker.name} наносит мощный удар (В яблочко)!`);
+            logMessage(`${attacker.name} наносит усиленный удар (В яблочко)! Осталось зарядов: ${attacker.buffs.bullseyeCharges}`);
         }
 
         let dmg = Math.max(1, Math.round(baseDmg * (1 - def / 100)));
@@ -794,7 +793,7 @@
         if (attacker.buffs.fireArrowCharges > 0) {
             attacker.buffs.fireArrowCharges--;
             defender.dotBurn.push({ duration: 2 });
-            logMessage(`${defender.name} подожжен (Огненные стрелы)!`);
+            logMessage(`${defender.name} подожжен (Огненные стрелы)! Осталось зарядов: ${attacker.buffs.fireArrowCharges}`);
         }
 
         if (attacker.buffs.kneeShotCharge) {
@@ -831,7 +830,7 @@
                 return;
             }
             doubleArrowShotsLeft = 2;
-            u.cooldowns.doubleArrow = 5;
+            u.cooldowns.doubleArrow = 10;
             logMessage(`${u.name} готовится выпустить Двойную стрелу! Выберите 1-ю цель.`);
             showAttackRange(u); 
             return;
@@ -860,10 +859,10 @@
     }
 
     function executeSpear(a, d) { a.hasActed = true; a.cooldowns.spear = 3; d.hp -= 10; logMessage(`${a.name} метнул копье в ${d.name} (10 урона)`); if(d.hp<=0){d.hp=0;d.isAlive=false;} }
-    function executeReinforce(c, t) { c.hasActed = true; c.cooldowns.buff = 4; t.buffs.customDefenseDuration = 2; t.buffs.customDefenseVal = 30; logMessage(`${c.name} применил Укрепление на ${t.name}`); }
-    function executeHeal(c, t) { c.hasActed = true; c.cooldowns.heal = 10; t.buffs.regenDuration = 5; t.buffs.regenValue = 5; logMessage(`${c.name} применил Лечение на ${t.name}`); }
-    function executeRage(c, t) { c.hasActed = true; c.cooldowns.rage = 6; t.buffs.rageDuration = 3; t.buffs.rageValue = 5; t.damage += 5; logMessage(`${c.name} применил Ярость на ${t.name}`); }
-    function executeStun(a, d) { a.hasActed = true; a.cooldowns.stun = 4; d.stunned = true; logMessage(`${a.name} оглушил ${d.name}`); }
+    function executeReinforce(c, t) { c.hasActed = true; c.cooldowns.buff = 3; t.buffs.customDefenseDuration = 2; t.buffs.customDefenseVal = 30; logMessage(`${c.name} применил Укрепление на ${t.name}`); }
+    function executeHeal(c, t) { c.hasActed = true; c.cooldowns.heal = 3; t.buffs.regenDuration = 5; t.buffs.regenValue = 5; logMessage(`${c.name} применил Лечение на ${t.name}`); }
+    function executeRage(c, t) { c.hasActed = true; c.cooldowns.rage = 3; t.buffs.rageDuration = 3; t.buffs.rageValue = 5; t.damage += 5; logMessage(`${c.name} применил Ярость на ${t.name}`); }
+    function executeStun(a, d) { a.hasActed = true; a.cooldowns.stun = 3; d.stunned = true; logMessage(`${a.name} оглушил ${d.name}`); }
 
     function decrementCooldowns(unit) {
         for (let key in unit.cooldowns) { if (unit.cooldowns[key] > 0) unit.cooldowns[key]--; }
@@ -873,31 +872,113 @@
         if (gamePhase !== 'battle' || !activeUnit) return;
         let ai = activeUnit;
         let enemies = units.filter(u => u.team === 'player' && u.isAlive);
+        let allies = units.filter(u => u.team === 'enemy' && u.isAlive);
         if (enemies.length === 0) return;
 
-        let target = enemies[0], minDist = Infinity;
-        enemies.forEach(e => {
-            let d = Math.max(Math.abs(e.r - ai.r), Math.abs(e.c - ai.c));
-            if (d < minDist) { minDist = d; target = e; }
-        });
+        let actionDone = false;
 
-        let effRange = getUnitEffectiveRange(ai);
-
-        if (minDist <= effRange && ai.buffs.noAttackDuration === 0) {
-            executeAttack(ai, target);
-            endCurrentUnitTurn();
-        } else {
-            let validCells = getValidMoveCells(ai);
-            let bestCell = { r: ai.r, c: ai.c }, bestDist = minDist;
-            validCells.forEach(pos => {
-                let dTo = Math.max(Math.abs(target.r - pos.r), Math.abs(target.c - pos.c));
-                if (dTo < bestDist) { bestDist = dTo; bestCell = pos; }
-            });
-            ai.r = bestCell.r; ai.c = bestCell.c;
-            ai.hasMoved = true;
-            renderBoard();
-            setTimeout(endCurrentUnitTurn, 700);
+        function getInRange(list, maxDist) {
+            return list.filter(u => Math.max(Math.abs(u.r - ai.r), Math.abs(u.c - ai.c)) <= maxDist);
         }
+
+        if (ai.typeKey === 'swordsman') {
+            if (!actionDone && ai.cooldowns.stun === 0) {
+                let targets = getInRange(enemies, 1).filter(e => !e.stunned);
+                if (targets.length > 0) { executeStun(ai, targets[0]); actionDone = true; }
+            }
+            if (!actionDone && ai.cooldowns.heal === 0) {
+                let targets = getInRange(allies, 2).filter(a => a.hp < a.maxHp * 0.6 && a.buffs.regenDuration === 0);
+                if (targets.length > 0) { executeHeal(ai, targets[0]); actionDone = true; }
+            }
+            if (!actionDone && ai.cooldowns.buff === 0) {
+                let targets = getInRange(allies, 2).filter(a => a.buffs.customDefenseDuration === 0);
+                if (targets.length > 0) { executeReinforce(ai, targets[0]); actionDone = true; }
+            }
+            if (!actionDone && ai.cooldowns.rage === 0) {
+                let targets = getInRange(allies, 2).filter(a => a.buffs.rageDuration === 0);
+                if (targets.length > 0) { executeRage(ai, targets[0]); actionDone = true; }
+            }
+            if (!actionDone && ai.cooldowns.spear === 0) {
+                let targets = getInRange(enemies, 3);
+                if (targets.length > 0) { executeSpear(ai, targets[0]); actionDone = true; }
+            }
+        }
+
+        if (ai.typeKey === 'archer') {
+            if (!actionDone && ai.cooldowns.doubleArrow === 0 && ai.buffs.noAttackDuration === 0) {
+                let targets = getInRange(enemies, getUnitEffectiveRange(ai));
+                if (targets.length > 0) {
+                    ai.cooldowns.doubleArrow = 10;
+                    logMessage(`${ai.name} (ИИ) использует Двойную стрелу!`);
+                    executeAttack(ai, targets[0]);
+                    if (targets.length > 1 && targets[1].isAlive) executeAttack(ai, targets[1]);
+                    else if (targets[0].isAlive) executeAttack(ai, targets[0]);
+                    actionDone = true;
+                }
+            }
+            if (!actionDone && ai.cooldowns.bullseye === 0 && ai.buffs.bullseyeCharges === 0) {
+                ai.buffs.bullseyeCharges = 2;
+                ai.cooldowns.bullseye = 10;
+                ai.hasActed = true;
+                logMessage(`${ai.name} (ИИ) активировал "В яблочко"!`);
+                actionDone = true;
+            }
+            if (!actionDone && ai.cooldowns.kneeShot === 0 && !ai.buffs.kneeShotCharge) {
+                let targets = getInRange(enemies, getUnitEffectiveRange(ai));
+                if (targets.length > 0) {
+                    ai.buffs.kneeShotCharge = true;
+                    ai.cooldowns.kneeShot = 10;
+                    logMessage(`${ai.name} (ИИ) готовит выстрел В колено!`);
+                    executeAttack(ai, targets[0]);
+                    actionDone = true;
+                }
+            }
+            if (!actionDone && ai.cooldowns.fireArrow === 0 && ai.buffs.fireArrowCharges === 0) {
+                ai.buffs.fireArrowCharges = 3;
+                ai.cooldowns.fireArrow = 10;
+                ai.hasActed = true;
+                logMessage(`${ai.name} (ИИ) заготовил Огненные стрелы!`);
+                actionDone = true;
+            }
+        }
+
+        if (!actionDone) {
+            let target = enemies[0], minDist = Infinity;
+            enemies.forEach(e => {
+                let d = Math.max(Math.abs(e.r - ai.r), Math.abs(e.c - ai.c));
+                if (d < minDist) { minDist = d; target = e; }
+            });
+
+            let effRange = getUnitEffectiveRange(ai);
+
+            if (minDist <= effRange && ai.buffs.noAttackDuration === 0) {
+                executeAttack(ai, target);
+                endCurrentUnitTurn();
+                return;
+            } else {
+                let validCells = getValidMoveCells(ai);
+                let bestCell = { r: ai.r, c: ai.c }, bestDist = minDist;
+                validCells.forEach(pos => {
+                    let dTo = Math.max(Math.abs(target.r - pos.r), Math.abs(target.c - pos.c));
+                    if (dTo < bestDist) { bestDist = dTo; bestCell = pos; }
+                });
+                ai.r = bestCell.r; ai.c = bestCell.c;
+                ai.hasMoved = true;
+                renderBoard();
+
+                let newDist = Math.max(Math.abs(target.r - ai.r), Math.abs(target.c - ai.c));
+                if (newDist <= effRange && ai.buffs.noAttackDuration === 0 && !ai.hasActed) {
+                    setTimeout(() => {
+                        executeAttack(ai, target);
+                        endCurrentUnitTurn();
+                    }, 400);
+                    return;
+                }
+            }
+        }
+
+        renderBoard();
+        setTimeout(endCurrentUnitTurn, 700);
     }
 
     function updateSidebar() {
@@ -906,6 +987,9 @@
         if (!u) { info.innerText = "Кликните на юнита"; abSec.style.display = 'none'; return; }
 
         let effects = [];
+        if (u.buffs.fireArrowCharges > 0) effects.push(`🔥Огонь (${u.buffs.fireArrowCharges})`);
+        if (u.buffs.bullseyeCharges > 0) effects.push(`🎯Яблочко (${u.buffs.bullseyeCharges})`);
+        if (u.buffs.kneeShotCharge) effects.push(`🦵В колено`);
         if (u.buffs.noAttackDuration > 0) effects.push(`Не атака (${u.buffs.noAttackDuration}х)`);
         if (u.buffs.regenDuration > 0) effects.push(`Лечение (${u.buffs.regenDuration}х)`);
         if (u.buffs.rageDuration > 0) effects.push(`Ярость (${u.buffs.rageDuration}х)`);
@@ -914,7 +998,7 @@
         if (u.dotBurn.length > 0) effects.push(`Горение (${u.dotBurn.length})`);
         if (u.stunned) effects.push(`Оглушен`);
 
-        let effStr = effects.length > 0 ? `<br><span style="color:#2ecc71">Эффекты: ${effects.join(', ')}</span>` : '';
+        let effStr = effects.length > 0 ? `<br><span style="color:#2ecc71">Заряды/Эффекты: ${effects.join(', ')}</span>` : '';
         let passivesStr = u.passivesList.join('<br>');
 
         info.innerHTML = `
