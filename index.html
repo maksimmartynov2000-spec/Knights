@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Цитадели: Квадратные Радиусы</title>
+    <title>Цитадели: Динамическая Инициатива</title>
     <style>
         :root {
             --bg-main: #090807;
@@ -22,10 +22,64 @@
         .res-bar { display: flex; justify-content: space-around; background: #000; border: 1px solid var(--border-dark); padding: 4px; border-radius: 5px; font-size: 9.5px; font-weight: bold; }
         .gold { color: #f1c40f; } .stone { color: #95a5a6; }
 
-        #timeline-bar { background: #080604; border: 1px solid var(--border-gold); padding: 3px; border-radius: 5px; display: flex; gap: 4px; overflow-x: auto; align-items: center; min-height: 38px; }
-        .timeline-item { background: #1a130d; border: 1px solid var(--border-dark); border-radius: 4px; padding: 2px 4px; display: flex; flex-direction: column; align-items: center; font-size: 8px; min-width: 36px; flex-shrink: 0; }
-        .timeline-item.active { border-color: #2ecc71; background: #0e2a14; box-shadow: 0 0 6px #2ecc71; }
-        .timeline-item.enemy { border-color: #7f1d1d; }
+        /* УЛУЧШЕННАЯ ДИНАМИЧЕСКАЯ ЛЕНТА ИНИЦИАТИВЫ */
+        .timeline-container {
+            background: #050403;
+            border: 1px solid var(--border-gold);
+            padding: 4px;
+            border-radius: 6px;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .timeline-title {
+            font-size: 7.5px;
+            color: var(--text-gold);
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        #timeline-bar {
+            display: flex;
+            gap: 5px;
+            overflow-x: auto;
+            align-items: center;
+            min-height: 42px;
+            padding-bottom: 2px;
+        }
+        .timeline-item {
+            background: #15100b;
+            border: 1px solid var(--border-dark);
+            border-radius: 4px;
+            padding: 2px 4px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-size: 8px;
+            min-width: 40px;
+            flex-shrink: 0;
+            position: relative;
+            transition: all 0.2s ease;
+        }
+        .timeline-item.player { border-top: 2px solid #3498db; }
+        .timeline-item.enemy { border-top: 2px solid #e74c3c; }
+        
+        .timeline-item.now {
+            border: 1.5px solid #2ecc71;
+            background: #0a2912;
+            box-shadow: 0 0 8px rgba(46, 204, 113, 0.6);
+            transform: scale(1.05);
+        }
+        .timeline-badge {
+            font-size: 6px;
+            font-weight: bold;
+            padding: 1px 3px;
+            border-radius: 2px;
+            margin-top: 1px;
+        }
+        .timeline-item.player .timeline-badge { background: #1b3a4b; color: #3498db; }
+        .timeline-item.enemy .timeline-badge { background: #3a1b1b; color: #e74c3c; }
+        .timeline-item.now .timeline-badge { background: #2ecc71; color: #000; }
 
         #board { display: grid; grid-template-columns: repeat(13, minmax(0, 1fr)); gap: 1px; background: #040302; padding: 2px; border: 1.5px solid var(--border-dark); border-radius: 5px; width: 100%; }
         .cell { aspect-ratio: 1 / 1; background: #15100b; border: 1px solid #221810; border-radius: 2px; display: flex; flex-direction: column; justify-content: space-between; align-items: center; position: relative; cursor: pointer; overflow: hidden; }
@@ -59,7 +113,7 @@
 </head>
 <body>
 
-    <h1>🏰 ЦИТАДЕЛИ: КВАДРАТНЫЕ РАДИУСЫ</h1>
+    <h1>🏰 ЦИТАДЕЛИ: ДИНАМИЧЕСКАЯ ИНИЦИАТИВА</h1>
 
     <div class="wrapper">
         <div class="res-bar">
@@ -74,7 +128,12 @@
             <button class="btn btn-skip" id="btn-end-turn" onclick="passTurn()">ЗАВЕРШИТЬ ХОД ⏩</button>
         </div>
 
-        <div id="timeline-bar"></div>
+        <!-- ДИНАМИЧЕСКАЯ ЛЕНТА ИНИЦИАТИВЫ -->
+        <div class="timeline-container">
+            <div class="timeline-title">⚔️ Очередность следующих ходов:</div>
+            <div id="timeline-bar"></div>
+        </div>
+
         <div id="board"></div>
         <div id="log-box"></div>
 
@@ -121,12 +180,11 @@
         let enemyGold = 150, enemyStone = 100;
         let units = [];
         let activeUnit = null;
-        let inspectedUnit = null; // Просматриваемый юнит
+        let inspectedUnit = null;
         let selectedShopKey = null;
         let selectedSkillMode = null;
         let isBuildPhase = false;
 
-        // Чебышёвская метрика (Квадратный радиус)
         function getDistance(x1, y1, x2, y2) {
             return Math.max(Math.abs(x1 - x2), Math.abs(y1 - y2));
         }
@@ -175,6 +233,30 @@
         }
 
         function getUnitAt(x, y) { return units.find(u => u.x === x && u.y === y && !u.typeKey.startsWith('citadel')); }
+
+        // СИМУЛЯЦИЯ ОЧЕРЕДИ ДЛЯ ДИНАМИЧЕСКОЙ ЛЕНТЫ
+        function calculateTurnOrder(count = 10) {
+            const activeUnits = units.filter(u => UNITS_DB[u.typeKey].init > 0);
+            if (activeUnits.length === 0) return [];
+
+            // Клонируем список с их задержками
+            let simUnits = activeUnits.map(u => ({
+                unit: u,
+                delay: u.delay
+            }));
+
+            let order = [];
+            for (let i = 0; i < count; i++) {
+                simUnits.sort((a, b) => a.delay - b.delay || UNITS_DB[b.unit.typeKey].init - UNITS_DB[a.unit.typeKey].init);
+                let current = simUnits[0];
+                order.push({ unit: current.unit, isCurrent: i === 0 });
+                
+                // Моделируем продвижение очереди после хода
+                let initVal = UNITS_DB[current.unit.typeKey].init;
+                current.delay += (100 / initVal);
+            }
+            return order;
+        }
 
         function processNextTurn() {
             const activeUnits = units.filter(u => UNITS_DB[u.typeKey].init > 0);
@@ -272,7 +354,6 @@
                 return;
             }
 
-            // ПРИМЕНЕНИЕ СКИЛЛА
             if (selectedSkillMode) {
                 const skRange = selectedSkillMode.range || 1;
                 const dist = getDistance(activeUnit.x, activeUnit.y, x, y);
@@ -294,7 +375,6 @@
                 return;
             }
 
-            // АТАКА ЦИТАДЕЛИ ВРАГА
             if (isCitadelCell(x, y, ENEMY_CITADEL)) {
                 if (canTarget(activeUnit, x, y)) {
                     attackCitadel(activeUnit, ENEMY_CITADEL);
@@ -303,7 +383,6 @@
                 }
             }
 
-            // АТАКА / ОСМОТР ЮНИТА
             if (clickedUnit) {
                 if (clickedUnit.team === 'enemy') {
                     if (canTarget(activeUnit, x, y)) {
@@ -323,7 +402,6 @@
                 }
             }
 
-            // ПЕРЕМЕЩЕНИЕ
             if (!clickedUnit && !isCitadelCell(x, y, PLAYER_CITADEL) && !isCitadelCell(x, y, ENEMY_CITADEL)) {
                 const reachable = getReachableCells(activeUnit);
                 if (reachable.some(c => c.x === x && c.y === y)) {
@@ -375,6 +453,7 @@
             log(`${team === 'player' ? 'Вы наняли' : 'Враг нанял'}: ${db.name}`, team === 'player' ? 'log-skill' : 'log-hit');
             selectedShopKey = null;
             renderShop();
+            renderTimeline();
             render();
         }
 
@@ -397,6 +476,7 @@
             log(`✨ ${oldName} был улучшен до: ${newDb.name}!`, 'log-skill');
             selectedShopKey = null;
             renderShop();
+            renderTimeline();
             render();
         }
 
@@ -569,7 +649,6 @@
             return getDistance(attacker.x, attacker.y, tx, ty) <= db.range;
         }
 
-        // Квадратный радиус перемещения
         function getReachableCells(unit) {
             const db = UNITS_DB[unit.typeKey];
             if (db.move === 0) return [];
@@ -672,16 +751,37 @@
             });
         }
 
+        // РЕНДЕР ДИНАМИЧЕСКОЙ ЛЕНТЫ
         function renderTimeline() {
             const bar = document.getElementById('timeline-bar');
             bar.innerHTML = '';
-            const activeUnits = units.filter(u => UNITS_DB[u.typeKey].init > 0);
-            activeUnits.forEach((u, idx) => {
+
+            const turnQueue = calculateTurnOrder(12);
+
+            turnQueue.forEach((item, idx) => {
+                const u = item.unit;
                 const db = UNITS_DB[u.typeKey];
-                const item = document.createElement('div');
-                item.className = `timeline-item ${idx === 0 ? 'active' : ''} ${u.team === 'enemy' ? 'enemy' : ''}`;
-                item.innerHTML = `<div>${db.icon}</div><b>⚡${db.init}</b>`;
-                bar.appendChild(item);
+                
+                const el = document.createElement('div');
+                el.className = `timeline-item ${u.team} ${item.isCurrent ? 'now' : ''}`;
+                
+                let badgeText = item.isCurrent ? 'СЕЙЧАС' : `#${idx + 1}`;
+                let teamLabel = u.team === 'player' ? 'Вы' : 'Враг';
+
+                el.innerHTML = `
+                    <div style="font-size:11px">${db.icon}</div>
+                    <b style="font-size:7.5px">${db.name}</b>
+                    <div class="timeline-badge">${badgeText}</div>
+                `;
+
+                // При нажатии на иконку в ленте - подсвечиваем юнита
+                el.onclick = () => {
+                    inspectedUnit = u;
+                    showUnitDetails(u);
+                    render();
+                };
+
+                bar.appendChild(el);
             });
         }
 
@@ -694,12 +794,10 @@
                 if (isCitadelCell(x, y, PLAYER_CITADEL)) c.classList.add('citadel-cell');
                 if (isCitadelCell(x, y, ENEMY_CITADEL)) c.classList.add('citadel-enemy');
 
-                // Подсветка найма
                 if (isBuildPhase && selectedShopKey && !UNITS_DB[selectedShopKey].req && isAdjacentToCitadel(x, y, PLAYER_CITADEL) && !getUnitAt(x, y)) {
                     c.classList.add('reachable');
                 }
 
-                // Подсветка грейда
                 if (isBuildPhase && selectedShopKey && UNITS_DB[selectedShopKey].req) {
                     const u = getUnitAt(x, y);
                     if (u && u.team === 'player' && u.typeKey === UNITS_DB[selectedShopKey].req) {
@@ -708,7 +806,6 @@
                 }
             });
 
-            // 1. ПОДСВЕТКА РАДИУСА ВЫБРАННОГО СКИЛЛА (Квадратная красная зона)
             if (selectedSkillMode && activeUnit) {
                 const skRange = selectedSkillMode.range || 1;
                 for (let dy = -skRange; dy <= skRange; dy++) {
@@ -723,9 +820,7 @@
                     }
                 }
             } 
-            // 2. ОБОЗРЕНИЕ И ПОДСВЕТКА ХОДА / РАДИУСА АТАКИ ДАЛЬНОБОЙНОГО ЮНИТА (Своего или Чужого)
             else if (!isBuildPhase) {
-                // Если ходит ваш юнит
                 if (activeUnit && activeUnit.team === 'player' && !activeUnit.typeKey.startsWith('citadel')) {
                     const reachable = getReachableCells(activeUnit);
                     reachable.forEach(rc => {
@@ -734,7 +829,6 @@
                     });
                 }
 
-                // Подсветка зоны атаки любого выбранного дальнобойного юнита (range > 1)
                 const targetDisplayUnit = inspectedUnit || activeUnit;
                 if (targetDisplayUnit && !targetDisplayUnit.typeKey.startsWith('citadel')) {
                     const uDb = UNITS_DB[targetDisplayUnit.typeKey];
