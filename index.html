@@ -26,14 +26,10 @@
         .timeline-item { background: #1a130d; border: 1px solid var(--border-dark); border-radius: 4px; padding: 2px 4px; display: flex; flex-direction: column; align-items: center; font-size: 8px; min-width: 36px; flex-shrink: 0; }
         .timeline-item.active { border-color: #2ecc71; background: #0e2a14; box-shadow: 0 0 6px #2ecc71; }
         .timeline-item.enemy { border-color: #7f1d1d; }
-        .timeline-item.citadel { border-color: #9b59b6; background: #23122c; }
 
         #board { display: grid; grid-template-columns: repeat(13, minmax(0, 1fr)); gap: 1px; background: #040302; padding: 2px; border: 1.5px solid var(--border-dark); border-radius: 5px; width: 100%; }
         .cell { aspect-ratio: 1 / 1; background: #15100b; border: 1px solid #221810; border-radius: 2px; display: flex; flex-direction: column; justify-content: space-between; align-items: center; position: relative; cursor: pointer; overflow: hidden; }
         .cell.reachable { background: #112818; border-color: #2ecc71; }
-        .cell.attackable { background: #3a1212; border-color: #e74c3c; }
-        .cell.skill-target { background: #4a2800; border-color: #f39c12; }
-        .cell.active-cell { outline: 2px solid var(--text-gold); z-index: 2; }
         .cell.citadel-cell { background: #2c1e12; border-color: #8e44ad; }
         .cell.citadel-enemy { background: #3a121d; border-color: #c0392b; }
 
@@ -46,20 +42,19 @@
         .log-hit { color: #e74c3c; } .log-skill { color: #f1c40f; } .log-move { color: #3498db; } .log-heal { color: #2ecc71; }
 
         .panel-box { background: #0d0a07; border: 1px solid var(--border-dark); border-radius: 5px; padding: 4px; }
-        .shop-grid { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 2px; margin-top: 4px; }
+        .shop-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 2px; margin-top: 4px; }
         .shop-btn { background: #1a130d; border: 1px solid var(--border-dark); border-radius: 3px; padding: 2px 1px; display: flex; flex-direction: column; align-items: center; cursor: pointer; font-size: 7px; color: #ccc; }
         .shop-btn.selected { border-color: #2ecc71; background: #102414; }
 
         .skills-container { display: flex; gap: 4px; margin-top: 4px; flex-wrap: wrap; }
         .btn-skill { background: linear-gradient(180deg, #d35400 0%, #a04000 100%); border: 1px solid #f39c12; color: #fff; font-weight: bold; padding: 3px 6px; border-radius: 3px; cursor: pointer; font-size: 8px; }
-        .btn-skill:hover { background: #e67e22; }
         .btn { background: linear-gradient(180deg, #c89b3c 0%, #8a651e 100%); border: none; color: #000; font-weight: bold; padding: 4px 6px; border-radius: 3px; cursor: pointer; font-size: 8.5px; }
         .btn-skip { background: linear-gradient(180deg, #7f8c8d 0%, #34495e 100%); color: #fff; }
     </style>
 </head>
 <body>
 
-    <h1>🏰 ЦИТАДЕЛИ: БАЛАНС И СПОСОБНОСТИ</h1>
+    <h1>🏰 ЦИТАДЕЛИ: ПОЛНЫЙ БАЛАНС</h1>
 
     <div class="wrapper">
         <div class="res-bar">
@@ -80,14 +75,14 @@
 
         <div class="panel-box">
             <div id="unit-details" style="font-size: 8.5px; min-height: 38px;">
-                Выберите юнита на поле для просмотра его активных способностей.
+                Выберите юнита на поле для просмотра информации.
             </div>
             <div id="skills-panel" class="skills-container"></div>
         </div>
 
         <div class="panel-box">
             <div style="font-size:8.5px; color:var(--text-gold); font-weight:bold;">
-                Найм Юнитов (Нажмите на тип, затем на клетку у Цитадели)
+                Найм (Нажмите на юнита, затем на подсвеченную клетку у Цитадели)
             </div>
             <div class="shop-grid" id="shop-list"></div>
         </div>
@@ -96,56 +91,65 @@
     <script>
         const GRID_W = 13, GRID_H = 15;
 
+        // ПОЛНАЯ БАЗА ДАННЫХ ВСЕХ ЮНИТОВ
         const UNITS_DB = {
-            citadel_player: { name:'Цитадель', icon:'🏰', hp:500, dmg:0, move:0, range:0, init:20, desc:'Приносит +40💰 и +25🪨 в свой ход (⚡20).' },
+            citadel_player: { name:'Ваша Цитадель', icon:'🏰', hp:500, dmg:0, move:0, range:0, init:20, desc:'Приносит +40💰 и +25🪨 за ход.' },
             citadel_enemy:  { name:'Цитадель Врага', icon:'🏰', hp:500, dmg:0, move:0, range:0, init:20, desc:'Приносит ресурсы врагу.' },
 
             warrior: {
-                name:'Воин', icon:'⚔️', costG:40, costS:0, hp:55, dmg:12, move:2, range:1, init:10, type:'Пехота',
-                desc:'Универсальный пехотинец.',
-                skills: [
-                    { id:'javelin', name:'🎯 Дротик', desc:'Урон на 3 кл.', range:3, dmgMult:1.2, isFree:false },
-                    { id:'cleave', name:'⚔️ Сквозной удар', desc:'Урон цели и врагу позади', range:1, dmgMult:1.0, isFree:false }
-                ]
+                name:'Воин', icon:'⚔️', costG:40, costS:0, hp:55, dmg:12, move:2, range:1, init:10,
+                desc:'Базовый пехотинец.',
+                skills: [{ id:'javelin', name:'🎯 Дротик', dmgMult:1.2, isFree:false }]
             },
             knight: {
-                name:'Рыцарь', icon:'🛡️', costG:45, costS:10, hp:85, dmg:15, move:2, range:1, init:9, type:'Пехота',
-                desc:'Тяжелая броня и контроль.',
-                skills: [
-                    { id:'defend', name:'🛡️ Глухая оборона', desc:'-50% урона до сл. хода', range:0, isFree:false },
-                    { id:'bash', name:'💥 Оглушение', desc:'80% урона и -5⚡ врагу', range:1, dmgMult:0.8, isFree:false }
-                ]
+                name:'Рыцарь', icon:'🛡️', costG:45, costS:10, hp:85, dmg:15, move:2, range:1, init:9,
+                desc:'Танк с защитной стойкой.',
+                skills: [{ id:'defend', name:'🛡️ Глухая оборона', isFree:false }]
+            },
+            swordsman: {
+                name:'Мечник', icon:'🗡️', costG:45, costS:0, hp:60, dmg:14, move:2, range:1, init:11,
+                desc:'Атакующий пехотинец с критом.',
+                skills: [{ id:'crit', name:'⚔️ Мощный выпад', dmgMult:1.6, isFree:false }]
             },
             archer: {
-                name:'Лучник', icon:'🏹', costG:50, costS:0, hp:35, dmg:12, move:2, range:3, init:14, type:'Стрелок',
-                desc:'Мобильный дальний бой.',
-                skills: [
-                    { id:'power_shot', name:'🎯 Выстрел +50%', desc:'Урон на 4 кл.', range:4, dmgMult:1.5, isFree:false },
-                    { id:'step_back', name:'💨 Отскок', desc:'Откат назад на 1 кл.', range:0, isFree:true }
-                ]
+                name:'Лучник', icon:'🏹', costG:50, costS:0, hp:35, dmg:12, move:2, range:3, init:14,
+                desc:'Мобильный стрелок.',
+                skills: [{ id:'power_shot', name:'🎯 Дальний выстрел', dmgMult:1.4, isFree:false }]
+            },
+            sniper: {
+                name:'Снайпер', icon:'🎯', costG:60, costS:15, hp:45, dmg:18, move:2, range:4, init:15,
+                desc:'Дальнобойный стрелок с высоким уроном.',
+                skills: [{ id:'headshot', name:'💥 Прицельный выстрел', dmgMult:1.5, isFree:false }]
             },
             rider: {
-                name:'Всадник', icon:'🐎', costG:65, costS:0, hp:65, dmg:16, move:4, range:1, init:17, type:'Кавалерия',
-                desc:'Высокая скорость фланговых атак.',
-                skills: [
-                    { id:'charge', name:'⚡ Таранный разгон', desc:'+10% урона за клетку шага', range:1, dmgMult:1.0, isFree:false },
-                    { id:'hit_run', name:'🐎 Наскок и отход', desc:'Атака и отскок на 2 кл.', range:1, dmgMult:1.0, isFree:false }
-                ]
+                name:'Всадник', icon:'🐎', costG:65, costS:0, hp:65, dmg:16, move:4, range:1, init:17,
+                desc:'Быстрый фланговый юнит.',
+                skills: [{ id:'charge', name:'⚡ Наскок', dmgMult:1.3, isFree:false }]
+            },
+            cavalry: {
+                name:'Кавалерист', icon:'♞', costG:80, costS:20, hp:95, dmg:22, move:4, range:1, init:18,
+                desc:'Тяжелая и быстрая кавалерия.',
+                skills: [{ id:'breakthrough', name:'💥 Прорыв', dmgMult:1.4, isFree:false }]
             },
             ballista: {
-                name:'Баллиста', icon:'🏹', costG:70, costS:35, hp:50, dmg:16, move:1, range:3, init:6, type:'Осада',
-                desc:'Уничтожитель построек.',
-                skills: [
-                    { id:'pierce', name:'Залп по площади', desc:'Урон цели и соседним', range:3, dmgMult:1.0, isFree:false }
-                ]
+                name:'Баллиста', icon:'🏹', costG:70, costS:35, hp:50, dmg:16, move:1, range:3, init:6,
+                desc:'Осада с хорошим уроном.',
+                skills: [{ id:'pierce', name:'Залп по броне', dmgMult:1.2, isFree:false }]
+            },
+            catapult: {
+                name:'Катапульта', icon:'☄️', costG:85, costS:50, hp:70, dmg:28, move:1, range:5, init:4,
+                desc:'Мощнейшее осадное орудие.',
+                skills: [{ id:'boulder', name:'☄️ Огненный валун', dmgMult:1.5, isFree:false }]
             },
             vampire: {
-                name:'Вампир', icon:'🧛', costG:90, costS:0, hp:70, dmg:16, move:3, range:1, init:16, type:'Мистик',
-                desc:'Исцеляется от урона (60%).',
-                skills: [
-                    { id:'vamp_bite', name:'🩸 Укус', desc:'Атака + Исцеление', range:1, dmgMult:1.2, isFree:false },
-                    { id:'mist_tp', name:'🦇 Туманный Шаг', desc:'Телепорт к Цитадели', range:0, isFree:false }
-                ]
+                name:'Вампир', icon:'🧛', costG:90, costS:0, hp:70, dmg:16, move:3, range:1, init:16,
+                desc:'Восстанавливает HP при атаке.',
+                skills: [{ id:'vamp_bite', name:'🩸 Укус', dmgMult:1.2, isFree:false }]
+            },
+            elder_vampire: {
+                name:'Древний Вампир', icon:'🦇', costG:110, costS:30, hp:100, dmg:22, move:3, range:1, init:20,
+                desc:'Элитный мистик с высокой инициативой.',
+                skills: [{ id:'vamp_bite', name:'🩸 Жажда крови', dmgMult:1.4, isFree:false }]
             }
         };
 
@@ -163,11 +167,12 @@
             createBoard();
             renderShop();
 
-            units.push({ id: 'cit_p', team: 'player', typeKey: 'citadel_player', hp: 500, maxHp: 500, delay: 0 });
-            units.push({ id: 'cit_e', team: 'enemy', typeKey: 'citadel_enemy', hp: 500, maxHp: 500, delay: 0 });
+            // Добавляем Цитадели прямо в массив юнитов с координатами
+            units.push({ id: 'cit_p', team: 'player', typeKey: 'citadel_player', hp: 500, maxHp: 500, x: 0, y: 11, delay: 0 });
+            units.push({ id: 'cit_e', team: 'enemy', typeKey: 'citadel_enemy', hp: 500, maxHp: 500, x: 9, y: 0, delay: 0 });
 
             updateRes();
-            log("🎮 Битва началась! Нанимайте юнитов и используйте их способности.", "log-skill");
+            log("🎮 Игра началась! Нанимайте юнитов и нападайте.", "log-skill");
             processNextTurn();
         }
 
@@ -194,7 +199,7 @@
         }
 
         function isCitadelCell(x, y, cit) { return x >= cit.x && x < cit.x + cit.w && y >= cit.y && y < cit.y + cit.h; }
-        function getUnitAt(x, y) { return units.find(u => u.x === x && u.y === y); }
+        function getUnitAt(x, y) { return units.find(u => u.x === x && u.y === y && !u.typeKey.startsWith('citadel')); }
 
         function processNextTurn() {
             const activeUnits = units.filter(u => UNITS_DB[u.typeKey].init > 0);
@@ -308,15 +313,6 @@
                 return;
             }
 
-            if (skill.id === 'mist_tp') {
-                activeUnit.x = PLAYER_CITADEL.x + 4;
-                activeUnit.y = PLAYER_CITADEL.y;
-                log(`🦇 Вампир перенесся к своей Цитадели!`, 'log-skill');
-                render();
-                endAction(1.0);
-                return;
-            }
-
             if (targetUnit && targetUnit.team === 'enemy') {
                 let dmg = Math.round(uDb.dmg * (skill.dmgMult || 1.0));
                 targetUnit.hp -= dmg;
@@ -333,12 +329,7 @@
                     log(`💥 Враг уничтожен!`, 'log-hit');
                 }
 
-                if (skill.isFree) {
-                    selectedSkillMode = null;
-                    render();
-                } else {
-                    endAction(1.0);
-                }
+                endAction(1.0);
             }
         }
 
@@ -385,7 +376,7 @@
 
         function isAdjacentToCitadel(x, y, cit) {
             for (let cy = cit.y - 1; cy <= cit.y + cit.h; cy++) {
-                for (let cx = cit.x - 1; cx < cit.x + cit.w; cx++) {
+                for (let cx = cit.x - 1; cx <= cit.x + cit.w; cx++) {
                     if (Math.max(Math.abs(cx - x), Math.abs(cy - y)) <= 1 && !isCitadelCell(x, y, cit)) return true;
                 }
             }
@@ -417,7 +408,7 @@
 
         function runAITurn() {
             if (!activeUnit || activeUnit.team !== 'enemy') return;
-            const pUnits = units.filter(u => u.team === 'player' && u.x !== undefined);
+            const pUnits = units.filter(u => u.team === 'player' && u.x !== undefined && !u.typeKey.startsWith('citadel'));
             if (pUnits.length > 0) {
                 let target = pUnits[0];
                 if (canTarget(activeUnit, target.x, target.y)) {
@@ -442,7 +433,7 @@
                 db.skills.forEach(sk => {
                     const btn = document.createElement('button');
                     btn.className = 'btn-skill';
-                    btn.innerText = `${sk.name} ${sk.isFree ? '⚡[Бесплатно]' : ''}`;
+                    btn.innerText = `${sk.name}`;
                     btn.onclick = () => {
                         selectedSkillMode = sk;
                         log(`Выбран скилл: ${sk.name}. Нажмите на цель!`, 'log-skill');
@@ -459,7 +450,7 @@
                 const db = UNITS_DB[k];
                 const btn = document.createElement('div');
                 btn.className = `shop-btn ${selectedShopKey === k ? 'selected' : ''}`;
-                btn.onclick = () => { selectedShopKey = (selectedShopKey === k) ? null : k; renderShop(); };
+                btn.onclick = () => { selectedShopKey = (selectedShopKey === k) ? null : k; renderShop(); render(); };
                 btn.innerHTML = `<div style="font-size:11px">${db.icon}</div><div>${db.costG}💰</div>`;
                 list.appendChild(btn);
             });
@@ -482,10 +473,18 @@
             document.querySelectorAll('.cell').forEach(c => {
                 const x = parseInt(c.dataset.x), y = parseInt(c.dataset.y);
                 c.className = 'cell';
+
+                // Отрисовка зон Цитаделей
                 if (isCitadelCell(x, y, PLAYER_CITADEL)) c.classList.add('citadel-cell');
                 if (isCitadelCell(x, y, ENEMY_CITADEL)) c.classList.add('citadel-enemy');
+
+                // Подсветка клеток спавна при выборе юнита в магазине
+                if (selectedShopKey && isAdjacentToCitadel(x, y, PLAYER_CITADEL) && !getUnitAt(x, y)) {
+                    c.classList.add('reachable');
+                }
             });
 
+            // Подсветка доступных ходов для активного юнита
             if (activeUnit && activeUnit.team === 'player' && !activeUnit.typeKey.startsWith('citadel')) {
                 const reachable = getReachableCells(activeUnit);
                 reachable.forEach(rc => {
@@ -494,8 +493,9 @@
                 });
             }
 
+            // Отрисовка всех юнитов
             units.forEach(u => {
-                if (u.x !== undefined && u.y !== undefined) {
+                if (u.x !== undefined && u.y !== undefined && !u.typeKey.startsWith('citadel')) {
                     const c = document.querySelector(`.cell[data-x="${u.x}"][data-y="${u.y}"]`);
                     if (c) {
                         c.classList.add(u.team === 'player' ? 'player-unit' : 'enemy-unit');
@@ -503,6 +503,15 @@
                     }
                 }
             });
+        }
+
+        function log(text, className = '') {
+            const box = document.getElementById('log-box');
+            const entry = document.createElement('div');
+            if (className) entry.className = className;
+            entry.innerText = text;
+            box.appendChild(entry);
+            box.scrollTop = box.scrollHeight;
         }
 
         init();
