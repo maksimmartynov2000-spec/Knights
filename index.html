@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Цитадели: Пошаговый Баланс</title>
+    <title>Цитадели: Фазы и Баланс</title>
     <style>
         :root {
             --bg-main: #090807;
@@ -38,14 +38,14 @@
         .player-unit .unit-badge { color: #3498db; }
         .enemy-unit .unit-badge { color: #e74c3c; }
 
-        #log-box { width: 100%; height: 50px; background: #050403; border: 1px solid var(--border-dark); border-radius: 4px; padding: 3px 5px; overflow-y: auto; font-size: 8.5px; display: flex; flex-direction: column; gap: 1px; }
+        #log-box { width: 100%; height: 45px; background: #050403; border: 1px solid var(--border-dark); border-radius: 4px; padding: 3px 5px; overflow-y: auto; font-size: 8.5px; display: flex; flex-direction: column; gap: 1px; }
         .log-hit { color: #e74c3c; } .log-skill { color: #f1c40f; } .log-move { color: #3498db; } .log-heal { color: #2ecc71; }
 
-        .panel-box { background: #0d0a07; border: 1px solid var(--border-dark); border-radius: 5px; padding: 4px; }
-        .shop-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 2px; margin-top: 4px; }
-        .shop-btn { background: #1a130d; border: 1px solid var(--border-dark); border-radius: 3px; padding: 2px 1px; display: flex; flex-direction: column; align-items: center; cursor: pointer; font-size: 7px; color: #ccc; }
-        .shop-btn.selected { border-color: #2ecc71; background: #102414; }
-        .shop-btn.disabled { opacity: 0.3; cursor: not-allowed; }
+        .panel-box { background: #0d0a07; border: 1px solid var(--border-dark); border-radius: 5px; padding: 5px; }
+        .shop-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 3px; margin-top: 4px; }
+        .shop-btn { background: #1a130d; border: 1px solid var(--border-dark); border-radius: 4px; padding: 3px 1px; display: flex; flex-direction: column; align-items: center; cursor: pointer; font-size: 7.5px; color: #ccc; }
+        .shop-btn.selected { border-color: #2ecc71; background: #102414; box-shadow: 0 0 5px #2ecc71; }
+        .shop-btn.disabled { opacity: 0.35; }
 
         .skills-container { display: flex; gap: 4px; margin-top: 4px; flex-wrap: wrap; }
         .btn-skill { background: linear-gradient(180deg, #d35400 0%, #a04000 100%); border: 1px solid #f39c12; color: #fff; font-weight: bold; padding: 3px 6px; border-radius: 3px; cursor: pointer; font-size: 8px; }
@@ -55,7 +55,7 @@
 </head>
 <body>
 
-    <h1>🏰 ЦИТАДЕЛИ: ФАЗЫ И БАЛАНС</h1>
+    <h1>🏰 ЦИТАДЕЛИ: ПОЛНЫЙ ИНТЕРФЕЙС</h1>
 
     <div class="wrapper">
         <div class="res-bar">
@@ -74,13 +74,15 @@
         <div id="board"></div>
         <div id="log-box"></div>
 
+        <!-- ИНФОРМАЦИОННАЯ ПАНЕЛЬ -->
         <div class="panel-box">
-            <div id="unit-details" style="font-size: 8.5px; min-height: 38px;">
-                Выберите юнита на поле для просмотра информации.
+            <div id="unit-details" style="font-size: 8.5px; min-height: 42px; line-height: 1.3;">
+                Нажмите на любого юнита в магазине или на поле для просмотра полного описания.
             </div>
             <div id="skills-panel" class="skills-container"></div>
         </div>
 
+        <!-- МАГАЗИН -->
         <div class="panel-box">
             <div id="shop-title" style="font-size:8.5px; color:var(--text-gold); font-weight:bold;">
                 🔒 НАЙМ ДОСТУПЕН ТОЛЬКО В ХОД ЦИТАДЕЛИ
@@ -93,24 +95,21 @@
         const GRID_W = 13, GRID_H = 15;
 
         const UNITS_DB = {
-            citadel_player: { name:'Ваша Цитадель', icon:'🏰', hp:500, dmg:0, move:0, range:0, init:20, desc:'Приносит +40💰 и +25🪨. Фаза строительства.' },
+            citadel_player: { name:'Ваша Цитадель', icon:'🏰', hp:500, dmg:0, move:0, range:0, init:20, desc:'Приносит +40💰 и +25🪨 за ход. В этот ход доступен найм.' },
             citadel_enemy:  { name:'Цитадель Врага', icon:'🏰', hp:500, dmg:0, move:0, range:0, init:20, desc:'Приносит ресурсы врагу.' },
 
-            // Базовые юниты (доступны всегда)
-            warrior: { name:'Воин', icon:'⚔️', costG:40, costS:0, hp:55, dmg:12, move:2, range:1, init:10, req: null, desc:'Базовый пехотинец.', skills: [{ id:'javelin', name:'🎯 Дротик', dmgMult:1.2 }] },
-            archer: { name:'Лучник', icon:'🏹', costG:50, costS:0, hp:35, dmg:12, move:2, range:3, init:14, req: null, desc:'Мобильный стрелок.', skills: [{ id:'power_shot', name:'🎯 Дальний выстрел', dmgMult:1.4 }] },
-            rider: { name:'Всадник', icon:'🐎', costG:65, costS:0, hp:65, dmg:16, move:4, range:1, init:17, req: null, desc:'Быстрый фланговый юнит.', skills: [{ id:'charge', name:'⚡ Наскок', dmgMult:1.3 }] },
-            vampire: { name:'Вампир', icon:'🧛', costG:90, costS:10, hp:70, dmg:16, move:3, range:1, init:16, req: null, limit: 2, desc:'Восстанавливает HP (лимит 2 на поле).', skills: [{ id:'vamp_bite', name:'🩸 Укус', dmgMult:1.2 }] },
+            warrior: { name:'Воин', icon:'⚔️', costG:40, costS:0, hp:55, dmg:12, move:2, range:1, init:10, req: null, desc:'Базовый пехотинец ближнего боя.', skills: [{ id:'javelin', name:'🎯 Дротик', dmgMult:1.2 }] },
+            archer: { name:'Лучник', icon:'🏹', costG:50, costS:0, hp:35, dmg:12, move:2, range:3, init:14, req: null, desc:'Мобильный стрелок с хорошей инициативой.', skills: [{ id:'power_shot', name:'🎯 Дальний выстрел', dmgMult:1.4 }] },
+            rider: { name:'Всадник', icon:'🐎', costG:65, costS:0, hp:65, dmg:16, move:4, range:1, init:17, req: null, desc:'Быстрый кавалерист с высоким ходом.', skills: [{ id:'charge', name:'⚡ Наскок', dmgMult:1.3 }] },
+            vampire: { name:'Вампир', icon:'🧛', costG:90, costS:10, hp:70, dmg:16, move:3, range:1, init:16, req: null, limit: 2, desc:'Восстанавливает HP от нанесенного урона. (Макс. 2 на поле)', skills: [{ id:'vamp_bite', name:'🩸 Укус', dmgMult:1.2 }] },
 
-            // Продвинутые юниты (требуют наличии Базовых или ограничение)
-            knight: { name:'Рыцарь', icon:'🛡️', costG:55, costS:15, hp:85, dmg:15, move:2, range:1, init:9, req: 'warrior', desc:'Танк (требует Воина на поле).', skills: [{ id:'defend', name:'🛡️ Оборона' }] },
-            sniper: { name:'Снайпер', icon:'🎯', costG:65, costS:20, hp:45, dmg:18, move:2, range:4, init:15, req: 'archer', desc:'Дальнобойный (требует Лучника).', skills: [{ id:'headshot', name:'💥 Точный выстрел', dmgMult:1.5 }] },
-            cavalry: { name:'Кавалерист', icon:'♞', costG:85, costS:25, hp:95, dmg:22, move:4, range:1, init:18, req: 'rider', desc:'Тяжелая кавалерия (требует Всадника).', skills: [{ id:'breakthrough', name:'💥 Прорыв', dmgMult:1.4 }] },
+            knight: { name:'Рыцарь', icon:'🛡️', costG:55, costS:15, hp:85, dmg:15, move:2, range:1, init:9, req: 'warrior', desc:'Тяжелый танк. Требуется Воин на поле.', skills: [{ id:'defend', name:'🛡️ Оборона' }] },
+            sniper: { name:'Снайпер', icon:'🎯', costG:65, costS:20, hp:45, dmg:18, move:2, range:4, init:15, req: 'archer', desc:'Дальнобойный мастер. Требуется Лучник на поле.', skills: [{ id:'headshot', name:'💥 Точный выстрел', dmgMult:1.5 }] },
+            cavalry: { name:'Кавалерист', icon:'♞', costG:85, costS:25, hp:95, dmg:22, move:4, range:1, init:18, req: 'rider', desc:'Мощная кавалерия. Требуется Всадник на поле.', skills: [{ id:'breakthrough', name:'💥 Прорыв', dmgMult:1.4 }] },
             
-            // Элитные и Осадные юниты
-            ballista: { name:'Баллиста', icon:'🏹', costG:75, costS:40, hp:50, dmg:18, move:1, range:3, init:6, req: null, desc:'Осадное орудие.', skills: [{ id:'pierce', name:'Залп по броне', dmgMult:1.2 }] },
-            catapult: { name:'Катапульта', icon:'☄️', costG:95, costS:60, hp:70, dmg:30, move:1, range:5, init:4, req: 'ballista', desc:'Дальнобойная осада (требует Баллисту).', skills: [{ id:'boulder', name:'☄️ Валун', dmgMult:1.5 }] },
-            elder_vampire: { name:'Древний Вампир', icon:'🦇', costG:130, costS:50, hp:100, dmg:24, move:3, range:1, init:20, req: 'vampire', limit: 1, desc:'Элитный мистик (требует Вампира, лимит 1).', skills: [{ id:'vamp_bite', name:'🩸 Жажда крови', dmgMult:1.4 }] }
+            ballista: { name:'Баллиста', icon:'🏹', costG:75, costS:40, hp:50, dmg:18, move:1, range:3, init:6, req: null, desc:'Осадная машина.', skills: [{ id:'pierce', name:'Залп по броне', dmgMult:1.2 }] },
+            catapult: { name:'Катапульта', icon:'☄️', costG:95, costS:60, hp:70, dmg:30, move:1, range:5, init:4, req: 'ballista', desc:'Дальнобойная осада. Требуется Баллиста на поле.', skills: [{ id:'boulder', name:'☄️ Валун', dmgMult:1.5 }] },
+            elder_vampire: { name:'Древний Вампир', icon:'🦇', costG:130, costS:50, hp:100, dmg:24, move:3, range:1, init:20, req: 'vampire', limit: 1, desc:'Высший мистик. Требует Вампира на поле. (Макс. 1 на поле)', skills: [{ id:'vamp_bite', name:'🩸 Жажда крови', dmgMult:1.4 }] }
         };
 
         const PLAYER_CITADEL = { x: 0, y: 11, w: 4, h: 4, hp: 500, maxHp: 500 };
@@ -226,7 +225,6 @@
         function handleCellClick(x, y) {
             const clickedUnit = getUnitAt(x, y);
 
-            // Обработка покупок в фазу строительства
             if (isBuildPhase && selectedShopKey && !clickedUnit) {
                 if (isAdjacentToCitadel(x, y, PLAYER_CITADEL)) {
                     buyUnit(selectedShopKey, x, y, 'player');
@@ -279,13 +277,11 @@
             const db = UNITS_DB[key];
             if (playerGold < db.costG || playerStone < db.costS) return false;
 
-            // Проверка требований (требуется юнит на поле)
             if (db.req) {
                 const hasReq = units.some(u => u.team === 'player' && u.typeKey === db.req);
                 if (!hasReq) return false;
             }
 
-            // Проверка лимитов
             if (db.limit) {
                 const count = units.filter(u => u.team === 'player' && u.typeKey === key).length;
                 if (count >= db.limit) return false;
@@ -412,12 +408,26 @@
             endAction(1.0);
         }
 
+        // ПОКАЗ ИНФОРМАЦИИ ИЛИ ПО КЛИКУ НА ПОЛЕ, ИЛИ ПО КЛИКУ В МАГАДИНЕ
+        function showShopUnitDetails(key) {
+            const db = UNITS_DB[key];
+            const sPanel = document.getElementById('skills-panel');
+            sPanel.innerHTML = '';
+
+            let reqStr = db.req ? `<b style="color:#e74c3c"> (Требует: ${UNITS_DB[db.req].name})</b>` : '';
+            let limitStr = db.limit ? `<b style="color:#f39c12"> (Лимит: ${db.limit})</b>` : '';
+
+            let html = `<b>${db.icon} ${db.name}</b> | 💰${db.costG} 🪨${db.costS} | ❤️${db.hp} ⚔️${db.dmg} 👟${db.move} 🏹${db.range} ⚡${db.init}${reqStr}${limitStr}<br>`;
+            html += `<span style="color:#f39c12">${db.desc}</span>`;
+            document.getElementById('unit-details').innerHTML = html;
+        }
+
         function showUnitDetails(unit) {
             const db = UNITS_DB[unit.typeKey];
             const sPanel = document.getElementById('skills-panel');
             sPanel.innerHTML = '';
 
-            let html = `<b>${db.icon} ${db.name} (${unit.team === 'player' ? 'Ваш' : 'Враг'})</b> | HP: ${unit.hp}/${unit.maxHp} | ⚡Инициатива: ${db.init}<br>`;
+            let html = `<b>${db.icon} ${db.name} (${unit.team === 'player' ? 'Ваш' : 'Враг'})</b> | ❤️HP: ${unit.hp}/${unit.maxHp} | ⚔️Урон: ${db.dmg} | ⚡Инициатива: ${db.init}<br>`;
             html += `<span style="color:#f39c12">${db.desc}</span>`;
             document.getElementById('unit-details').innerHTML = html;
 
@@ -443,14 +453,17 @@
                 const btn = document.createElement('div');
                 const allowed = canBuy(k);
                 btn.className = `shop-btn ${selectedShopKey === k ? 'selected' : ''} ${!allowed ? 'disabled' : ''}`;
+                
                 btn.onclick = () => {
+                    showShopUnitDetails(k);
                     if (allowed) {
                         selectedShopKey = (selectedShopKey === k) ? null : k;
                         renderShop();
                         render();
                     }
                 };
-                btn.innerHTML = `<div style="font-size:11px">${db.icon}</div><div>${db.costG}💰</div>`;
+                
+                btn.innerHTML = `<div style="font-size:12px">${db.icon}</div><div>${db.costG}💰</div>`;
                 list.appendChild(btn);
             });
         }
