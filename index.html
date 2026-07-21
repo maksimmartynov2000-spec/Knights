@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Цитадели: Фикс Атаки и Подсветка Радиуса</title>
+    <title>Цитадели: Квадратные Радиусы</title>
     <style>
         :root {
             --bg-main: #090807;
@@ -59,7 +59,7 @@
 </head>
 <body>
 
-    <h1>🏰 ЦИТАДЕЛИ: ЗАПРЕТ ОГНЯ ПО СВОИМ</h1>
+    <h1>🏰 ЦИТАДЕЛИ: КВАДРАТНЫЕ РАДИУСЫ</h1>
 
     <div class="wrapper">
         <div class="res-bar">
@@ -121,9 +121,15 @@
         let enemyGold = 150, enemyStone = 100;
         let units = [];
         let activeUnit = null;
+        let inspectedUnit = null; // Просматриваемый юнит
         let selectedShopKey = null;
         let selectedSkillMode = null;
         let isBuildPhase = false;
+
+        // Чебышёвская метрика (Квадратный радиус)
+        function getDistance(x1, y1, x2, y2) {
+            return Math.max(Math.abs(x1 - x2), Math.abs(y1 - y2));
+        }
 
         function init() {
             createBoard();
@@ -176,6 +182,7 @@
 
             activeUnits.sort((a, b) => a.delay - b.delay || UNITS_DB[b.typeKey].init - UNITS_DB[a.typeKey].init);
             activeUnit = activeUnits[0];
+            inspectedUnit = activeUnit;
 
             selectedSkillMode = null;
             selectedShopKey = null;
@@ -257,14 +264,18 @@
             }
 
             if (!activeUnit || activeUnit.team !== 'player' || isBuildPhase) {
-                if (clickedUnit) showUnitDetails(clickedUnit);
+                if (clickedUnit) {
+                    inspectedUnit = clickedUnit;
+                    showUnitDetails(clickedUnit);
+                    render();
+                }
                 return;
             }
 
-            // ПРИМЕНЕНИЕ СКИЛЛА (Запрет атаки по своим)
+            // ПРИМЕНЕНИЕ СКИЛЛА
             if (selectedSkillMode) {
                 const skRange = selectedSkillMode.range || 1;
-                const dist = Math.abs(activeUnit.x - x) + Math.abs(activeUnit.y - y);
+                const dist = getDistance(activeUnit.x, activeUnit.y, x, y);
 
                 if (dist <= skRange) {
                     if (clickedUnit) {
@@ -283,7 +294,7 @@
                 return;
             }
 
-            // ОБЫЧНАЯ АТАКА ВРАЖЕСКОЙ ЦИТАДЕЛИ
+            // АТАКА ЦИТАДЕЛИ ВРАГА
             if (isCitadelCell(x, y, ENEMY_CITADEL)) {
                 if (canTarget(activeUnit, x, y)) {
                     attackCitadel(activeUnit, ENEMY_CITADEL);
@@ -292,16 +303,22 @@
                 }
             }
 
-            // ОБЫЧНАЯ АТАКА ВРАГА (Запрет на своих)
+            // АТАКА / ОСМОТР ЮНИТА
             if (clickedUnit) {
                 if (clickedUnit.team === 'enemy') {
                     if (canTarget(activeUnit, x, y)) {
                         attack(activeUnit, clickedUnit);
                         endAction(1.0);
                         return;
+                    } else {
+                        inspectedUnit = clickedUnit;
+                        showUnitDetails(clickedUnit);
+                        render();
                     }
                 } else {
+                    inspectedUnit = clickedUnit;
                     showUnitDetails(clickedUnit);
+                    render();
                     return;
                 }
             }
@@ -445,13 +462,13 @@
             if (reachable.length > 0) {
                 let targetPos = { x: PLAYER_CITADEL.x + 2, y: PLAYER_CITADEL.y };
                 if (pUnits.length > 0) {
-                    pUnits.sort((a, b) => (Math.abs(activeUnit.x - a.x) + Math.abs(activeUnit.y - a.y)) - (Math.abs(activeUnit.x - b.x) + Math.abs(activeUnit.y - b.y)));
+                    pUnits.sort((a, b) => getDistance(activeUnit.x, activeUnit.y, a.x, a.y) - getDistance(activeUnit.x, activeUnit.y, b.x, b.y));
                     targetPos = pUnits[0];
                 }
 
                 reachable.sort((a, b) => {
-                    let distA = Math.abs(a.x - targetPos.x) + Math.abs(a.y - targetPos.y);
-                    let distB = Math.abs(b.x - targetPos.x) + Math.abs(b.y - targetPos.y);
+                    let distA = getDistance(a.x, a.y, targetPos.x, targetPos.y);
+                    let distB = getDistance(b.x, b.y, targetPos.x, targetPos.y);
                     return distA - distB;
                 });
 
@@ -485,7 +502,7 @@
             const db = UNITS_DB[attacker.typeKey];
             for (let cy = citadel.y; cy < citadel.y + citadel.h; cy++) {
                 for (let cx = citadel.x; cx < citadel.x + citadel.w; cx++) {
-                    if (Math.abs(attacker.x - cx) + Math.abs(attacker.y - cy) <= db.range) return true;
+                    if (getDistance(attacker.x, attacker.y, cx, cy) <= db.range) return true;
                 }
             }
             return false;
@@ -549,10 +566,10 @@
 
         function canTarget(attacker, tx, ty) {
             const db = UNITS_DB[attacker.typeKey];
-            const dist = Math.abs(attacker.x - tx) + Math.abs(attacker.y - ty);
-            return dist <= db.range;
+            return getDistance(attacker.x, attacker.y, tx, ty) <= db.range;
         }
 
+        // Квадратный радиус перемещения
         function getReachableCells(unit) {
             const db = UNITS_DB[unit.typeKey];
             if (db.move === 0) return [];
@@ -561,7 +578,7 @@
                 for (let dx = -db.move; dx <= db.move; dx++) {
                     let nx = unit.x + dx, ny = unit.y + dy;
                     if (nx >= 0 && nx < GRID_W && ny >= 0 && ny < GRID_H) {
-                        if (Math.abs(dx) + Math.abs(dy) <= db.move && !getUnitAt(nx, ny) && !isCitadelCell(nx, ny, PLAYER_CITADEL) && !isCitadelCell(nx, ny, ENEMY_CITADEL)) {
+                        if (getDistance(unit.x, unit.y, nx, ny) <= db.move && !getUnitAt(nx, ny) && !isCitadelCell(nx, ny, PLAYER_CITADEL) && !isCitadelCell(nx, ny, ENEMY_CITADEL)) {
                             reachable.push({x: nx, y: ny});
                         }
                     }
@@ -589,11 +606,12 @@
         }
 
         function showUnitDetails(unit) {
+            inspectedUnit = unit;
             const db = UNITS_DB[unit.typeKey];
             const sPanel = document.getElementById('skills-panel');
             sPanel.innerHTML = '';
 
-            let html = `<b>${db.icon} ${db.name} (${unit.team === 'player' ? 'Ваш' : 'Враг'})</b> | ❤️HP: ${unit.hp}/${unit.maxHp} | ⚔️Урон: ${db.dmg} | ⚡Инициатива: ${db.init}<br>`;
+            let html = `<b>${db.icon} ${db.name} (${unit.team === 'player' ? 'Ваш' : 'Враг'})</b> | ❤️HP: ${unit.hp}/${unit.maxHp} | ⚔️Урон: ${db.dmg} | 👟Ход: ${db.move} | 🏹Дальность: ${db.range}<br>`;
             html += `<span style="color:#f39c12">${db.desc}</span>`;
             
             if (db.skills) {
@@ -602,7 +620,7 @@
 
             document.getElementById('unit-details').innerHTML = html;
 
-            if (unit.team === 'player' && db.skills && !isBuildPhase) {
+            if (unit === activeUnit && unit.team === 'player' && db.skills && !isBuildPhase) {
                 db.skills.forEach(sk => {
                     const btn = document.createElement('button');
                     const isSelected = selectedSkillMode && selectedSkillMode.id === sk.id;
@@ -676,11 +694,12 @@
                 if (isCitadelCell(x, y, PLAYER_CITADEL)) c.classList.add('citadel-cell');
                 if (isCitadelCell(x, y, ENEMY_CITADEL)) c.classList.add('citadel-enemy');
 
-                // Подсветка фазы строительства
+                // Подсветка найма
                 if (isBuildPhase && selectedShopKey && !UNITS_DB[selectedShopKey].req && isAdjacentToCitadel(x, y, PLAYER_CITADEL) && !getUnitAt(x, y)) {
                     c.classList.add('reachable');
                 }
 
+                // Подсветка грейда
                 if (isBuildPhase && selectedShopKey && UNITS_DB[selectedShopKey].req) {
                     const u = getUnitAt(x, y);
                     if (u && u.team === 'player' && u.typeKey === UNITS_DB[selectedShopKey].req) {
@@ -689,14 +708,14 @@
                 }
             });
 
-            // 1. ПОДСВЕТКА РАДИУСА ВЫБРАННОГО СКИЛЛА (Красным)
+            // 1. ПОДСВЕТКА РАДИУСА ВЫБРАННОГО СКИЛЛА (Квадратная красная зона)
             if (selectedSkillMode && activeUnit) {
                 const skRange = selectedSkillMode.range || 1;
                 for (let dy = -skRange; dy <= skRange; dy++) {
                     for (let dx = -skRange; dx <= skRange; dx++) {
                         let nx = activeUnit.x + dx, ny = activeUnit.y + dy;
                         if (nx >= 0 && nx < GRID_W && ny >= 0 && ny < GRID_H) {
-                            if (Math.abs(dx) + Math.abs(dy) <= skRange && (dx !== 0 || dy !== 0)) {
+                            if (getDistance(activeUnit.x, activeUnit.y, nx, ny) <= skRange && (dx !== 0 || dy !== 0)) {
                                 const c = document.querySelector(`.cell[data-x="${nx}"][data-y="${ny}"]`);
                                 if (c) c.classList.add('attack-range');
                             }
@@ -704,26 +723,30 @@
                     }
                 }
             } 
-            // 2. ОБЫЧНЫЙ ХОД И ПОДСВЕТКА ДВИЖЕНИЯ / РАДИУСА АТАКИ ДАЛЬНОБОЙНЫХ ЮНИТОВ
-            else if (!isBuildPhase && activeUnit && activeUnit.team === 'player' && !activeUnit.typeKey.startsWith('citadel')) {
-                const uDb = UNITS_DB[activeUnit.typeKey];
+            // 2. ОБОЗРЕНИЕ И ПОДСВЕТКА ХОДА / РАДИУСА АТАКИ ДАЛЬНОБОЙНОГО ЮНИТА (Своего или Чужого)
+            else if (!isBuildPhase) {
+                // Если ходит ваш юнит
+                if (activeUnit && activeUnit.team === 'player' && !activeUnit.typeKey.startsWith('citadel')) {
+                    const reachable = getReachableCells(activeUnit);
+                    reachable.forEach(rc => {
+                        const c = document.querySelector(`.cell[data-x="${rc.x}"][data-y="${rc.y}"]`);
+                        if (c) c.classList.add('reachable');
+                    });
+                }
 
-                // Подсветка движения (зеленая)
-                const reachable = getReachableCells(activeUnit);
-                reachable.forEach(rc => {
-                    const c = document.querySelector(`.cell[data-x="${rc.x}"][data-y="${rc.y}"]`);
-                    if (c) c.classList.add('reachable');
-                });
-
-                // Подсветка зоны атаки (красная), если юнит дальнобойный (range > 1)
-                if (uDb.range > 1) {
-                    for (let dy = -uDb.range; dy <= uDb.range; dy++) {
-                        for (let dx = -uDb.range; dx <= uDb.range; dx++) {
-                            let nx = activeUnit.x + dx, ny = activeUnit.y + dy;
-                            if (nx >= 0 && nx < GRID_W && ny >= 0 && ny < GRID_H) {
-                                if (Math.abs(dx) + Math.abs(dy) <= uDb.range && (dx !== 0 || dy !== 0)) {
-                                    const c = document.querySelector(`.cell[data-x="${nx}"][data-y="${ny}"]`);
-                                    if (c && !c.classList.contains('reachable')) c.classList.add('attack-range');
+                // Подсветка зоны атаки любого выбранного дальнобойного юнита (range > 1)
+                const targetDisplayUnit = inspectedUnit || activeUnit;
+                if (targetDisplayUnit && !targetDisplayUnit.typeKey.startsWith('citadel')) {
+                    const uDb = UNITS_DB[targetDisplayUnit.typeKey];
+                    if (uDb.range > 1) {
+                        for (let dy = -uDb.range; dy <= uDb.range; dy++) {
+                            for (let dx = -uDb.range; dx <= uDb.range; dx++) {
+                                let nx = targetDisplayUnit.x + dx, ny = targetDisplayUnit.y + dy;
+                                if (nx >= 0 && nx < GRID_W && ny >= 0 && ny < GRID_H) {
+                                    if (getDistance(targetDisplayUnit.x, targetDisplayUnit.y, nx, ny) <= uDb.range && (dx !== 0 || dy !== 0)) {
+                                        const c = document.querySelector(`.cell[data-x="${nx}"][data-y="${ny}"]`);
+                                        if (c && !c.classList.contains('reachable')) c.classList.add('attack-range');
+                                    }
                                 }
                             }
                         }
