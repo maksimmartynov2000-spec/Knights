@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Цитадели: Умный ИИ и Битва</title>
+    <title>Цитадели: Системный Грейд</title>
     <style>
         :root {
             --bg-main: #090807;
@@ -30,6 +30,7 @@
         #board { display: grid; grid-template-columns: repeat(13, minmax(0, 1fr)); gap: 1px; background: #040302; padding: 2px; border: 1.5px solid var(--border-dark); border-radius: 5px; width: 100%; }
         .cell { aspect-ratio: 1 / 1; background: #15100b; border: 1px solid #221810; border-radius: 2px; display: flex; flex-direction: column; justify-content: space-between; align-items: center; position: relative; cursor: pointer; overflow: hidden; }
         .cell.reachable { background: #112818; border-color: #2ecc71; }
+        .cell.upgradeable { background: #0d2838; border-color: #3498db; box-shadow: inset 0 0 5px #3498db; }
         .cell.citadel-cell { background: #2c1e12; border-color: #8e44ad; }
         .cell.citadel-enemy { background: #3a121d; border-color: #c0392b; }
 
@@ -55,7 +56,7 @@
 </head>
 <body>
 
-    <h1>🏰 ЦИТАДЕЛИ: УМНЫЙ ИИ</h1>
+    <h1>🏰 ЦИТАДЕЛИ: УЛУЧШЕНИЯ И ОПИСАНИЯ</h1>
 
     <div class="wrapper">
         <div class="res-bar">
@@ -75,7 +76,7 @@
         <div id="log-box"></div>
 
         <div class="panel-box">
-            <div id="unit-details" style="font-size: 8.5px; min-height: 40px; line-height: 1.3;">
+            <div id="unit-details" style="font-size: 8.5px; min-height: 48px; line-height: 1.3;">
                 Нажмите на юнит на поле или в магазине для деталей.
             </div>
             <div id="skills-panel" class="skills-container"></div>
@@ -93,21 +94,22 @@
         const GRID_W = 13, GRID_H = 15;
 
         const UNITS_DB = {
-            citadel_player: { name:'Ваша Цитадель', icon:'🏰', hp:500, dmg:0, move:0, range:0, init:20, desc:'Приносит +40💰 и +25🪨. Доступен найм.' },
+            citadel_player: { name:'Ваша Цитадель', icon:'🏰', hp:500, dmg:0, move:0, range:0, init:20, desc:'Приносит +40💰 и +25🪨. Доступен найм и грейд.' },
             citadel_enemy:  { name:'Цитадель Врага', icon:'🏰', hp:500, dmg:0, move:0, range:0, init:20, desc:'Приносит ресурсы врагу.' },
 
-            warrior: { name:'Воин', icon:'⚔️', costG:40, costS:0, hp:55, dmg:12, move:2, range:1, init:10, req: null, desc:'Базовый пехотинец.', skills: [{ id:'javelin', name:'🎯 Дротик', dmgMult:1.2 }] },
-            archer: { name:'Лучник', icon:'🏹', costG:50, costS:0, hp:35, dmg:12, move:2, range:3, init:14, req: null, desc:'Мобильный стрелок.', skills: [{ id:'power_shot', name:'🎯 Дальний выстрел', dmgMult:1.4 }] },
-            rider: { name:'Всадник', icon:'🐎', costG:65, costS:0, hp:65, dmg:16, move:4, range:1, init:17, req: null, desc:'Быстрая кавалерия.', skills: [{ id:'charge', name:'⚡ Наскок', dmgMult:1.3 }] },
-            vampire: { name:'Вампир', icon:'🧛', costG:90, costS:10, hp:70, dmg:16, move:3, range:1, init:16, req: null, limit: 2, desc:'Восстанавливает HP (макс. 2).', skills: [{ id:'vamp_bite', name:'🩸 Укус', dmgMult:1.2 }] },
+            warrior: { name:'Воин', icon:'⚔️', costG:40, costS:0, hp:55, dmg:12, move:2, range:1, init:10, req: null, desc:'Базовый пехотинец.', skills: [{ id:'javelin', name:'🎯 Дротик', desc:'Бросок на дистанцию 2 (x1.2 урона)', dmgMult:1.2 }] },
+            archer: { name:'Лучник', icon:'🏹', costG:50, costS:0, hp:35, dmg:12, move:2, range:3, init:14, req: null, desc:'Мобильный стрелок.', skills: [{ id:'power_shot', name:'🎯 Выстрел', desc:'Усиленная стрела (x1.4 урона)', dmgMult:1.4 }] },
+            rider: { name:'Всадник', icon:'🐎', costG:65, costS:0, hp:65, dmg:16, move:4, range:1, init:17, req: null, desc:'Быстрая кавалерия.', skills: [{ id:'charge', name:'⚡ Наскок', desc:'Атака с разгона (x1.3 урона)', dmgMult:1.3 }] },
+            vampire: { name:'Вампир', icon:'🧛', costG:90, costS:10, hp:70, dmg:16, move:3, range:1, init:16, req: null, limit: 2, desc:'Восстанавливает HP при атаке.', skills: [{ id:'vamp_bite', name:'🩸 Укус', desc:'Наносит урон и восстанавливает 60% HP', dmgMult:1.2 }] },
 
-            knight: { name:'Рыцарь', icon:'🛡️', costG:55, costS:15, hp:85, dmg:15, move:2, range:1, init:9, req: 'warrior', desc:'Танк. Нужен Воин на поле.', skills: [{ id:'defend', name:'🛡️ Оборона' }] },
-            sniper: { name:'Снайпер', icon:'🎯', costG:65, costS:20, hp:45, dmg:18, move:2, range:4, init:15, req: 'archer', desc:'Дальнобойный. Нужен Лучник на поле.', skills: [{ id:'headshot', name:'💥 Точный выстрел', dmgMult:1.5 }] },
-            cavalry: { name:'Кавалерист', icon:'♞', costG:85, costS:25, hp:95, dmg:22, move:4, range:1, init:18, req: 'rider', desc:'Тяжелая кавалерия. Нужен Всадник.', skills: [{ id:'breakthrough', name:'💥 Прорыв', dmgMult:1.4 }] },
+            // УЛУЧШЕННЫЕ ВЕРСИИ (Исправлена механика грейда)
+            knight: { name:'Рыцарь', icon:'🛡️', costG:55, costS:15, hp:85, dmg:15, move:2, range:1, init:9, req: 'warrior', desc:'Танк. Улучшается из Воина.', skills: [{ id:'defend', name:'🛡️ Оборона', desc:'Снижает входящий урон на 50% на 1 ход' }] },
+            sniper: { name:'Снайпер', icon:'🎯', costG:65, costS:20, hp:45, dmg:18, move:2, range:4, init:15, req: 'archer', desc:'Дальнобойный. Улучшается из Лучника.', skills: [{ id:'headshot', name:'💥 Выстрел', desc:'Снайперский выстрел (x1.5 урона)', dmgMult:1.5 }] },
+            cavalry: { name:'Кавалерист', icon:'♞', costG:85, costS:25, hp:95, dmg:22, move:4, range:1, init:18, req: 'rider', desc:'Тяжелая кавалерия. Улучшается из Всадника.', skills: [{ id:'breakthrough', name:'💥 Прорыв', desc:'Мощный таран (x1.4 урона)', dmgMult:1.4 }] },
             
-            ballista: { name:'Баллиста', icon:'🏹', costG:75, costS:40, hp:50, dmg:18, move:1, range:3, init:6, req: null, desc:'Осадная машина.', skills: [{ id:'pierce', name:'Залп по броне', dmgMult:1.2 }] },
-            catapult: { name:'Катапульта', icon:'☄️', costG:95, costS:60, hp:70, dmg:30, move:1, range:5, init:4, req: 'ballista', desc:'Дальнобойная осада. Нужна Баллиста.', skills: [{ id:'boulder', name:'☄️ Валун', dmgMult:1.5 }] },
-            elder_vampire: { name:'Древний Вампир', icon:'🦇', costG:130, costS:50, hp:100, dmg:24, move:3, range:1, init:20, req: 'vampire', limit: 1, desc:'Элитный мистик. Нужен Вампир (макс 1).', skills: [{ id:'vamp_bite', name:'🩸 Жажда крови', dmgMult:1.4 }] }
+            ballista: { name:'Баллиста', icon:'🏹', costG:75, costS:40, hp:50, dmg:18, move:1, range:3, init:6, req: null, desc:'Осадная машина.', skills: [{ id:'pierce', name:'Залп', desc:'Выстрел по броне (x1.2 урона)', dmgMult:1.2 }] },
+            catapult: { name:'Катапульта', icon:'☄️', costG:95, costS:60, hp:70, dmg:30, move:1, range:5, init:4, req: 'ballista', desc:'Дальнобойная осада. Улучшается из Баллисты.', skills: [{ id:'boulder', name:'☄️ Валун', desc:'Огромный урон (x1.5 урона)', dmgMult:1.5 }] },
+            elder_vampire: { name:'Древний Вампир', icon:'🦇', costG:130, costS:50, hp:100, dmg:24, move:3, range:1, init:20, req: 'vampire', limit: 1, desc:'Элитный мистик. Улучшается из Вампира.', skills: [{ id:'vamp_bite', name:'🩸 Жажда', desc:'Мощный укус с вампиризмом (x1.4 урона)', dmgMult:1.4 }] }
         };
 
         const PLAYER_CITADEL = { x: 0, y: 11, w: 4, h: 4, hp: 500, maxHp: 500 };
@@ -129,7 +131,7 @@
 
             updateRes();
             renderShop();
-            log("🎮 Игра началась! Вражеский ИИ готов к бою.", "log-skill");
+            log("🎮 Игра началась! Выберите юнита в магазине.", "log-skill");
             processNextTurn();
         }
 
@@ -156,6 +158,14 @@
         }
 
         function isCitadelCell(x, y, cit) { return x >= cit.x && x < cit.x + cit.w && y >= cit.y && y < cit.y + cit.h; }
+        
+        function isAdjacentToCitadel(x, y, cit) {
+            if (isCitadelCell(x, y, cit)) return false;
+            const minX = cit.x - 1, maxX = cit.x + cit.w;
+            const minY = cit.y - 1, maxY = cit.y + cit.h;
+            return x >= minX && x <= maxX && y >= minY && y <= maxY;
+        }
+
         function getUnitAt(x, y) { return units.find(u => u.x === x && u.y === y && !u.typeKey.startsWith('citadel')); }
 
         function processNextTurn() {
@@ -172,14 +182,14 @@
                 isBuildPhase = true;
                 playerGold += 40; playerStone += 25;
                 updateRes();
-                log("🛠️ ФАЗА СТРОИТЕЛЬСТВА/НАЙМА! +40💰 и +25🪨 получено.", "log-heal");
-                document.getElementById('shop-title').innerText = "🔨 НАЙМ ЮНИТОВ (Выберите тип, затем подсвеченную клетку)";
+                log("🛠️ ФАЗА СТРОИТЕЛЬСТВА! +40💰 и +25🪨.", "log-heal");
+                document.getElementById('shop-title').innerText = "🔨 НАЙМ И ГРЕЙД ЮНИТОВ";
                 document.getElementById('phase-status').innerText = "🛠️ ФАЗА СТРОИТЕЛЬСТВА";
             } else if (activeUnit.typeKey === 'citadel_enemy') {
                 isBuildPhase = false;
                 enemyGold += 40; enemyStone += 25;
                 updateRes();
-                log("🏰 Враг получил ресурсы и начинает фазу найма...", "log-hit");
+                log("🏰 Враг нанимает юнитов...", "log-hit");
                 setTimeout(runAIBuildPhase, 800);
                 return;
             } else {
@@ -223,8 +233,18 @@
         function handleCellClick(x, y) {
             const clickedUnit = getUnitAt(x, y);
 
-            if (isBuildPhase && selectedShopKey && !clickedUnit) {
-                if (isAdjacentToCitadel(x, y, PLAYER_CITADEL)) {
+            // Режим найма/грейда в Фазу Строительства
+            if (isBuildPhase && selectedShopKey) {
+                const db = UNITS_DB[selectedShopKey];
+
+                // 1. Улучшение базового юнита (Грейд)
+                if (db.req && clickedUnit && clickedUnit.team === 'player' && clickedUnit.typeKey === db.req) {
+                    upgradeUnit(clickedUnit, selectedShopKey, 'player');
+                    return;
+                }
+
+                // 2. Обычный найм базового юнита на пустую клетку у Цитадели
+                if (!db.req && !clickedUnit && isAdjacentToCitadel(x, y, PLAYER_CITADEL)) {
                     buyUnit(selectedShopKey, x, y, 'player');
                     return;
                 }
@@ -312,65 +332,73 @@
             render();
         }
 
-        // --- УМНЫЙ ИИ: ФАЗА НАЙМА ---
+        function upgradeUnit(targetUnit, newKey, team) {
+            const newDb = UNITS_DB[newKey];
+            if (team === 'player') {
+                playerGold -= newDb.costG;
+                playerStone -= newDb.costS;
+            } else {
+                enemyGold -= newDb.costG;
+                enemyStone -= newDb.costS;
+            }
+            updateRes();
+
+            const oldName = UNITS_DB[targetUnit.typeKey].name;
+            targetUnit.typeKey = newKey;
+            targetUnit.hp = newDb.hp;
+            targetUnit.maxHp = newDb.hp;
+
+            log(`✨ ${oldName} был успешно улучшен до: ${newDb.name}!`, 'log-skill');
+            selectedShopKey = null;
+            renderShop();
+            render();
+        }
+
         function runAIBuildPhase() {
+            let shopKeys = Object.keys(UNITS_DB).filter(k => !k.startsWith('citadel'));
+
+            // 1. Проверяем возможность улучшения существующих юнитов Врага
+            for (let u of units.filter(u => u.team === 'enemy')) {
+                let upgrades = shopKeys.filter(k => UNITS_DB[k].req === u.typeKey && canBuy(k, 'enemy'));
+                if (upgrades.length > 0) {
+                    upgradeUnit(u, upgrades[0], 'enemy');
+                    endAction(1.0);
+                    return;
+                }
+            }
+
+            // 2. Обычный найм новых базовых юнитов
             let freeCells = [];
             for (let cy = ENEMY_CITADEL.y - 1; cy <= ENEMY_CITADEL.y + ENEMY_CITADEL.h; cy++) {
                 for (let cx = ENEMY_CITADEL.x - 1; cx <= ENEMY_CITADEL.x + ENEMY_CITADEL.w; cx++) {
                     if (cx >= 0 && cx < GRID_W && cy >= 0 && cy < GRID_H) {
-                        if (!isCitadelCell(cx, cy, ENEMY_CITADEL) && !getUnitAt(cx, cy)) {
+                        if (isAdjacentToCitadel(cx, cy, ENEMY_CITADEL) && !getUnitAt(cx, cy)) {
                             freeCells.push({x: cx, y: cy});
                         }
                     }
                 }
             }
 
-            // Сортируем клетки: ИИ предпочитает нанимать юнитов ближе к игроку (внизу/слева)
-            freeCells.sort((a, b) => (b.y - a.y) || (a.x - b.x));
-
-            let boughtAny = false;
-            let shopKeys = Object.keys(UNITS_DB).filter(k => !k.startsWith('citadel'));
-
-            for (let cell of freeCells) {
-                let affordable = shopKeys.filter(k => canBuy(k, 'enemy'));
-                if (affordable.length === 0) break;
-
-                // Приоритеты найма для ИИ:
-                // 1. Продвинутые/Элитные units
-                // 2. Стрелки/Кавалерия
-                // 3. Базовые воины
-                affordable.sort((a, b) => (UNITS_DB[b].costG + UNITS_DB[b].costS * 2) - (UNITS_DB[a].costG + UNITS_DB[a].costS * 2));
-                
-                let chosenKey = affordable[0];
-                buyUnit(chosenKey, cell.x, cell.y, 'enemy');
-                boughtAny = true;
-            }
-
-            if (!boughtAny) {
-                log("Враг решил накопить ресурсы.", "log-move");
+            if (freeCells.length > 0) {
+                let baseAffordable = shopKeys.filter(k => !UNITS_DB[k].req && canBuy(k, 'enemy'));
+                if (baseAffordable.length > 0) {
+                    buyUnit(baseAffordable[0], freeCells[0].x, freeCells[0].y, 'enemy');
+                }
             }
 
             endAction(1.0);
         }
 
-        // --- УМНЫЙ ИИ: ФАЗА ДЕЙСТВИЯ ---
         function runAITurn() {
             if (!activeUnit || activeUnit.team !== 'enemy') return;
 
             const uDb = UNITS_DB[activeUnit.typeKey];
             const pUnits = units.filter(u => u.team === 'player' && u.x !== undefined && !u.typeKey.startsWith('citadel'));
 
-            // 1. Поиск целей в радиусе атаки
             let inRangeTargets = pUnits.filter(target => canTarget(activeUnit, target.x, target.y));
-
-            // Проверка: достаем ли до Цитадели Игрока?
             let canAttackCitadel = isCitadelInTargetRange(activeUnit, PLAYER_CITADEL);
 
             if (inRangeTargets.length > 0 || canAttackCitadel) {
-                // Приоритет целей:
-                // А. Юнит, которого можно УБИТЬ за 1 урон
-                // Б. Самый слабый по HP юнит
-                // В. Цитадель игрока
                 inRangeTargets.sort((a, b) => a.hp - b.hp);
 
                 let targetToKill = inRangeTargets.find(t => t.hp <= uDb.dmg * 1.3);
@@ -386,17 +414,14 @@
                 return;
             }
 
-            // 2. Движение: если целей рядом нет, идем к ближайшему юниту или Цитадели игрока
             let reachable = getReachableCells(activeUnit);
             if (reachable.length > 0) {
-                let targetPos = { x: PLAYER_CITADEL.x + 2, y: PLAYER_CITADEL.y }; // Центр Цитадели
+                let targetPos = { x: PLAYER_CITADEL.x + 2, y: PLAYER_CITADEL.y };
                 if (pUnits.length > 0) {
-                    // Ищем ближайшего юнита игрока
                     pUnits.sort((a, b) => (Math.abs(activeUnit.x - a.x) + Math.abs(activeUnit.y - a.y)) - (Math.abs(activeUnit.x - b.x) + Math.abs(activeUnit.y - b.y)));
                     targetPos = pUnits[0];
                 }
 
-                // Выбираем клетку из доступных, которая ближе всего к целевой позиции
                 reachable.sort((a, b) => {
                     let distA = Math.abs(a.x - targetPos.x) + Math.abs(a.y - targetPos.y);
                     let distB = Math.abs(b.x - targetPos.x) + Math.abs(b.y - targetPos.y);
@@ -408,7 +433,6 @@
                 activeUnit.y = bestCell.y;
                 log(`Вражеский ${uDb.name} продвигается вперед.`, 'log-move');
 
-                // После движения проверяем, можем ли атаковать сразу
                 let newTargets = pUnits.filter(target => canTarget(activeUnit, target.x, target.y));
                 if (newTargets.length > 0) {
                     newTargets.sort((a, b) => a.hp - b.hp);
@@ -416,8 +440,6 @@
                 } else if (isCitadelInTargetRange(activeUnit, PLAYER_CITADEL)) {
                     attackCitadel(activeUnit, PLAYER_CITADEL);
                 }
-            } else {
-                log(`Вражеский ${uDb.name} удерживает позицию.`, 'log-move');
             }
 
             endAction(1.0);
@@ -426,8 +448,7 @@
         function useBestAttackOrSkill(attacker, defender) {
             const uDb = UNITS_DB[attacker.typeKey];
             if (uDb.skills && uDb.skills.length > 0) {
-                let skill = uDb.skills[0];
-                executeSkill(skill, defender.x, defender.y);
+                executeSkill(uDb.skills[0], defender.x, defender.y);
             } else {
                 attack(attacker, defender);
             }
@@ -497,15 +518,6 @@
             }
         }
 
-        function isAdjacentToCitadel(x, y, cit) {
-            for (let cy = cit.y - 1; cy <= cit.y + cit.h; cy++) {
-                for (let cx = cit.x - 1; cx <= cit.x + cit.w; cx++) {
-                    if (Math.max(Math.abs(cx - x), Math.abs(cy - y)) <= 1 && !isCitadelCell(x, y, cit)) return true;
-                }
-            }
-            return false;
-        }
-
         function canTarget(attacker, tx, ty) {
             const db = UNITS_DB[attacker.typeKey];
             const dist = Math.abs(attacker.x - tx) + Math.abs(attacker.y - ty);
@@ -529,16 +541,22 @@
             return reachable;
         }
 
+        // ПОДРОБНОЕ ОПИСАНИЕ СКИЛЛОВ И ЮНИТОВ В ПАНЕЛИ
         function showShopUnitDetails(key) {
             const db = UNITS_DB[key];
             const sPanel = document.getElementById('skills-panel');
             sPanel.innerHTML = '';
 
-            let reqStr = db.req ? `<b style="color:#e74c3c"> (Требует: ${UNITS_DB[db.req].name})</b>` : '';
+            let reqStr = db.req ? `<b style="color:#3498db"> (Грейд из: ${UNITS_DB[db.req].name})</b>` : '';
             let limitStr = db.limit ? `<b style="color:#f39c12"> (Лимит: ${db.limit})</b>` : '';
 
             let html = `<b>${db.icon} ${db.name}</b> | 💰${db.costG} 🪨${db.costS} | ❤️${db.hp} ⚔️${db.dmg} 👟${db.move} 🏹${db.range} ⚡${db.init}${reqStr}${limitStr}<br>`;
             html += `<span style="color:#f39c12">${db.desc}</span>`;
+            
+            if (db.skills) {
+                html += `<br><span style="color:#2ecc71"><b>Способность:</b> ${db.skills[0].name} — ${db.skills[0].desc}</span>`;
+            }
+
             document.getElementById('unit-details').innerHTML = html;
         }
 
@@ -549,6 +567,11 @@
 
             let html = `<b>${db.icon} ${db.name} (${unit.team === 'player' ? 'Ваш' : 'Враг'})</b> | ❤️HP: ${unit.hp}/${unit.maxHp} | ⚔️Урон: ${db.dmg} | ⚡Инициатива: ${db.init}<br>`;
             html += `<span style="color:#f39c12">${db.desc}</span>`;
+            
+            if (db.skills) {
+                html += `<br><span style="color:#2ecc71"><b>Спецприём:</b> ${db.skills[0].name} — ${db.skills[0].desc}</span>`;
+            }
+
             document.getElementById('unit-details').innerHTML = html;
 
             if (unit.team === 'player' && db.skills && !isBuildPhase) {
@@ -610,8 +633,17 @@
                 if (isCitadelCell(x, y, PLAYER_CITADEL)) c.classList.add('citadel-cell');
                 if (isCitadelCell(x, y, ENEMY_CITADEL)) c.classList.add('citadel-enemy');
 
-                if (isBuildPhase && selectedShopKey && isAdjacentToCitadel(x, y, PLAYER_CITADEL) && !getUnitAt(x, y)) {
+                // Подсветка зоны обычного найма (зеленая)
+                if (isBuildPhase && selectedShopKey && !UNITS_DB[selectedShopKey].req && isAdjacentToCitadel(x, y, PLAYER_CITADEL) && !getUnitAt(x, y)) {
                     c.classList.add('reachable');
+                }
+
+                // Подсветка юнита для ГРЕЙДА (синяя)
+                if (isBuildPhase && selectedShopKey && UNITS_DB[selectedShopKey].req) {
+                    const u = getUnitAt(x, y);
+                    if (u && u.team === 'player' && u.typeKey === UNITS_DB[selectedShopKey].req) {
+                        c.classList.add('upgradeable');
+                    }
                 }
             });
 
