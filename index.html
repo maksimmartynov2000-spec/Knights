@@ -11,10 +11,10 @@
             --border-gold: #c89b3c;
             --border-dark: #4a3828;
             --text-gold: #f3d179;
-            --cell-size: 72px;
+            --cell-size: 70px;
         }
 
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Georgia', 'Segoe UI', serif; user-select: none; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Georgia', serif; user-select: none; }
         
         body {
             background: var(--bg-main);
@@ -27,72 +27,63 @@
             padding: 20px;
         }
 
-        h1 { color: var(--text-gold); text-shadow: 0 2px 8px rgba(0,0,0,0.8); margin-bottom: 15px; letter-spacing: 1px; }
+        h1 { color: var(--text-gold); text-shadow: 0 2px 8px rgba(0,0,0,0.8); margin-bottom: 10px; }
 
         .wrapper {
             display: flex;
             gap: 20px;
             background: var(--bg-panel);
             border: 2px solid var(--border-gold);
-            padding: 20px;
+            padding: 15px;
             border-radius: 8px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.9);
         }
 
-        /* --- ЛЕВАЯ ПАНЕЛЬ И ИНФО --- */
         .sidebar {
-            width: 280px;
+            width: 290px;
             display: flex;
             flex-direction: column;
-            gap: 15px;
+            gap: 10px;
         }
 
         .panel-box {
             background: #14100d;
             border: 1px solid var(--border-dark);
             border-radius: 6px;
-            padding: 12px;
+            padding: 10px;
         }
 
         .panel-title {
             color: var(--text-gold);
-            font-size: 14px;
+            font-size: 13px;
             text-transform: uppercase;
             border-bottom: 1px solid var(--border-dark);
-            padding-bottom: 5px;
+            padding-bottom: 4px;
             margin-bottom: 8px;
-            letter-spacing: 1px;
         }
 
-        /* --- КАРТОЧКИ ФАЗЫ ПОДГОТОВКИ --- */
-        .roster {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
+        .roster { display: flex; flex-direction: column; gap: 6px; }
 
         .roster-card {
             background: #251d18;
             border: 1px solid var(--border-dark);
             border-radius: 4px;
-            padding: 8px;
+            padding: 6px 10px;
             display: flex;
             align-items: center;
             gap: 10px;
             cursor: pointer;
-            transition: all 0.2s;
         }
 
         .roster-card:hover { border-color: var(--border-gold); background: #2f251f; }
         .roster-card.selected { border-color: #27ae60; background: #1e331e; }
         .roster-card.placed { opacity: 0.4; cursor: not-allowed; }
 
-        .card-icon { font-size: 28px; }
+        .card-icon { font-size: 26px; }
         .card-info { flex-grow: 1; }
         .card-title { font-weight: bold; color: #fff; font-size: 13px; }
         .card-sub { font-size: 11px; color: #aaa; }
 
-        /* --- КАРТА БОЯ --- */
         .game-section {
             display: flex;
             flex-direction: column;
@@ -139,19 +130,15 @@
         }
 
         .cell:hover { border-color: #775a3c; }
-        .cell.deploy-zone { background: #1e2d1d; border-color: #27ae60; }
-        .cell.reachable { background: #263825; border-color: #2ecc71; }
-        .cell.attackable { background: #421c1c; border-color: #e74c3c; }
+        .cell.deploy-zone { background: #1e3d1d; border-color: #27ae60; }
+        .cell.reachable { background: #1d3326; border-color: #2ecc71; }
+        .cell.attackable { background: #4a1c1c; border-color: #e74c3c; }
+        .cell.active-cell { outline: 2px solid var(--text-gold); box-shadow: inset 0 0 10px rgba(243, 209, 121, 0.5); }
 
-        .unit {
-            font-size: 32px;
-            text-align: center;
-            line-height: 1;
-            margin-top: 2px;
-        }
+        .unit { font-size: 30px; text-align: center; line-height: 1; margin-top: 2px; }
 
         .unit-badge {
-            background: rgba(0,0,0,0.8);
+            background: rgba(0,0,0,0.85);
             border-radius: 3px;
             padding: 1px 4px;
             font-size: 10px;
@@ -163,12 +150,6 @@
         .player-unit .unit-badge { color: #5ad; }
         .enemy-unit .unit-badge { color: #f55; }
 
-        .active-cell {
-            outline: 2px solid var(--text-gold);
-            box-shadow: 0 0 10px rgba(243, 209, 121, 0.4);
-        }
-
-        /* --- КНОПКИ И ЛОГ --- */
         .btn {
             background: linear-gradient(180deg, #c89b3c 0%, #8a651e 100%);
             border: none;
@@ -177,21 +158,19 @@
             padding: 8px 16px;
             border-radius: 4px;
             cursor: pointer;
-            transition: 0.2s;
         }
 
         .btn:hover { filter: brightness(1.2); }
-        .btn:disabled { background: #4a3828; color: #777; cursor: not-allowed; }
 
         #log-box {
             width: 100%;
-            height: 90px;
+            height: 85px;
             background: #0e0c0a;
             border: 1px solid var(--border-dark);
             border-radius: 4px;
             padding: 8px;
             overflow-y: auto;
-            font-size: 11px;
+            font-size: 12px;
             display: flex;
             flex-direction: column;
             gap: 3px;
@@ -207,25 +186,23 @@
     <h1>⚔️ РЫЦАРИ: БИТВА ГЕРОЕВ</h1>
 
     <div class="wrapper">
-        <!-- СЛЕВА: ВЫБОР И ИНФОРМАЦИЯ -->
         <div class="sidebar">
             <div class="panel-box" id="roster-panel">
-                <div class="panel-title">Ваша Армия (Расстановка)</div>
+                <div class="panel-title" id="limit-title">Армия (Лимит: 0/10)</div>
                 <div class="roster" id="roster-list"></div>
             </div>
 
-            <div class="panel-box" id="info-panel">
-                <div class="panel-title">Инфо о Юните</div>
+            <div class="panel-box">
+                <div class="panel-title">Характеристики</div>
                 <div id="unit-details" style="font-size: 12px; color: #bbb;">
-                    Выберите юнита на поле или панель для просмотра характеристик.
+                    Выберите юнита на поле или в панели.
                 </div>
             </div>
         </div>
 
-        <!-- СПРАВА: ПОЛЕ БОЯ -->
         <div class="game-section">
             <div id="turn-bar">
-                <span id="game-status">Фаза Расстановки: Разместите отряды слева</span>
+                <span id="game-status">Расстановка: Нажмите на юнита, затем на зеленую клетку</span>
                 <button class="btn" id="action-btn" onclick="startBattle()">В Бой!</button>
             </div>
 
@@ -238,57 +215,41 @@
     <script>
         const GRID_W = 8;
         const GRID_H = 5;
+        const MAX_LIMIT = 10;
 
-        // База типов юнитов с уникальными абилками
+        // Юниты и их Лимит (Очки)
         const UNIT_TYPES = {
-            KNIGHT: { 
-                name: 'Рыцарь', icon: '🛡️', hp: 25, dmg: 6, move: 2, range: 1, 
-                desc: 'Тяжелая пехота. Способность: "Щит" — снижение урона.',
-                ability: 'shield'
-            },
-            ARCHER: { 
-                name: 'Лучник', icon: '🏹', hp: 12, dmg: 5, move: 1, range: 4, 
-                desc: 'Дальний бой. Способность: "Залп" — +50% урона.',
-                ability: 'power_shot'
-            },
-            MAGE: { 
-                name: 'Маг', icon: '🧙‍♂️', hp: 10, dmg: 8, move: 1, range: 3, 
-                desc: 'Магический урон. Игнорирует защитные стойки.',
-                ability: 'fireball'
-            },
-            SKELETON: { 
-                name: 'Скелет', icon: '💀', hp: 14, dmg: 4, move: 2, range: 1, 
-                desc: 'Нежить ближнего боя.' 
-            },
-            ORC: { 
-                name: 'Орк', icon: '👹', hp: 30, dmg: 7, move: 2, range: 1, 
-                desc: 'Свирепый воин с высоким запасом здоровья.' 
-            }
+            SKELETON: { name: 'Скелет', icon: '💀', cost: 1, hp: 12, dmg: 3, move: 2, range: 1, desc: 'Легкая пехота.' },
+            KNIGHT:   { name: 'Рыцарь', icon: '🛡️', cost: 1, hp: 20, dmg: 5, move: 2, range: 1, desc: 'Надежный защитник.' },
+            ARCHER:   { name: 'Лучник', icon: '🏹', cost: 2, hp: 10, dmg: 4, move: 1, range: 4, desc: 'Дальний бой.' },
+            MAGE:     { name: 'Маг',    icon: '🧙‍♂️', cost: 3, hp: 8,  dmg: 8, move: 1, range: 3, desc: 'Огромный урон.' },
+            ORC:      { name: 'Орк',    icon: '👹', cost: 4, hp: 35, dmg: 9, move: 2, range: 1, desc: 'Сильный тяжелый боец.' },
+            DRAGON:   { name: 'Дракон', icon: '🐲', cost: 5, hp: 50, dmg: 12, move: 3, range: 2, desc: 'Элитный монстр.' }
         };
 
-        // Доступные отряды игрока для расстановки
+        // Набор игрока для расстановки (Сумма очков = 10)
         let playerRoster = [
-            { id: 'p1', type: UNIT_TYPES.KNIGHT, count: 5, placed: false },
-            { id: 'p2', type: UNIT_TYPES.ARCHER, count: 8, placed: false },
-            { id: 'p3', type: UNIT_TYPES.MAGE, count: 3, placed: false }
-        ];
+            { id: 'p1', type: UNIT_TYPES.KNIGHT, count: 2, placed: false }, // 2 * 1 = 2 очка
+            { id: 'p2', type: UNIT_TYPES.ARCHER, count: 2, placed: false }, // 2 * 2 = 4 очка
+            { id: 'p3', type: UNIT_TYPES.ORC,    count: 1, placed: false }  // 1 * 4 = 4 очка
+        ]; // Всего = 10 очков
 
-        // Отряды Врага (Уже выставлены справа)
+        // Вражеская армия (Ровно 10 очков: Дракон [5] + Маг [3] + 2 Скелета [2])
         let units = [
-            { id: 'e1', team: 'enemy', type: UNIT_TYPES.ORC, count: 4, maxHp: 30, hp: 30, x: 7, y: 1 },
-            { id: 'e2', team: 'enemy', type: UNIT_TYPES.SKELETON, count: 12, maxHp: 14, hp: 14, x: 7, y: 3 },
-            { id: 'e3', team: 'enemy', type: UNIT_TYPES.SKELETON, count: 10, maxHp: 14, hp: 14, x: 6, y: 2 }
+            { id: 'e1', team: 'enemy', type: UNIT_TYPES.DRAGON, count: 1, maxHp: 50, hp: 50, x: 7, y: 2 },
+            { id: 'e2', team: 'enemy', type: UNIT_TYPES.MAGE,   count: 1, maxHp: 8,  hp: 8,  x: 6, y: 0 },
+            { id: 'e3', team: 'enemy', type: UNIT_TYPES.SKELETON, count: 2, maxHp: 12, hp: 12, x: 7, y: 4 }
         ];
 
-        let gameState = 'DEPLOYMENT'; // DEPLOYMENT, BATTLE, END
+        let gameState = 'DEPLOYMENT'; 
         let selectedRosterId = null;
-        let selectedUnit = null;
         let turnIndex = 0;
 
         function init() {
-            renderRoster();
             createBoard();
+            renderRoster();
             render();
+            log("Выберите юнита слева и поставьте его на зеленую клетку.", "log-skill");
         }
 
         function createBoard() {
@@ -309,7 +270,13 @@
         function renderRoster() {
             const list = document.getElementById('roster-list');
             list.innerHTML = '';
+            
+            let currentPoints = 0;
+
             playerRoster.forEach(item => {
+                const costTotal = item.type.cost * item.count;
+                if (item.placed) currentPoints += costTotal;
+
                 const card = document.createElement('div');
                 card.className = `roster-card ${selectedRosterId === item.id ? 'selected' : ''} ${item.placed ? 'placed' : ''}`;
                 card.onclick = () => {
@@ -322,62 +289,75 @@
                 card.innerHTML = `
                     <div class="card-icon">${item.type.icon}</div>
                     <div class="card-info">
-                        <div class="card-title">${item.type.name}</div>
-                        <div class="card-sub">Отряд: x${item.count}</div>
+                        <div class="card-title">${item.type.name} (x${item.count})</div>
+                        <div class="card-sub">Лимит: ${costTotal} очк. (${item.type.cost}/шт)</div>
                     </div>
                 `;
                 list.appendChild(card);
             });
+
+            document.getElementById('limit-title').innerText = `Армия (Лимит: ${currentPoints}/${MAX_LIMIT})`;
         }
 
         function handleCellClick(x, y) {
             const unitOnCell = units.find(u => u.x === x && u.y === y);
 
             if (gameState === 'DEPLOYMENT') {
-                // Размещение отрядов на зеленых клетках (X = 0 или 1)
                 if (x <= 1 && selectedRosterId) {
-                    const rosterItem = playerRoster.find(r => r.id === selectedRosterId);
-                    if (rosterItem && !rosterItem.placed) {
-                        // Если клетка занята — убираем старого
-                        if (unitOnCell) return;
-
+                    const item = playerRoster.find(r => r.id === selectedRosterId);
+                    if (item && !item.placed && !unitOnCell) {
                         units.push({
-                            id: rosterItem.id,
+                            id: item.id,
                             team: 'player',
-                            type: rosterItem.type,
-                            count: rosterItem.count,
-                            maxHp: rosterItem.type.hp,
-                            hp: rosterItem.type.hp,
+                            type: item.type,
+                            count: item.count,
+                            maxHp: item.type.hp,
+                            hp: item.type.hp,
                             x: x, y: y
                         });
-
-                        rosterItem.placed = true;
+                        item.placed = true;
                         selectedRosterId = null;
                         renderRoster();
                         render();
                     }
                 }
             } else if (gameState === 'BATTLE') {
-                const currentUnit = units[turnIndex];
-                if (!currentUnit || currentUnit.team !== 'player') return;
+                const cur = units[turnIndex];
+                if (!cur || cur.team !== 'player') return;
 
-                const dist = Math.abs(x - currentUnit.x) + Math.abs(y - currentUnit.y);
+                const dist = Math.abs(x - cur.x) + Math.abs(y - cur.y);
 
-                // Атака
-                if (unitOnCell && unitOnCell.team === 'enemy' && dist <= currentUnit.type.range) {
-                    attack(currentUnit, unitOnCell);
+                // АТАКА
+                if (unitOnCell && unitOnCell.team === 'enemy' && dist <= cur.type.range) {
+                    attack(cur, unitOnCell);
                     nextTurn();
                 }
-                // Перемещение
-                else if (!unitOnCell && dist <= currentUnit.type.move) {
-                    currentUnit.x = x;
-                    currentUnit.y = y;
-                    log(`Ваш ${currentUnit.type.name} переместился`, 'log-move');
+                // ХОД
+                else if (!unitOnCell && dist <= cur.type.move) {
+                    cur.x = x;
+                    cur.y = y;
+                    log(`Ваш ${cur.type.name} сходил на новую позицию`, 'log-move');
                     nextTurn();
                 }
             }
 
             if (unitOnCell) showUnitDetails(unitOnCell.type, unitOnCell.count, unitOnCell.hp);
+        }
+
+        function startBattle() {
+            const allPlaced = playerRoster.every(r => r.placed);
+            if (!allPlaced) {
+                alert('Выставьте все отряды на поле!');
+                return;
+            }
+
+            gameState = 'BATTLE';
+            turnIndex = 0;
+            document.getElementById('roster-panel').style.display = 'none';
+            document.getElementById('action-btn').style.display = 'none';
+            document.getElementById('game-status').innerText = 'ВАШ ХОД: Нажмите на зеленую клетку для хода или красную для атаки!';
+            log('⚔️ БОЙ НАЧАЛСЯ!', 'log-skill');
+            render();
         }
 
         function render() {
@@ -386,7 +366,7 @@
                 c.innerHTML = '';
             });
 
-            // Отрисовка подсветок расстановки
+            // Расстановка
             if (gameState === 'DEPLOYMENT' && selectedRosterId) {
                 for (let y = 0; y < GRID_H; y++) {
                     for (let x = 0; x <= 1; x++) {
@@ -397,12 +377,13 @@
                 }
             }
 
-            // Отрисовка ходов текущего юнита
+            // Геймплей в бою
             if (gameState === 'BATTLE') {
                 const cur = units[turnIndex];
                 if (cur && cur.team === 'player') {
                     getCell(cur.x, cur.y).classList.add('active-cell');
 
+                    // Подсветка врагов для атаки
                     units.forEach(u => {
                         const dist = Math.abs(u.x - cur.x) + Math.abs(u.y - cur.y);
                         if (u.team === 'enemy' && dist <= cur.type.range) {
@@ -410,6 +391,7 @@
                         }
                     });
 
+                    // Подсветка ходов
                     for (let y = 0; y < GRID_H; y++) {
                         for (let x = 0; x < GRID_W; x++) {
                             const dist = Math.abs(x - cur.x) + Math.abs(y - cur.y);
@@ -421,7 +403,7 @@
                 }
             }
 
-            // Отрисовка самих юнитов
+            // Отрисовка фигурок
             units.forEach(u => {
                 const cell = getCell(u.x, u.y);
                 if (cell) {
@@ -434,32 +416,17 @@
             });
         }
 
-        function startBattle() {
-            const allPlaced = playerRoster.every(r => r.placed);
-            if (!allPlaced) {
-                alert('Разместите все отряды перед началом боя!');
-                return;
-            }
-
-            gameState = 'BATTLE';
-            document.getElementById('roster-panel').style.display = 'none';
-            document.getElementById('action-btn').style.display = 'none';
-            document.getElementById('game-status').innerText = 'Фаза Боя';
-            log('⚔️ Битва началась!', 'log-skill');
-            render();
-        }
-
         function attack(attacker, defender) {
             const rawDmg = attacker.count * attacker.type.dmg;
             let totalHp = (defender.count - 1) * defender.maxHp + defender.hp - rawDmg;
 
             if (totalHp <= 0) {
-                log(`💥 ${attacker.type.name} полностью уничтожил отряд ${defender.type.name}!`, 'log-hit');
+                log(`💥 ${attacker.type.name} уничтожил отряд ${defender.type.name}!`, 'log-hit');
                 units = units.filter(u => u !== defender);
             } else {
                 const newCount = Math.ceil(totalHp / defender.maxHp);
                 const newHp = totalHp % defender.maxHp || defender.maxHp;
-                log(`⚔️ ${attacker.type.name} наносит ${rawDmg} урона. (${defender.count - newCount} пало)`, 'log-hit');
+                log(`⚔️ ${attacker.type.name} нанес ${rawDmg} урона. Погибло воинов: ${defender.count - newCount}`, 'log-hit');
                 defender.count = newCount;
                 defender.hp = newHp;
             }
@@ -474,9 +441,9 @@
             const cur = units[turnIndex];
             if (cur.team === 'enemy') {
                 document.getElementById('game-status').innerText = 'Ход Врага...';
-                setTimeout(enemyAI, 700);
+                setTimeout(enemyAI, 600);
             } else {
-                document.getElementById('game-status').innerText = 'Ваш Ход';
+                document.getElementById('game-status').innerText = 'ВАШ ХОД: Нажмите на клетку для действия';
             }
         }
 
@@ -484,7 +451,6 @@
             const cur = units[turnIndex];
             if (!cur || cur.team !== 'enemy') return;
 
-            // Поиск ближайшего игрока
             let target = null;
             let minD = 999;
 
@@ -497,7 +463,6 @@
                 if (minD <= cur.type.range) {
                     attack(cur, target);
                 } else {
-                    // Шаг в сторону игрока
                     let bestX = cur.x, bestY = cur.y, bestDist = minD;
                     for (let y = 0; y < GRID_H; y++) {
                         for (let x = 0; x < GRID_W; x++) {
@@ -522,22 +487,22 @@
             if (!pAlive || !eAlive) {
                 gameState = 'END';
                 document.getElementById('game-status').innerText = pAlive ? 'Победа!' : 'Поражение!';
-                log(pAlive ? '🎉 Вы одержали великую победу!' : '☠️ Ваше войско было разбито...', 'log-skill');
+                log(pAlive ? '🎉 ВЫ ПОБЕДИЛИ!' : '☠️ ВАША АРМИЯ РАЗБИТА!', 'log-skill');
+                render();
                 return true;
             }
             return false;
         }
 
         function showUnitDetails(type, count, currentHp) {
-            const box = document.getElementById('unit-details');
-            box.innerHTML = `
-                <div style="font-size:16px; font-weight:bold; color:var(--text-gold); font-family:Georgia">${type.icon} ${type.name}</div>
-                <div style="margin: 5px 0;">Отряд: <b>${count} воинов</b></div>
-                <div>Здоровье воина: <b>${currentHp || type.hp}/${type.hp} HP</b></div>
-                <div>Урон воина: <b>${type.dmg}</b></div>
-                <div>Дальность хода: <b>${type.move} кл.</b></div>
-                <div>Дальность атаки: <b>${type.range} кл.</b></div>
-                <div style="margin-top: 8px; color: #aaa; font-style: italic;">${type.desc}</div>
+            document.getElementById('unit-details').innerHTML = `
+                <div style="font-size:15px; font-weight:bold; color:var(--text-gold)">${type.icon} ${type.name}</div>
+                <div>Отряд: <b>${count} чел.</b></div>
+                <div>Занимаемый лимит: <b>${type.cost * count} / 10 очк.</b></div>
+                <div>Здоровье 1 воина: <b>${currentHp || type.hp}/${type.hp}</b></div>
+                <div>Урон 1 воина: <b>${type.dmg}</b></div>
+                <div>Ход: <b>${type.move} кл.</b> | Атака: <b>${type.range} кл.</b></div>
+                <div style="margin-top: 5px; color: #aaa;">${type.desc}</div>
             `;
         }
 
