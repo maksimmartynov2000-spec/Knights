@@ -3,338 +3,558 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Рыцари: Битва Героев (Тактика)</title>
+    <title>Рыцари: Битва Героев</title>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, sans-serif; }
-        body { background: #1a1510; color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; }
+        :root {
+            --bg-main: #12100e;
+            --bg-panel: #1e1915;
+            --border-gold: #c89b3c;
+            --border-dark: #4a3828;
+            --text-gold: #f3d179;
+            --cell-size: 72px;
+        }
 
-        h1 { color: #f1c40f; margin-bottom: 10px; text-shadow: 2px 2px 4px #000; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Georgia', 'Segoe UI', serif; user-select: none; }
         
-        #game-board {
-            display: grid;
-            grid-template-columns: repeat(8, 65px);
-            grid-template-rows: repeat(5, 65px);
-            gap: 4px;
-            background: #2b1d0c;
-            padding: 10px;
-            border: 4px solid #8b5a2b;
+        body {
+            background: var(--bg-main);
+            color: #e0d0c0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        h1 { color: var(--text-gold); text-shadow: 0 2px 8px rgba(0,0,0,0.8); margin-bottom: 15px; letter-spacing: 1px; }
+
+        .wrapper {
+            display: flex;
+            gap: 20px;
+            background: var(--bg-panel);
+            border: 2px solid var(--border-gold);
+            padding: 20px;
             border-radius: 8px;
-            box-shadow: 0 0 20px rgba(0,0,0,0.8);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.9);
+        }
+
+        /* --- ЛЕВАЯ ПАНЕЛЬ И ИНФО --- */
+        .sidebar {
+            width: 280px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .panel-box {
+            background: #14100d;
+            border: 1px solid var(--border-dark);
+            border-radius: 6px;
+            padding: 12px;
+        }
+
+        .panel-title {
+            color: var(--text-gold);
+            font-size: 14px;
+            text-transform: uppercase;
+            border-bottom: 1px solid var(--border-dark);
+            padding-bottom: 5px;
+            margin-bottom: 8px;
+            letter-spacing: 1px;
+        }
+
+        /* --- КАРТОЧКИ ФАЗЫ ПОДГОТОВКИ --- */
+        .roster {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .roster-card {
+            background: #251d18;
+            border: 1px solid var(--border-dark);
+            border-radius: 4px;
+            padding: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .roster-card:hover { border-color: var(--border-gold); background: #2f251f; }
+        .roster-card.selected { border-color: #27ae60; background: #1e331e; }
+        .roster-card.placed { opacity: 0.4; cursor: not-allowed; }
+
+        .card-icon { font-size: 28px; }
+        .card-info { flex-grow: 1; }
+        .card-title { font-weight: bold; color: #fff; font-size: 13px; }
+        .card-sub { font-size: 11px; color: #aaa; }
+
+        /* --- КАРТА БОЯ --- */
+        .game-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+
+        #turn-bar {
+            width: 100%;
+            background: #14100d;
+            border: 1px solid var(--border-dark);
+            padding: 8px 15px;
+            border-radius: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 14px;
+            color: var(--text-gold);
+        }
+
+        #board {
+            display: grid;
+            grid-template-columns: repeat(8, var(--cell-size));
+            grid-template-rows: repeat(5, var(--cell-size));
+            gap: 4px;
+            background: #0a0806;
+            padding: 8px;
+            border: 2px solid var(--border-dark);
+            border-radius: 6px;
         }
 
         .cell {
-            width: 65px;
-            height: 65px;
-            background: #3a2a1a;
-            border: 1px solid #5a4028;
+            width: var(--cell-size);
+            height: var(--cell-size);
+            background: #231c16;
+            border: 1px solid #362a20;
             border-radius: 4px;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
-            align-items: center;
             padding: 4px;
-            cursor: pointer;
             position: relative;
-            user-select: none;
+            cursor: pointer;
         }
 
-        .cell:hover { border-color: #f1c40f; }
-        .cell.reachable { background: #2e4d25; border-color: #27ae60; } /* Зеленая подсветка для хода */
-        .cell.attackable { background: #5c1d1d; border-color: #e74c3c; } /* Красная подсветка для атаки */
+        .cell:hover { border-color: #775a3c; }
+        .cell.deploy-zone { background: #1e2d1d; border-color: #27ae60; }
+        .cell.reachable { background: #263825; border-color: #2ecc71; }
+        .cell.attackable { background: #421c1c; border-color: #e74c3c; }
 
         .unit {
-            font-size: 28px;
+            font-size: 32px;
+            text-align: center;
             line-height: 1;
             margin-top: 2px;
         }
 
-        .unit-count {
-            font-size: 11px;
-            font-weight: bold;
-            background: rgba(0,0,0,0.7);
-            padding: 1px 4px;
+        .unit-badge {
+            background: rgba(0,0,0,0.8);
             border-radius: 3px;
+            padding: 1px 4px;
+            font-size: 10px;
+            font-weight: bold;
             color: #fff;
+            align-self: flex-start;
         }
 
-        .player-unit { color: #3498db; }
-        .enemy-unit { color: #e74c3c; }
+        .player-unit .unit-badge { color: #5ad; }
+        .enemy-unit .unit-badge { color: #f55; }
 
-        .active-unit {
-            outline: 2px solid #f1c40f;
-            box-shadow: inset 0 0 10px #f1c40f;
+        .active-cell {
+            outline: 2px solid var(--text-gold);
+            box-shadow: 0 0 10px rgba(243, 209, 121, 0.4);
         }
 
-        #turn-info { margin: 10px; font-size: 16px; font-weight: bold; color: #e67e22; }
+        /* --- КНОПКИ И ЛОГ --- */
+        .btn {
+            background: linear-gradient(180deg, #c89b3c 0%, #8a651e 100%);
+            border: none;
+            color: #000;
+            font-weight: bold;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .btn:hover { filter: brightness(1.2); }
+        .btn:disabled { background: #4a3828; color: #777; cursor: not-allowed; }
 
         #log-box {
-            width: 540px;
-            height: 100px;
-            background: #0f0b07;
-            border: 2px solid #5a4028;
-            border-radius: 6px;
+            width: 100%;
+            height: 90px;
+            background: #0e0c0a;
+            border: 1px solid var(--border-dark);
+            border-radius: 4px;
             padding: 8px;
             overflow-y: auto;
-            margin-top: 10px;
-            font-size: 13px;
+            font-size: 11px;
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
         }
 
         .log-hit { color: #e74c3c; }
         .log-move { color: #2ecc71; }
-        .log-system { color: #f1c40f; }
+        .log-skill { color: #f39c12; }
     </style>
 </head>
 <body>
 
-    <h1>Рыцари: Битва Героев</h1>
-    <div id="turn-info">Загрузка...</div>
-    <div id="game-board"></div>
-    <div id="log-box"></div>
+    <h1>⚔️ РЫЦАРИ: БИТВА ГЕРОЕВ</h1>
+
+    <div class="wrapper">
+        <!-- СЛЕВА: ВЫБОР И ИНФОРМАЦИЯ -->
+        <div class="sidebar">
+            <div class="panel-box" id="roster-panel">
+                <div class="panel-title">Ваша Армия (Расстановка)</div>
+                <div class="roster" id="roster-list"></div>
+            </div>
+
+            <div class="panel-box" id="info-panel">
+                <div class="panel-title">Инфо о Юните</div>
+                <div id="unit-details" style="font-size: 12px; color: #bbb;">
+                    Выберите юнита на поле или панель для просмотра характеристик.
+                </div>
+            </div>
+        </div>
+
+        <!-- СПРАВА: ПОЛЕ БОЯ -->
+        <div class="game-section">
+            <div id="turn-bar">
+                <span id="game-status">Фаза Расстановки: Разместите отряды слева</span>
+                <button class="btn" id="action-btn" onclick="startBattle()">В Бой!</button>
+            </div>
+
+            <div id="board"></div>
+
+            <div id="log-box"></div>
+        </div>
+    </div>
 
     <script>
-        const GRID_WIDTH = 8;
-        const GRID_HEIGHT = 5;
+        const GRID_W = 8;
+        const GRID_H = 5;
 
-        // Данные о юнитах
+        // База типов юнитов с уникальными абилками
         const UNIT_TYPES = {
-            KNIGHT: { name: 'Рыцарь', icon: '🛡️', hp: 20, dmg: 5, moveRange: 2, attackRange: 1, isRanged: false },
-            ARCHER: { name: 'Лучник', icon: '🏹', hp: 12, dmg: 4, moveRange: 1, attackRange: 4, isRanged: true },
-            SKELETON: { name: 'Скелет', icon: '💀', hp: 15, dmg: 4, moveRange: 2, attackRange: 1, isRanged: false }
+            KNIGHT: { 
+                name: 'Рыцарь', icon: '🛡️', hp: 25, dmg: 6, move: 2, range: 1, 
+                desc: 'Тяжелая пехота. Способность: "Щит" — снижение урона.',
+                ability: 'shield'
+            },
+            ARCHER: { 
+                name: 'Лучник', icon: '🏹', hp: 12, dmg: 5, move: 1, range: 4, 
+                desc: 'Дальний бой. Способность: "Залп" — +50% урона.',
+                ability: 'power_shot'
+            },
+            MAGE: { 
+                name: 'Маг', icon: '🧙‍♂️', hp: 10, dmg: 8, move: 1, range: 3, 
+                desc: 'Магический урон. Игнорирует защитные стойки.',
+                ability: 'fireball'
+            },
+            SKELETON: { 
+                name: 'Скелет', icon: '💀', hp: 14, dmg: 4, move: 2, range: 1, 
+                desc: 'Нежить ближнего боя.' 
+            },
+            ORC: { 
+                name: 'Орк', icon: '👹', hp: 30, dmg: 7, move: 2, range: 1, 
+                desc: 'Свирепый воин с высоким запасом здоровья.' 
+            }
         };
 
-        // Размещение отрядов на поле
-        let units = [
-            // Игрок (Слева)
-            { id: 1, team: 'player', type: UNIT_TYPES.KNIGHT, count: 5, hp: 20, x: 0, y: 1 },
-            { id: 2, team: 'player', type: UNIT_TYPES.ARCHER, count: 8, hp: 12, x: 0, y: 3 },
-            
-            // Враг (Справа)
-            { id: 3, team: 'enemy', type: UNIT_TYPES.SKELETON, count: 10, hp: 15, x: 7, y: 1 },
-            { id: 4, team: 'enemy', type: UNIT_TYPES.SKELETON, count: 6, hp: 15, x: 7, y: 3 }
+        // Доступные отряды игрока для расстановки
+        let playerRoster = [
+            { id: 'p1', type: UNIT_TYPES.KNIGHT, count: 5, placed: false },
+            { id: 'p2', type: UNIT_TYPES.ARCHER, count: 8, placed: false },
+            { id: 'p3', type: UNIT_TYPES.MAGE, count: 3, placed: false }
         ];
 
-        let activeUnitIndex = 0;
+        // Отряды Врага (Уже выставлены справа)
+        let units = [
+            { id: 'e1', team: 'enemy', type: UNIT_TYPES.ORC, count: 4, maxHp: 30, hp: 30, x: 7, y: 1 },
+            { id: 'e2', team: 'enemy', type: UNIT_TYPES.SKELETON, count: 12, maxHp: 14, hp: 14, x: 7, y: 3 },
+            { id: 'e3', team: 'enemy', type: UNIT_TYPES.SKELETON, count: 10, maxHp: 14, hp: 14, x: 6, y: 2 }
+        ];
 
-        function initBoard() {
-            const board = document.getElementById('game-board');
+        let gameState = 'DEPLOYMENT'; // DEPLOYMENT, BATTLE, END
+        let selectedRosterId = null;
+        let selectedUnit = null;
+        let turnIndex = 0;
+
+        function init() {
+            renderRoster();
+            createBoard();
+            render();
+        }
+
+        function createBoard() {
+            const board = document.getElementById('board');
             board.innerHTML = '';
-
-            for (let y = 0; y < GRID_HEIGHT; y++) {
-                for (let x = 0; x < GRID_WIDTH; x++) {
+            for (let y = 0; y < GRID_H; y++) {
+                for (let x = 0; x < GRID_W; x++) {
                     const cell = document.createElement('div');
                     cell.className = 'cell';
                     cell.dataset.x = x;
                     cell.dataset.y = y;
-                    cell.onclick = () => onCellClick(x, y);
+                    cell.onclick = () => handleCellClick(x, y);
                     board.appendChild(cell);
                 }
             }
-            render();
         }
 
-        function getCurrentUnit() {
-            return units[activeUnitIndex];
+        function renderRoster() {
+            const list = document.getElementById('roster-list');
+            list.innerHTML = '';
+            playerRoster.forEach(item => {
+                const card = document.createElement('div');
+                card.className = `roster-card ${selectedRosterId === item.id ? 'selected' : ''} ${item.placed ? 'placed' : ''}`;
+                card.onclick = () => {
+                    if (item.placed || gameState !== 'DEPLOYMENT') return;
+                    selectedRosterId = item.id;
+                    showUnitDetails(item.type, item.count);
+                    renderRoster();
+                    render();
+                };
+                card.innerHTML = `
+                    <div class="card-icon">${item.type.icon}</div>
+                    <div class="card-info">
+                        <div class="card-title">${item.type.name}</div>
+                        <div class="card-sub">Отряд: x${item.count}</div>
+                    </div>
+                `;
+                list.appendChild(card);
+            });
+        }
+
+        function handleCellClick(x, y) {
+            const unitOnCell = units.find(u => u.x === x && u.y === y);
+
+            if (gameState === 'DEPLOYMENT') {
+                // Размещение отрядов на зеленых клетках (X = 0 или 1)
+                if (x <= 1 && selectedRosterId) {
+                    const rosterItem = playerRoster.find(r => r.id === selectedRosterId);
+                    if (rosterItem && !rosterItem.placed) {
+                        // Если клетка занята — убираем старого
+                        if (unitOnCell) return;
+
+                        units.push({
+                            id: rosterItem.id,
+                            team: 'player',
+                            type: rosterItem.type,
+                            count: rosterItem.count,
+                            maxHp: rosterItem.type.hp,
+                            hp: rosterItem.type.hp,
+                            x: x, y: y
+                        });
+
+                        rosterItem.placed = true;
+                        selectedRosterId = null;
+                        renderRoster();
+                        render();
+                    }
+                }
+            } else if (gameState === 'BATTLE') {
+                const currentUnit = units[turnIndex];
+                if (!currentUnit || currentUnit.team !== 'player') return;
+
+                const dist = Math.abs(x - currentUnit.x) + Math.abs(y - currentUnit.y);
+
+                // Атака
+                if (unitOnCell && unitOnCell.team === 'enemy' && dist <= currentUnit.type.range) {
+                    attack(currentUnit, unitOnCell);
+                    nextTurn();
+                }
+                // Перемещение
+                else if (!unitOnCell && dist <= currentUnit.type.move) {
+                    currentUnit.x = x;
+                    currentUnit.y = y;
+                    log(`Ваш ${currentUnit.type.name} переместился`, 'log-move');
+                    nextTurn();
+                }
+            }
+
+            if (unitOnCell) showUnitDetails(unitOnCell.type, unitOnCell.count, unitOnCell.hp);
         }
 
         function render() {
-            // Очистка клеток
-            document.querySelectorAll('.cell').forEach(cell => {
-                cell.innerHTML = '';
-                cell.className = 'cell';
+            document.querySelectorAll('.cell').forEach(c => {
+                c.className = 'cell';
+                c.innerHTML = '';
             });
 
-            const currentUnit = getCurrentUnit();
-
-            // Отрисовка юнитов
-            units.forEach(u => {
-                const cell = getCell(u.x, u.y);
-                if (cell) {
-                    const unitDiv = document.createElement('div');
-                    unitDiv.className = `unit ${u.team === 'player' ? 'player-unit' : 'enemy-unit'}`;
-                    unitDiv.innerText = u.type.icon;
-
-                    const countDiv = document.createElement('div');
-                    countDiv.className = 'unit-count';
-                    countDiv.innerText = u.count;
-
-                    cell.appendChild(unitDiv);
-                    cell.appendChild(countDiv);
-
-                    if (u === currentUnit) {
-                        cell.classList.add('active-unit');
-                    }
-                }
-            });
-
-            // Подсветка ходов и атак
-            if (currentUnit) {
-                document.getElementById('turn-info').innerText = 
-                    `Ход: ${currentUnit.team === 'player' ? 'Игрок' : 'Враг'} (${currentUnit.type.name} x${currentUnit.count})`;
-
-                for (let y = 0; y < GRID_HEIGHT; y++) {
-                    for (let x = 0; x < GRID_WIDTH; x++) {
-                        const dist = Math.abs(x - currentUnit.x) + Math.abs(y - currentUnit.y);
-                        const targetUnit = getUnitAt(x, y);
-
-                        // Проверка перемещения
-                        if (!targetUnit && dist <= currentUnit.type.moveRange) {
-                            getCell(x, y).classList.add('reachable');
-                        }
-
-                        // Проверка атаки
-                        if (targetUnit && targetUnit.team !== currentUnit.team && dist <= currentUnit.type.attackRange) {
-                            getCell(x, y).classList.add('attackable');
+            // Отрисовка подсветок расстановки
+            if (gameState === 'DEPLOYMENT' && selectedRosterId) {
+                for (let y = 0; y < GRID_H; y++) {
+                    for (let x = 0; x <= 1; x++) {
+                        if (!units.find(u => u.x === x && u.y === y)) {
+                            getCell(x, y).classList.add('deploy-zone');
                         }
                     }
                 }
             }
+
+            // Отрисовка ходов текущего юнита
+            if (gameState === 'BATTLE') {
+                const cur = units[turnIndex];
+                if (cur && cur.team === 'player') {
+                    getCell(cur.x, cur.y).classList.add('active-cell');
+
+                    units.forEach(u => {
+                        const dist = Math.abs(u.x - cur.x) + Math.abs(u.y - cur.y);
+                        if (u.team === 'enemy' && dist <= cur.type.range) {
+                            getCell(u.x, u.y).classList.add('attackable');
+                        }
+                    });
+
+                    for (let y = 0; y < GRID_H; y++) {
+                        for (let x = 0; x < GRID_W; x++) {
+                            const dist = Math.abs(x - cur.x) + Math.abs(y - cur.y);
+                            if (!units.find(u => u.x === x && u.y === y) && dist <= cur.type.move) {
+                                getCell(x, y).classList.add('reachable');
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Отрисовка самих юнитов
+            units.forEach(u => {
+                const cell = getCell(u.x, u.y);
+                if (cell) {
+                    cell.classList.add(u.team === 'player' ? 'player-unit' : 'enemy-unit');
+                    cell.innerHTML = `
+                        <div class="unit-badge">x${u.count}</div>
+                        <div class="unit">${u.type.icon}</div>
+                    `;
+                }
+            });
         }
 
-        function getCell(x, y) {
-            return document.querySelector(`.cell[data-x="${x}"][data-y="${y}"]`);
+        function startBattle() {
+            const allPlaced = playerRoster.every(r => r.placed);
+            if (!allPlaced) {
+                alert('Разместите все отряды перед началом боя!');
+                return;
+            }
+
+            gameState = 'BATTLE';
+            document.getElementById('roster-panel').style.display = 'none';
+            document.getElementById('action-btn').style.display = 'none';
+            document.getElementById('game-status').innerText = 'Фаза Боя';
+            log('⚔️ Битва началась!', 'log-skill');
+            render();
         }
 
-        function getUnitAt(x, y) {
-            return units.find(u => u.x === x && u.y === y);
-        }
+        function attack(attacker, defender) {
+            const rawDmg = attacker.count * attacker.type.dmg;
+            let totalHp = (defender.count - 1) * defender.maxHp + defender.hp - rawDmg;
 
-        function log(msg, type = '') {
-            const logBox = document.getElementById('log-box');
-            const p = document.createElement('p');
-            if (type) p.className = type;
-            p.innerText = msg;
-            logBox.appendChild(p);
-            logBox.scrollTop = logBox.scrollHeight;
+            if (totalHp <= 0) {
+                log(`💥 ${attacker.type.name} полностью уничтожил отряд ${defender.type.name}!`, 'log-hit');
+                units = units.filter(u => u !== defender);
+            } else {
+                const newCount = Math.ceil(totalHp / defender.maxHp);
+                const newHp = totalHp % defender.maxHp || defender.maxHp;
+                log(`⚔️ ${attacker.type.name} наносит ${rawDmg} урона. (${defender.count - newCount} пало)`, 'log-hit');
+                defender.count = newCount;
+                defender.hp = newHp;
+            }
         }
 
         function nextTurn() {
             if (checkGameOver()) return;
 
-            activeUnitIndex = (activeUnitIndex + 1) % units.length;
+            turnIndex = (turnIndex + 1) % units.length;
             render();
 
-            // ИИ для врага
-            const currentUnit = getCurrentUnit();
-            if (currentUnit.team === 'enemy') {
-                setTimeout(enemyAI, 600);
-            }
-        }
-
-        function onCellClick(x, y) {
-            const currentUnit = getCurrentUnit();
-            if (!currentUnit || currentUnit.team !== 'player') return;
-
-            const targetUnit = getUnitAt(x, y);
-            const dist = Math.abs(x - currentUnit.x) + Math.abs(y - currentUnit.y);
-
-            // Атака врага
-            if (targetUnit && targetUnit.team === 'enemy' && dist <= currentUnit.type.attackRange) {
-                attack(currentUnit, targetUnit);
-                nextTurn();
-            } 
-            // Перемещение
-            else if (!targetUnit && dist <= currentUnit.type.moveRange) {
-                currentUnit.x = x;
-                currentUnit.y = y;
-                log(`Вы переместили ${currentUnit.type.name} на (${x + 1}, ${y + 1})`, 'log-move');
-                nextTurn();
-            }
-        }
-
-        function attack(attacker, defender) {
-            // Урон зависит от количества воинов в отряде
-            const totalDamage = attacker.count * attacker.type.dmg;
-            
-            // Расчет уничтожения юнитов
-            let remainingHpPool = (defender.count - 1) * defender.type.hp + defender.hp - totalDamage;
-
-            if (remainingHpPool <= 0) {
-                log(`⚔️ ${attacker.type.name} уничтожили весь отряд ${defender.type.name}!`, 'log-hit');
-                units = units.filter(u => u !== defender);
-                // Корректировка индекса активного юнита при удалении
-                const deadIndex = units.indexOf(defender);
-                if (deadIndex !== -1 && deadIndex < activeUnitIndex) {
-                    activeUnitIndex--;
-                }
+            const cur = units[turnIndex];
+            if (cur.team === 'enemy') {
+                document.getElementById('game-status').innerText = 'Ход Врага...';
+                setTimeout(enemyAI, 700);
             } else {
-                const newCount = Math.ceil(remainingHpPool / defender.type.hp);
-                const newHp = remainingHpPool % defender.type.hp || defender.type.hp;
-                const killed = defender.count - newCount;
-
-                defender.count = newCount;
-                defender.hp = newHp;
-                log(`⚔️ ${attacker.type.name} нанесли ${totalDamage} урона. Погибло ${killed} ${defender.type.name}.`, 'log-hit');
+                document.getElementById('game-status').innerText = 'Ваш Ход';
             }
         }
 
         function enemyAI() {
-            const enemyUnit = getCurrentUnit();
-            if (!enemyUnit || enemyUnit.team !== 'enemy') return;
+            const cur = units[turnIndex];
+            if (!cur || cur.team !== 'enemy') return;
 
-            // Ищем ближайшего игрока
+            // Поиск ближайшего игрока
             let target = null;
-            let minDistance = 999;
+            let minD = 999;
 
-            units.filter(u => u.team === 'player').forEach(playerUnit => {
-                const dist = Math.abs(playerUnit.x - enemyUnit.x) + Math.abs(playerUnit.y - enemyUnit.y);
-                if (dist < minDistance) {
-                    minDistance = dist;
-                    target = playerUnit;
-                }
+            units.filter(u => u.team === 'player').forEach(p => {
+                const d = Math.abs(p.x - cur.x) + Math.abs(p.y - cur.y);
+                if (d < minD) { minD = d; target = p; }
             });
 
             if (target) {
-                // Если достает — атакует
-                if (minDistance <= enemyUnit.type.attackRange) {
-                    attack(enemyUnit, target);
-                } 
-                // Иначе подбирается ближе
-                else {
-                    let bestX = enemyUnit.x;
-                    let bestY = enemyUnit.y;
-                    let bestDist = minDistance;
-
-                    for (let y = 0; y < GRID_HEIGHT; y++) {
-                        for (let x = 0; x < GRID_WIDTH; x++) {
-                            const distToCell = Math.abs(x - enemyUnit.x) + Math.abs(y - enemyUnit.y);
-                            if (!getUnitAt(x, y) && distToCell <= enemyUnit.type.moveRange) {
-                                const distToTarget = Math.abs(x - target.x) + Math.abs(y - target.y);
-                                if (distToTarget < bestDist) {
-                                    bestDist = distToTarget;
-                                    bestX = x;
-                                    bestY = y;
-                                }
+                if (minD <= cur.type.range) {
+                    attack(cur, target);
+                } else {
+                    // Шаг в сторону игрока
+                    let bestX = cur.x, bestY = cur.y, bestDist = minD;
+                    for (let y = 0; y < GRID_H; y++) {
+                        for (let x = 0; x < GRID_W; x++) {
+                            const dToCell = Math.abs(x - cur.x) + Math.abs(y - cur.y);
+                            if (!units.find(u => u.x === x && u.y === y) && dToCell <= cur.type.move) {
+                                const dToT = Math.abs(x - target.x) + Math.abs(y - target.y);
+                                if (dToT < bestDist) { bestDist = dToT; bestX = x; bestY = y; }
                             }
                         }
                     }
-                    enemyUnit.x = bestX;
-                    enemyUnit.y = bestY;
-                    log(`💀 Вражеский ${enemyUnit.type.name} продвинулся ближе.`, 'log-move');
+                    cur.x = bestX; cur.y = bestY;
+                    log(`👹 Вражеский ${cur.type.name} наступает`, 'log-move');
                 }
             }
             nextTurn();
         }
 
         function checkGameOver() {
-            const playerAlive = units.some(u => u.team === 'player');
-            const enemyAlive = units.some(u => u.team === 'enemy');
+            const pAlive = units.some(u => u.team === 'player');
+            const eAlive = units.some(u => u.team === 'enemy');
 
-            if (!playerAlive) {
-                log("☠️ ПОРАЖЕНИЕ! Все ваши отряды разбиты.", 'log-system');
-                document.getElementById('turn-info').innerText = "Конец боя - Поражение";
-                return true;
-            }
-            if (!enemyAlive) {
-                log("🎉 ПОБЕДА! Вы разгромили армию врага!", 'log-system');
-                document.getElementById('turn-info').innerText = "Конец боя - Победа!";
+            if (!pAlive || !eAlive) {
+                gameState = 'END';
+                document.getElementById('game-status').innerText = pAlive ? 'Победа!' : 'Поражение!';
+                log(pAlive ? '🎉 Вы одержали великую победу!' : '☠️ Ваше войско было разбито...', 'log-skill');
                 return true;
             }
             return false;
         }
 
-        // Запуск игры
-        initBoard();
-        log("Битва началась! Нажимайте на зеленые клетки для хода или красные для атаки.", 'log-system');
+        function showUnitDetails(type, count, currentHp) {
+            const box = document.getElementById('unit-details');
+            box.innerHTML = `
+                <div style="font-size:16px; font-weight:bold; color:var(--text-gold); font-family:Georgia">${type.icon} ${type.name}</div>
+                <div style="margin: 5px 0;">Отряд: <b>${count} воинов</b></div>
+                <div>Здоровье воина: <b>${currentHp || type.hp}/${type.hp} HP</b></div>
+                <div>Урон воина: <b>${type.dmg}</b></div>
+                <div>Дальность хода: <b>${type.move} кл.</b></div>
+                <div>Дальность атаки: <b>${type.range} кл.</b></div>
+                <div style="margin-top: 8px; color: #aaa; font-style: italic;">${type.desc}</div>
+            `;
+        }
+
+        function getCell(x, y) {
+            return document.querySelector(`.cell[data-x="${x}"][data-y="${y}"]`);
+        }
+
+        function log(msg, cls = '') {
+            const box = document.getElementById('log-box');
+            const div = document.createElement('div');
+            if (cls) div.className = cls;
+            div.innerText = msg;
+            box.appendChild(div);
+            box.scrollTop = box.scrollHeight;
+        }
+
+        init();
     </script>
 </body>
 </html>
