@@ -141,7 +141,6 @@
     let activeAction = null; 
     let pendingTarget = null; 
 
-    // Счётчики для двойной стрелы лучника
     let doubleArrowShotsLeft = 0;
 
     const UNIT_TYPES = {
@@ -168,19 +167,17 @@
     };
 
     const ABILITY_DATA = {
-        // Мечник
-        spear: { name: "Бросить копье", desc: "Урон 10, дальность 3. Выберите врага. (КД: 3)", cdMax: 3 },
-        buff: { name: "Укрепление", desc: "+30% защиты союзнику на 2 хода (дальность 2). (КД: 4)", cdMax: 4 },
-        heal: { name: "Лечение", desc: "+5 HP/ход на 5 ходов союзнику в пределах 2 клеток. (КД: 10)", cdMax: 10 },
-        rage: { name: "Ярость", desc: "+5 урона на 3 хода союзнику в пределах 2 клеток. (КД: 6)", cdMax: 6 },
-        stun: { name: "Оглушение", desc: "Враг пропускает 1 ход (дальность 1). (КД: 4)", cdMax: 4 },
+        spear: { name: "Бросить копье", desc: "Урон 10, дальность 3. Выберите врага.", cdMax: 3 },
+        buff: { name: "Укрепление", desc: "+30% защиты союзнику на 2 хода (дальность 2).", cdMax: 4 },
+        heal: { name: "Лечение", desc: "+5 HP/ход на 5 ходов союзнику в пределах 2 клеток.", cdMax: 10 },
+        rage: { name: "Ярость", desc: "+5 урона на 3 хода союзнику в пределах 2 клеток.", cdMax: 6 },
+        stun: { name: "Оглушение", desc: "Враг пропускает 1 ход (дальность 1).", cdMax: 4 },
         
-        // Лучник
-        fireArrow: { name: "Огненные стрелы", desc: "Следующие 3 атаки поджигают цели (+1 маг. урона на 2 хода). (КД: 10)", cdMax: 10 },
-        kneeShot: { name: "В колено", desc: "Следующая атака снизит перемещение цели на 2 на 2 хода. (КД: 5)", cdMax: 5 },
-        doubleArrow: { name: "Двойная стрела", desc: "Следующие 2 атаки будут двойными. (КД: 5)", cdMax: 5 },
-        bullseye: { name: "В яблочко", desc: "Следующие 2 атаки имеют +100% базового урона (+10). (КД: 5)", cdMax: 5 },
-        arrowRain: { name: "Град стрел", desc: "Пропустите 4 атаки (можно ходить), 5-я атака будет из 5 выстрелов подряд! (КД: 10)", cdMax: 10 }
+        fireArrow: { name: "Огненные стрелы", desc: "Следующие 3 атаки поджигают цели (+1 маг. урона на 2 хода). Выберите себя для активации.", cdMax: 10 },
+        kneeShot: { name: "В колено", desc: "Следующая атака снизит перемещение цели на 2 на 2 хода. Выберите себя для активации.", cdMax: 5 },
+        doubleArrow: { name: "Двойная стрела", desc: "Следующие 2 атаки будут двойными. Выберите 2 цели.", cdMax: 5 },
+        bullseye: { name: "В яблочко", desc: "Следующие 2 атаки имеют +100% базового урона (+10). Выберите себя для активации.", cdMax: 5 },
+        arrowRain: { name: "Град стрел", desc: "Град из 5 выстрелов подряд! Выберите себя для применения.", cdMax: 10 }
     };
 
     function initGame() {
@@ -212,10 +209,9 @@
                 fireArrowCharges: 0,
                 kneeShotCharge: false,
                 doubleArrowCharges: 0,
-                bullseyeCharges: 0,
-                arrowRainCharging: 0 // 0..4
+                bullseyeCharges: 0
             },
-            dotBurn: [], // Массив { duration: 2 }
+            dotBurn: [],
             stunned: false
         };
     }
@@ -400,7 +396,6 @@
     }
 
     function processTurnEffects(unit) {
-        // Урон от Горения (Огненные стрелы)
         if (unit.dotBurn.length > 0) {
             let totalMagDmg = unit.dotBurn.length;
             unit.hp -= totalMagDmg;
@@ -410,20 +405,17 @@
             if (unit.hp <= 0) { unit.hp = 0; unit.isAlive = false; logMessage(`${unit.name} сгорел!`); }
         }
 
-        // Замедление
         if (unit.buffs.slowDuration > 0) {
             unit.buffs.slowDuration--;
             if (unit.buffs.slowDuration === 0) unit.buffs.slowValue = 0;
         }
 
-        // Регенерация
         if (unit.buffs.regenDuration > 0) {
             unit.hp = Math.min(unit.maxHp, unit.hp + unit.buffs.regenValue);
             unit.buffs.regenDuration--;
             logMessage(`${unit.name} восстановил 5 HP (Лечение).`);
         }
 
-        // Ярость
         if (unit.buffs.rageDuration > 0) {
             unit.buffs.rageDuration--;
             if (unit.buffs.rageDuration === 0) {
@@ -444,7 +436,6 @@
     function endCurrentUnitTurn() {
         if (gamePhase !== 'battle' || !activeUnit) return;
         
-        // Пассивка: Живой (лечится на 20% при пропуске хода/полном отсутствии действий)
         if (!activeUnit.hasMoved && !activeUnit.hasActed) {
             let heal = Math.round(activeUnit.maxHp * 0.2);
             activeUnit.hp = Math.min(activeUnit.maxHp, activeUnit.hp + heal);
@@ -468,7 +459,6 @@
     function getUnitEffectiveRange(unit) {
         let r = unit.range;
         if (unit.typeKey === 'archer') {
-            // Концентрация: +1 дальность, если не ходил прошлый ход
             if (!unit.movedLastTurn) r += 1;
         }
         return r;
@@ -539,19 +529,41 @@
             return;
         }
 
-        // Атака и Способности с выбором цели (2 клика!)
-        if (['attack', 'spear', 'stun', 'buff', 'heal', 'rage'].includes(activeAction)) {
+        // Подтверждение действий двойным касанием
+        let selfBuffActions = ['fireArrow', 'kneeShot', 'bullseye', 'arrowRain'];
+        let targetableActions = ['attack', 'spear', 'stun', 'buff', 'heal', 'rage'];
+
+        if (targetableActions.includes(activeAction) || selfBuffActions.includes(activeAction)) {
             if (board[r][c].classList.contains('highlight-attack') || board[r][c].classList.contains('highlight-move')) {
                 if (targetUnit) {
                     if (pendingTarget === targetUnit) {
-                        // Выполнение действия после подтверждения
+                        // Повторный клик — активация!
                         if (activeAction === 'attack') handleAttackAction(activeUnit, targetUnit);
                         else if (activeAction === 'spear') { executeSpear(activeUnit, targetUnit); endCurrentUnitTurn(); }
                         else if (activeAction === 'stun') { executeStun(activeUnit, targetUnit); endCurrentUnitTurn(); }
                         else if (activeAction === 'buff') { executeReinforce(activeUnit, targetUnit); endCurrentUnitTurn(); }
                         else if (activeAction === 'heal') { executeHeal(activeUnit, targetUnit); endCurrentUnitTurn(); }
                         else if (activeAction === 'rage') { executeRage(activeUnit, targetUnit); endCurrentUnitTurn(); }
+                        
+                        // Активация селф-навыков лучника
+                        else if (activeAction === 'fireArrow') {
+                            activeUnit.buffs.fireArrowCharges = 3; activeUnit.cooldowns.fireArrow = 10; activeUnit.hasActed = true;
+                            logMessage(`${activeUnit.name} заготовил Огненные стрелы!`); endCurrentUnitTurn();
+                        }
+                        else if (activeAction === 'kneeShot') {
+                            activeUnit.buffs.kneeShotCharge = true; activeUnit.cooldowns.kneeShot = 5; activeUnit.hasActed = true;
+                            logMessage(`${activeUnit.name} целится в колено!`); endCurrentUnitTurn();
+                        }
+                        else if (activeAction === 'bullseye') {
+                            activeUnit.buffs.bullseyeCharges = 2; activeUnit.cooldowns.bullseye = 5; activeUnit.hasActed = true;
+                            logMessage(`${activeUnit.name} активировал "В яблочко" (+100% урона)!`); endCurrentUnitTurn();
+                        }
+                        else if (activeAction === 'arrowRain') {
+                            activeUnit.cooldowns.arrowRain = 10; activeUnit.hasActed = true;
+                            executeArrowRain(activeUnit); endCurrentUnitTurn();
+                        }
                     } else {
+                        // Первый клик — предварительный просмотр
                         pendingTarget = targetUnit;
                         renderBoard();
                         reapplyHighlights();
@@ -589,7 +601,7 @@
             let def = calculateTotalDefense(target, aType);
             let rawDmg = activeUnit.damage;
 
-            if (activeUnit.buffs.bullseyeCharges > 0) rawDmg += 10; // +100% баз. урона
+            if (activeUnit.buffs.bullseyeCharges > 0) rawDmg += 10;
 
             let dmg = Math.max(1, Math.round(rawDmg * (1 - def / 100)));
             let extraPure = 0;
@@ -602,6 +614,14 @@
 
             let addStr = extraPure > 0 ? ` + ${extraPure} чистого урона` : '';
             textEl.innerHTML = `<b>Цель: ${target.name}</b><br>Прогнозируемый урон: <span style="color:#e74c3c; font-weight:bold;">${dmg}${addStr} HP</span> (${def}% защ).<br><i>Кликните повторно для атаки!</i>`;
+        } else if (action === 'fireArrow') {
+            textEl.innerHTML = `<b>Подтверждение: Огненные стрелы</b><br>Следующие 3 атаки поджигают цели (1 маг. урон на 2 хода).<br><i>Кликните повторно по себе для активации!</i>`;
+        } else if (action === 'kneeShot') {
+            textEl.innerHTML = `<b>Подтверждение: В колено</b><br>Следующая атака снизит перемещение врага на 2 на 2 хода.<br><i>Кликните повторно по себе для активации!</i>`;
+        } else if (action === 'bullseye') {
+            textEl.innerHTML = `<b>Подтверждение: В яблочко</b><br>Следующие 2 атаки получат +100% базового урона (+10 урона).<br><i>Кликните повторно по себе для активации!</i>`;
+        } else if (action === 'arrowRain') {
+            textEl.innerHTML = `<b>Подтверждение: Град стрел</b><br>Совершает мощную серию из 5 выстрелов по врагам!<br><i>Кликните повторно по себе для применения!</i>`;
         } else if (action === 'spear') {
             textEl.innerHTML = `<b>Цель: ${target.name}</b><br>Будет нанесен урон: <span style="color:#e74c3c; font-weight:bold;">10 HP</span>.<br><i>Кликните повторно!</i>`;
         } else if (action === 'stun') {
@@ -622,6 +642,7 @@
         else if (activeAction === 'heal') highlightRangeCells(2, 'ally');
         else if (activeAction === 'rage') highlightRangeCells(2, 'ally');
         else if (activeAction === 'stun') highlightRangeCells(1, 'enemy');
+        else if (['fireArrow', 'kneeShot', 'bullseye', 'arrowRain'].includes(activeAction)) highlightRangeCells(0, 'self');
     }
 
     function showMoveRange(unit) {
@@ -670,10 +691,7 @@
         let baseDef = 0;
 
         if (defender.typeKey === 'swordsman') {
-            // Пассивка 2 & 3: Щит (60%) и Броня (50%)
             let shield = 60, armor = 50;
-
-            // Пассивка 4: Строй (+10% за каждого соседнего мечника)
             let adjSwordsmen = 0;
             for (let dr = -1; dr <= 1; dr++) {
                 for (let dc = -1; dc <= 1; dc++) {
@@ -688,7 +706,6 @@
             baseDef = (attackType === 'ranged') ? shield : armor;
         }
 
-        // Пассивка 5 Мечника: Защитник (+20% защиты другим союзам рядом)
         let defenderProtection = 0;
         for (let dr = -1; dr <= 1; dr++) {
             for (let dc = -1; dc <= 1; dc++) {
@@ -709,7 +726,6 @@
     function executeAttack(attacker, defender) {
         attacker.hasActed = true;
 
-        // Пассивка Лучника: Ловкость (40% шанс увернуться от обычной атаки)
         if (defender.typeKey === 'archer' && Math.random() < 0.40) {
             logMessage(`${defender.name} увернулся от атаки! (Пассивка: Ловкость)`);
             return;
@@ -720,7 +736,6 @@
         
         let baseDmg = attacker.damage;
         
-        // В яблочко (+100% базового урона)
         if (attacker.buffs.bullseyeCharges > 0) {
             baseDmg += 10;
             attacker.buffs.bullseyeCharges--;
@@ -729,7 +744,6 @@
 
         let dmg = Math.max(1, Math.round(baseDmg * (1 - def / 100)));
 
-        // Пассивка Лучника: Уязвимости
         if (attacker.typeKey === 'archer') {
             if (attacker.lastAttackedTarget === defender) {
                 attacker.vulnerabilityStack = Math.min(3, attacker.vulnerabilityStack + 1);
@@ -744,14 +758,12 @@
         defender.hp -= dmg;
         logMessage(`${attacker.name} атаковал ${defender.name}: ${dmg} урона (${def}% защ)`);
 
-        // Огненные стрелы
         if (attacker.buffs.fireArrowCharges > 0) {
             attacker.buffs.fireArrowCharges--;
             defender.dotBurn.push({ duration: 2 });
             logMessage(`${defender.name} подожжен (Огненные стрелы)!`);
         }
 
-        // В колено
         if (attacker.buffs.kneeShotCharge) {
             attacker.buffs.kneeShotCharge = false;
             defender.buffs.slowDuration = 2;
@@ -772,40 +784,27 @@
         document.getElementById('ability-desc-text').innerHTML = `<b>${info.name}:</b> ${info.desc}`;
         descBox.style.display = 'block';
 
-        // Активация навыков Лучника без выбора цели на поле
-        if (key === 'fireArrow') {
-            u.buffs.fireArrowCharges = 3; u.cooldowns.fireArrow = 10; u.hasActed = true;
-            logMessage(`${u.name} заготовил Огненные стрелы!`);
-            endCurrentUnitTurn(); return;
+        activeAction = key;
+
+        if (['fireArrow', 'kneeShot', 'bullseye', 'arrowRain'].includes(key)) {
+            // Подсвечиваем самого себя для клика-подтверждения
+            renderBoard();
+            highlightRangeCells(0, 'self');
+            return;
         }
-        if (key === 'kneeShot') {
-            u.buffs.kneeShotCharge = true; u.cooldowns.kneeShot = 5; u.hasActed = true;
-            logMessage(`${u.name} целится в колено!`);
-            endCurrentUnitTurn(); return;
-        }
+
         if (key === 'doubleArrow') {
             u.buffs.doubleArrowCharges = 2; doubleArrowShotsLeft = 2; u.cooldowns.doubleArrow = 5;
-            logMessage(`${u.name} готовится выпустить Двойную стрелу! Выберите цели.`);
+            logMessage(`${u.name} готовится выпустить Двойную стрелу! Выберите 1-ю цель.`);
             showAttackRange(u); return;
-        }
-        if (key === 'bullseye') {
-            u.buffs.bullseyeCharges = 2; u.cooldowns.bullseye = 5; u.hasActed = true;
-            logMessage(`${u.name} активировал "В яблочко" (+100% урона на 2 атаки)!`);
-            endCurrentUnitTurn(); return;
-        }
-        if (key === 'arrowRain') {
-            u.cooldowns.arrowRain = 10; u.hasActed = true;
-            logMessage(`${u.name} начнет подготовку Града стрел! (5 выстрелов через 4 хода)`);
-            executeArrowRain(u);
-            endCurrentUnitTurn(); return;
         }
 
         // Навыки мечника
-        if (key === 'spear') { activeAction = 'spear'; renderBoard(); highlightRangeCells(3, 'enemy'); }
-        else if (key === 'buff') { activeAction = 'buff'; renderBoard(); highlightRangeCells(2, 'ally'); }
-        else if (key === 'heal') { activeAction = 'heal'; renderBoard(); highlightRangeCells(2, 'ally'); }
-        else if (key === 'rage') { activeAction = 'rage'; renderBoard(); highlightRangeCells(2, 'ally'); }
-        else if (key === 'stun') { activeAction = 'stun'; renderBoard(); highlightRangeCells(1, 'enemy'); }
+        if (key === 'spear') { renderBoard(); highlightRangeCells(3, 'enemy'); }
+        else if (key === 'buff') { renderBoard(); highlightRangeCells(2, 'ally'); }
+        else if (key === 'heal') { renderBoard(); highlightRangeCells(2, 'ally'); }
+        else if (key === 'rage') { renderBoard(); highlightRangeCells(2, 'ally'); }
+        else if (key === 'stun') { renderBoard(); highlightRangeCells(1, 'enemy'); }
     }
 
     function executeArrowRain(unit) {
@@ -826,6 +825,7 @@
                 let dist = Math.max(Math.abs(r - u.r), Math.abs(c - u.c));
                 if (dist <= range) {
                     let target = getUnitAt(r, c);
+                    if (targetType === 'self' && target === u) board[r][c].classList.add('highlight-move');
                     if (targetType === 'enemy' && target && target.team !== u.team) board[r][c].classList.add('highlight-attack');
                     if (targetType === 'ally' && target && target.team === u.team) board[r][c].classList.add('highlight-move');
                 }
