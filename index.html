@@ -27,7 +27,7 @@
             text-shadow: 1px 1px 2px #000; 
         }
 
-        /* Динамическая лента инициативы */
+        /* Лента инициативы */
         #initiative-bar {
             width: 100%;
             max-width: 380px;
@@ -102,18 +102,25 @@
             border-radius: 2px;
         }
 
-        /* Зоны расстановки */
+        /* Подсветки зон */
         .cell.setup-player { background-color: rgba(41, 128, 185, 0.25); }
         .cell.setup-enemy { background-color: rgba(192, 57, 43, 0.25); }
 
-        /* Подсветки */
         .cell.highlight-move {
-            background-color: rgba(46, 204, 113, 0.4) !important;
-            box-shadow: inset 0 0 6px rgba(46, 204, 113, 0.8);
+            background-color: rgba(46, 204, 113, 0.35) !important;
+            box-shadow: inset 0 0 4px rgba(46, 204, 113, 0.8);
+        }
+        .cell.highlight-range-box {
+            background-color: rgba(231, 76, 60, 0.15) !important;
+            border: 1px dashed rgba(231, 76, 60, 0.4);
         }
         .cell.highlight-attack {
             box-shadow: inset 0 0 0 2px #e74c3c;
-            background-color: rgba(231, 76, 60, 0.3) !important;
+            background-color: rgba(231, 76, 60, 0.45) !important;
+        }
+        .cell.highlight-target-preview {
+            box-shadow: inset 0 0 0 3px #f1c40f !important;
+            background-color: rgba(241, 196, 15, 0.4) !important;
         }
 
         /* Юниты */
@@ -148,7 +155,7 @@
             margin-top: 1px;
         }
 
-        /* Нижняя панель */
+        /* Сайдбар */
         #sidebar {
             width: 100%;
             background: #1c1c1c;
@@ -190,10 +197,10 @@
             padding-bottom: 2px; 
         }
 
-        #unit-info { font-size: 10px; color: #ccc; line-height: 1.3; }
+        #unit-info { font-size: 10px; color: #ccc; line-height: 1.35; }
 
         #log {
-            height: 55px;
+            height: 65px;
             background: #111;
             border-radius: 4px;
             padding: 4px;
@@ -245,7 +252,6 @@
 
     <h1>Средневековье</h1>
     
-    <!-- Динамическая лента инициативы -->
     <div id="initiative-bar"></div>
 
     <div id="game-container">
@@ -255,23 +261,22 @@
             <div id="turn-info">Фаза расстановки</div>
             
             <div class="panel-grid">
-                <div class="panel-section" style="flex: 1.1;">
+                <div class="panel-section" style="flex: 1.2;">
                     <h3>Инфо о юните</h3>
                     <div id="unit-info">Кликните на юнита</div>
                 </div>
-                <div class="panel-section" style="flex: 0.9;">
+                <div class="panel-section" style="flex: 0.8;">
                     <h3>Журнал боя</h3>
                     <div id="log"></div>
                 </div>
             </div>
 
-            <!-- Блок описания выюранной способности -->
             <div id="ability-desc-box">
                 <div id="ability-desc-text"></div>
             </div>
 
             <div class="panel-section" id="abilities-section" style="display:none; margin-bottom: 6px;">
-                <h3>Активные способности мечника</h3>
+                <h3>Способности мечника</h3>
                 <div class="ability-grid" id="abilities-list"></div>
             </div>
 
@@ -291,24 +296,31 @@
     let highlightedInitUnit = null;
     let turnQueue = [];
     let gamePhase = 'setup'; // 'setup' или 'battle'
-    let activeAction = null; // 'move', 'attack', 'spear', 'buff', 'stun'
+    let activeAction = null; // 'move', 'attack', 'spear', 'buff', 'heal', 'rage', 'stun'
+    let pendingTarget = null; // Для подтверждения в 2 касания
 
     const UNIT_TYPES = {
-        swordsman: { name: 'Мечник', maxHp: 20, damage: 10, initiative: 8, speed: 2, range: 1, symbol: '⚔️' },
-        archer: { name: 'Лучник', maxHp: 20, damage: 10, initiative: 15, speed: 3, range: 4, symbol: '🏹' }
+        swordsman: { 
+            name: 'Мечник', maxHp: 20, damage: 10, initiative: 8, speed: 2, range: 1, symbol: '⚔️',
+            passives: 'Живой (восст. 20% HP если стоял), Строй (+10% защ. от мечников), Защитник (+20% защ. союзникам рядом).'
+        },
+        archer: { 
+            name: 'Лучник', maxHp: 20, damage: 10, initiative: 20, speed: 3, range: 4, symbol: '🏹',
+            passives: 'Залп (стрельба на 4 клетки). Слабый в ближнем бою.'
+        }
     };
 
     const ABILITY_DATA = {
-        spear: { name: "Бросить копье", desc: "Урон 10, дальность 3. (Кулдаун: 3)", cdMax: 3 },
-        buff: { name: "Укрепление", desc: "+30% защиты союзнику в дальности 2 на 2 хода. (Кулдаун: 4)", cdMax: 4 },
-        heal: { name: "Лечение", desc: "+5 HP/ход на 5 ходов. (Кулдаун: 10)", cdMax: 10 },
-        rage: { name: "Ярость", desc: "+5 к урону на 3 хода. (Кулдаун: 6)", cdMax: 6 },
-        stun: { name: "Оглушение", desc: "Противник пропускает 1 ход, дальность 1. (Кулдаун: 4)", cdMax: 4 }
+        spear: { name: "Бросить копье", desc: "Урон 10, дальность 3. Выберите врага на поле. (Кулдаун: 3)", cdMax: 3 },
+        buff: { name: "Укрепление", desc: "+30% защиты союзнику на 2 хода (дальность 2). Выберите союзника. (Кулдаун: 4)", cdMax: 4 },
+        heal: { name: "Лечение", desc: "+5 HP/ход на 5 ходов. Кликните по себе для подтверждения. (Кулдаун: 10)", cdMax: 10 },
+        rage: { name: "Ярость", desc: "+5 к урону на 3 хода. Кликните по себе для подтверждения. (Кулдаун: 6)", cdMax: 6 },
+        stun: { name: "Оглушение", desc: "Противник пропускает 1 ход (дальность 1). Выберите врага. (Кулдаун: 4)", cdMax: 4 }
     };
 
     function initGame() {
         createBoardDOM();
-        logMessage("Расставьте юнитов (кликом по ячейкам). По 6 с каждой стороны.");
+        logMessage("Расставьте юнитов (кликом по ячейкам). По 6 у каждой стороны.");
     }
 
     function createUnit(typeKey, team, r, c, idNum) {
@@ -321,8 +333,9 @@
             r: r, c: c,
             hp: base.maxHp, maxHp: base.maxHp,
             damage: base.damage, initiative: base.initiative,
-            actionMeter: 0, // Динамический счетчик для честной инициативы
+            actionMeter: 0,
             speed: base.speed, range: base.range, symbol: base.symbol,
+            passives: base.passives,
             isAlive: true, hasMoved: false, hasActed: false,
             cooldowns: { spear: 0, buff: 0, heal: 0, rage: 0, stun: 0 },
             buffs: { regenDuration: 0, regenValue: 0, rageDuration: 0, rageValue: 0, customDefenseDuration: 0, customDefenseVal: 0 },
@@ -371,7 +384,7 @@
         for (let r = 0; r < ROWS; r++) {
             for (let c = 0; c < COLS; c++) {
                 board[r][c].innerHTML = '';
-                board[r][c].classList.remove('highlight-move', 'highlight-attack');
+                board[r][c].classList.remove('highlight-move', 'highlight-attack', 'highlight-range-box', 'highlight-target-preview');
             }
         }
 
@@ -389,13 +402,11 @@
         if (gamePhase === 'battle') renderInitiativeBar();
     }
 
-    /* Настоящая система инициативы (Лучник ходит в 1.875 раз чаще Мечника) */
     function calculateQueue() {
         let aliveUnits = units.filter(u => u.isAlive);
         let tempMeters = aliveUnits.map(u => ({ unit: u, meter: u.actionMeter }));
         let queue = [];
         
-        // Симулируем ближайшие 8 ходов
         for (let step = 0; step < 8; step++) {
             let nextUnit = null;
             while (!nextUnit) {
@@ -452,7 +463,6 @@
         if (!playerAlive) { alert("Поражение!"); return; }
         if (!enemyAlive) { alert("Победа!"); return; }
 
-        // Продвигаем полосу инициативы до готового юнита
         let readyUnits = units.filter(u => u.isAlive && u.actionMeter >= 100);
         while (readyUnits.length === 0) {
             units.filter(u => u.isAlive).forEach(u => u.actionMeter += u.initiative);
@@ -465,6 +475,7 @@
 
         activeUnit.hasMoved = false;
         activeUnit.hasActed = false;
+        pendingTarget = null;
         decrementCooldowns(activeUnit);
         processTurnEffects(activeUnit);
 
@@ -517,7 +528,6 @@
     function endCurrentUnitTurn() {
         if (gamePhase !== 'battle' || !activeUnit) return;
         
-        // Пассивка Живой
         if (activeUnit.typeKey === 'swordsman' && !activeUnit.hasMoved && !activeUnit.hasActed) {
             let heal = Math.round(activeUnit.maxHp * 0.2);
             activeUnit.hp = Math.min(activeUnit.maxHp, activeUnit.hp + heal);
@@ -526,16 +536,48 @@
 
         highlightedInitUnit = null;
         activeAction = null;
+        pendingTarget = null;
         document.getElementById('skip-move-btn').style.display = 'none';
         document.getElementById('ability-desc-box').style.display = 'none';
         nextTurn();
     }
 
-    /* Обработка нажатий на клетки */
+    /* Поиск доступных клеток для перемещения БЕЗ прохода сквозь юнитов (BFS) */
+    function getValidMoveCells(unit) {
+        let valid = [];
+        let visited = Array(ROWS).fill(null).map(() => Array(COLS).fill(false));
+        let queue = [{ r: unit.r, c: unit.c, dist: 0 }];
+        visited[unit.r][unit.c] = true;
+
+        while (queue.length > 0) {
+            let curr = queue.shift();
+            if (curr.dist > 0) valid.push({ r: curr.r, c: curr.c });
+
+            if (curr.dist < unit.speed) {
+                for (let dr = -1; dr <= 1; dr++) {
+                    for (let dc = -1; dc <= 1; dc++) {
+                        if (dr === 0 && dc === 0) continue;
+                        let nr = curr.r + dr;
+                        let nc = curr.c + dc;
+                        if (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS && !visited[nr][nc]) {
+                            // Нельзя проходить сквозь юнитов!
+                            if (!getUnitAt(nr, nc)) {
+                                visited[nr][nc] = true;
+                                queue.push({ r: nr, c: nc, dist: curr.dist + 1 });
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return valid;
+    }
+
+    /* Обработка кликов по полю */
     function handleCellClick(r, c) {
         let targetUnit = getUnitAt(r, c);
 
-        // Расстановка
+        // Фаза расстановки
         if (gamePhase === 'setup') {
             if (r >= 9) {
                 if (targetUnit && targetUnit.team === 'player') {
@@ -556,40 +598,96 @@
             return;
         }
 
-        // Бой
+        // Фаза боя
         if (!activeUnit || activeUnit.team !== 'player') return;
 
-        // Движение
+        // 1. Движение
         if (activeAction === 'move') {
             if (board[r][c].classList.contains('highlight-move') && !targetUnit) {
                 activeUnit.r = r; activeUnit.c = c;
                 activeUnit.hasMoved = true;
-                document.getElementById('skip-move-btn').style.display = 'none';
-                activeAction = null;
-                showActionOptions(activeUnit);
+                logMessage(`${activeUnit.name} переместился.`);
+                // ТАК КАК ПЕРЕМЕСТИЛСЯ — ХОД ЗАВЕРШАЕТСЯ (по правилу)
+                endCurrentUnitTurn();
             }
             return;
         }
 
-        // Выполнение Атаки или Способностей на цели
-        if (['attack', 'spear', 'stun'].includes(activeAction)) {
-            if (targetUnit && targetUnit.team !== activeUnit.team && board[r][c].classList.contains('highlight-attack')) {
-                if (activeAction === 'attack') executeAttack(activeUnit, targetUnit);
-                if (activeAction === 'spear') executeSpear(activeUnit, targetUnit);
-                if (activeAction === 'stun') executeStun(activeUnit, targetUnit);
-                activeAction = null;
-                showActionOptions(activeUnit);
+        // 2. Селф-баффы (Лечение / Ярость) с выбором себя
+        if (['heal', 'rage'].includes(activeAction)) {
+            if (targetUnit === activeUnit) {
+                if (pendingTarget === targetUnit) {
+                    if (activeAction === 'heal') {
+                        activeUnit.buffs.regenDuration = 5; activeUnit.buffs.regenValue = 5; activeUnit.cooldowns.heal = 10; 
+                        logMessage(`${activeUnit.name} активировал Лечение (+5 HP/ход).`);
+                    } else if (activeAction === 'rage') {
+                        activeUnit.buffs.rageDuration = 3; activeUnit.buffs.rageValue = 5; activeUnit.damage += 5; activeUnit.cooldowns.rage = 6; 
+                        logMessage(`${activeUnit.name} активировал Ярость (+5 к урону).`);
+                    }
+                    activeUnit.hasActed = true;
+                    endCurrentUnitTurn();
+                } else {
+                    pendingTarget = targetUnit;
+                    renderBoard();
+                    board[r][c].classList.add('highlight-target-preview');
+                    showAbilityPreviewText(activeAction, targetUnit);
+                }
             }
             return;
         }
 
-        if (activeAction === 'buff') {
-            if (targetUnit && targetUnit.team === activeUnit.team && board[r][c].classList.contains('highlight-move')) {
-                executeReinforce(activeUnit, targetUnit);
-                activeAction = null;
-                showActionOptions(activeUnit);
+        // 3. Атака или Способности на цель (2 касания!)
+        if (['attack', 'spear', 'stun', 'buff'].includes(activeAction)) {
+            if (board[r][c].classList.contains('highlight-attack') || board[r][c].classList.contains('highlight-move')) {
+                if (targetUnit) {
+                    if (pendingTarget === targetUnit) {
+                        // Повторный клик — выполняем действие
+                        if (activeAction === 'attack') executeAttack(activeUnit, targetUnit);
+                        if (activeAction === 'spear') executeSpear(activeUnit, targetUnit);
+                        if (activeAction === 'stun') executeStun(activeUnit, targetUnit);
+                        if (activeAction === 'buff') executeReinforce(activeUnit, targetUnit);
+                        endCurrentUnitTurn();
+                    } else {
+                        // Первый клик — предпросмотр
+                        pendingTarget = targetUnit;
+                        renderBoard();
+                        reapplyHighlights();
+                        board[r][c].classList.add('highlight-target-preview');
+                        showAbilityPreviewText(activeAction, targetUnit);
+                    }
+                }
             }
-            return;
+        }
+    }
+
+    function showAbilityPreviewText(action, target) {
+        let descBox = document.getElementById('ability-desc-box');
+        let textEl = document.getElementById('ability-desc-text');
+        descBox.style.display = 'block';
+
+        if (action === 'attack') {
+            let aType = (activeUnit.typeKey === 'archer') ? 'ranged' : 'melee';
+            let def = calculateTotalDefense(target, aType);
+            let dmg = Math.max(1, Math.round(activeUnit.damage * (1 - def / 100)));
+            textEl.innerHTML = `<b>Цель: ${target.name}</b><br>Прогнозируемый урон: <span style="color:#e74c3c; font-weight:bold;">${dmg} HP</span> (${def}% защ).<br><i>Нажмите еще раз для атаки!</i>`;
+        } else if (action === 'spear') {
+            textEl.innerHTML = `<b>Цель: ${target.name}</b><br>Будет нанесен урон: <span style="color:#e74c3c; font-weight:bold;">10 HP</span>.<br><i>Нажмите еще раз для броска!</i>`;
+        } else if (action === 'stun') {
+            textEl.innerHTML = `<b>Цель: ${target.name}</b><br>Эффект: Пропуск 1 хода.<br><i>Нажмите еще раз для оглушения!</i>`;
+        } else if (action === 'buff') {
+            textEl.innerHTML = `<b>Цель: ${target.name}</b><br>Эффект: +30% защиты на 2 хода.<br><i>Нажмите еще раз для применения!</i>`;
+        } else if (action === 'heal' || action === 'rage') {
+            textEl.innerHTML = `<b>Применить на себя (${activeUnit.name})?</b><br><i>Нажмите на юнита повторно для подтверждения!</i>`;
+        }
+    }
+
+    function reapplyHighlights() {
+        if (activeAction === 'attack') showAttackRange(activeUnit);
+        else if (activeAction === 'spear') highlightRangeCells(3, 'enemy');
+        else if (activeAction === 'buff') highlightRangeCells(2, 'ally');
+        else if (activeAction === 'stun') highlightRangeCells(1, 'enemy');
+        else if (['heal', 'rage'].includes(activeAction)) {
+            board[activeUnit.r][activeUnit.c].classList.add('highlight-move');
         }
     }
 
@@ -597,20 +695,29 @@
         if (unit.hasMoved) { showActionOptions(unit); return; }
         activeAction = 'move';
         renderBoard();
-        for (let r = 0; r < ROWS; r++) {
-            for (let c = 0; c < COLS; c++) {
-                let dist = Math.max(Math.abs(r - unit.r), Math.abs(c - unit.c));
-                if (dist > 0 && dist <= unit.speed && !getUnitAt(r, c)) {
-                    board[r][c].classList.add('highlight-move');
-                }
-            }
-        }
+        let validCells = getValidMoveCells(unit);
+        validCells.forEach(pos => {
+            board[pos.r][pos.c].classList.add('highlight-move');
+        });
     }
 
     function showAttackRange(unit) {
         if (unit.hasActed) return;
         activeAction = 'attack';
         renderBoard();
+
+        // Если лучник — подсвечиваем большой квадрат зоны обстрела
+        if (unit.typeKey === 'archer') {
+            for (let r = Math.max(0, unit.r - unit.range); r <= Math.min(ROWS - 1, unit.r + unit.range); r++) {
+                for (let c = Math.max(0, unit.c - unit.range); c <= Math.min(COLS - 1, unit.c + unit.range); c++) {
+                    if (r !== unit.r || c !== unit.c) {
+                        board[r][c].classList.add('highlight-range-box');
+                    }
+                }
+            }
+        }
+
+        // Выделяем врагов в зоне атаки
         for (let r = 0; r < ROWS; r++) {
             for (let c = 0; c < COLS; c++) {
                 let dist = Math.max(Math.abs(r - unit.r), Math.abs(c - unit.c));
@@ -659,15 +766,15 @@
         let def = calculateTotalDefense(defender, aType);
         let dmg = Math.max(1, Math.round(attacker.damage * (1 - def / 100)));
         defender.hp -= dmg;
-        logMessage(`${attacker.name} атакует ${defender.name}: ${dmg} урона (${def}% защ)`);
+        logMessage(`${attacker.name} атаковал ${defender.name}: ${dmg} урона (${def}% защ)`);
         if (defender.hp <= 0) { defender.hp = 0; defender.isAlive = false; logMessage(`${defender.name} погиб!`); }
     }
 
-    /* Выбор способности */
     function selectAbility(key) {
         let u = activeUnit;
         if (!u || u.cooldowns[key] > 0 || u.hasActed) return;
 
+        pendingTarget = null;
         let info = ABILITY_DATA[key];
         let descBox = document.getElementById('ability-desc-box');
         document.getElementById('ability-desc-text').innerHTML = `<b>${info.name}:</b> ${info.desc}`;
@@ -680,13 +787,11 @@
             activeAction = 'buff'; renderBoard();
             highlightRangeCells(2, 'ally');
         } else if (key === 'heal') {
-            u.buffs.regenDuration = 5; u.buffs.regenValue = 5; u.cooldowns.heal = 10; 
-            u.hasActed = true; 
-            logMessage(`${u.name} применил Лечение`); showActionOptions(u);
+            activeAction = 'heal'; renderBoard();
+            board[u.r][u.c].classList.add('highlight-move');
         } else if (key === 'rage') {
-            u.buffs.rageDuration = 3; u.buffs.rageValue = 5; u.damage += 5; u.cooldowns.rage = 6; 
-            u.hasActed = true; 
-            logMessage(`${u.name} применил Ярость (+5 урона)`); showActionOptions(u);
+            activeAction = 'rage'; renderBoard();
+            board[u.r][u.c].classList.add('highlight-move');
         } else if (key === 'stun') {
             activeAction = 'stun'; renderBoard();
             highlightRangeCells(1, 'enemy');
@@ -709,7 +814,7 @@
 
     function executeSpear(a, d) { 
         a.hasActed = true; a.cooldowns.spear = 3; 
-        d.hp -= 10; logMessage(`${a.name} бросил копье в ${d.name} (10 урона)`); 
+        d.hp -= 10; logMessage(`${a.name} метнул копье в ${d.name} (10 урона)`); 
         if(d.hp <= 0) { d.hp = 0; d.isAlive = false; } 
     }
     function executeReinforce(c, t) { 
@@ -745,19 +850,13 @@
         if (minDist <= ai.range) {
             executeAttack(ai, target);
         } else {
-            let bestR = ai.r, bestC = ai.c, bestDist = minDist;
-            for (let dr = -ai.speed; dr <= ai.speed; dr++) {
-                for (let dc = -ai.speed; dc <= ai.speed; dc++) {
-                    let nr = ai.r + dr, nc = ai.c + dc;
-                    if (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS && Math.max(Math.abs(dr), Math.abs(dc)) <= ai.speed) {
-                        if (!getUnitAt(nr, nc)) {
-                            let dTo = Math.max(Math.abs(target.r - nr), Math.abs(target.c - nc));
-                            if (dTo < bestDist) { bestDist = dTo; bestR = nr; bestC = nc; }
-                        }
-                    }
-                }
-            }
-            ai.r = bestR; ai.c = bestC;
+            let validCells = getValidMoveCells(ai);
+            let bestCell = { r: ai.r, c: ai.c }, bestDist = minDist;
+            validCells.forEach(pos => {
+                let dTo = Math.max(Math.abs(target.r - pos.r), Math.abs(target.c - pos.c));
+                if (dTo < bestDist) { bestDist = dTo; bestCell = pos; }
+            });
+            ai.r = bestCell.r; ai.c = bestCell.c;
             if (Math.max(Math.abs(target.r - ai.r), Math.abs(target.c - ai.c)) <= ai.range) executeAttack(ai, target);
         }
 
@@ -784,8 +883,9 @@
 
         info.innerHTML = `
             <b>${u.name}</b> (${u.team === 'player' ? 'Ваш' : 'Враг'})<br>
-            HP: ${u.hp}/${u.maxHp} | Урон: ${u.damage}<br>
-            Скорость: ${u.speed} | Дальность: ${u.range}${effStr}
+            ❤️ ${u.hp}/${u.maxHp} | ⚔️ ${u.damage} | ⚡ ${u.initiative}<br>
+            🏃 ${u.speed} | 🎯 ${u.range}${effStr}<br>
+            <span style="color:#aaa; font-size:9px;"><i>${u.passives}</i></span>
         `;
 
         if (gamePhase === 'battle' && u.team === 'player') {
