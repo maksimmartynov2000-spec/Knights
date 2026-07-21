@@ -267,8 +267,8 @@
         <div id="log-box"></div>
 
         <div class="panel-box">
-            <div id="unit-details" style="font-size: 9px; color: #bbb; min-height: 40px;">
-                Выберите рыцаря ниже для просмотра навыка.
+            <div id="unit-details" style="font-size: 9px; color: #bbb; min-height: 48px;">
+                Выберите рыцаря ниже для просмотра подробных характеристик.
             </div>
         </div>
 
@@ -286,47 +286,57 @@
         const GRID_H = 10;
         const MAX_LIMIT = 40;
 
-        // --- 10 ГЕРОЕВ ---
+        // --- 10 ГЕРОЕВ С ПОДРОБНЫМИ ДАННЫМИ О НАВЫКАХ ---
         const HEROES_DB = [
             {
                 id: 'militia', name: 'Ополченец', icon: '🧑‍🌾', cost: 2, hp: 28, dmg: 7, init: 11, move: 3, range: 1, role: 'Melee',
-                arrowProtect: 0, skillName: 'Удар по ногам', skillDesc: 'Первым ударом замедляет цель (-1 ход).'
+                arrowProtect: 0, skillName: 'Удар под жилки', 
+                skillDesc: 'Каждая атака накладывает **Замедление** на 2 хода (уменьшает дальность хода цели на -1 клетку).'
             },
             {
                 id: 'footman', name: 'Пехотинец', icon: '🛡️', cost: 3, hp: 42, dmg: 10, init: 9, move: 2, range: 1, role: 'Melee',
-                arrowProtect: 0.4, skillName: 'Большой Щит', skillDesc: 'Защита от стрел (-40% урона от дальнего боя).'
+                arrowProtect: 0.4, skillName: 'Большой щит', 
+                skillDesc: 'Пассивная защита: поглощает **40% урона** от стрел и любых дальних атак.'
             },
             {
                 id: 'lord_guardian', name: 'Лорд-Защитник', icon: '🏰', cost: 5, hp: 65, dmg: 14, init: 7, move: 2, range: 1, role: 'Tank',
-                arrowProtect: 0.5, skillName: 'Стена щитов', skillDesc: 'Танк (-50% Ranged-урона).'
+                arrowProtect: 0.5, skillName: 'Стена щитов', 
+                skillDesc: 'Тяжелый башенный щит: поглощает **50% урона** от атак дальнего боя.'
             },
             {
                 id: 'archer', name: 'Лучник', icon: '🏹', cost: 3, hp: 25, dmg: 9, init: 12, move: 2, range: 4, role: 'Ranged',
-                arrowProtect: 0, skillName: 'Залп', skillDesc: 'Дальний бой, высокая инициатива.'
+                arrowProtect: 0, skillName: 'Быстрый залп', 
+                skillDesc: 'Обладает высокой инициативой (12), позволяющей атаковать первым с безопасного расстояния.'
             },
             {
                 id: 'crossbow', name: 'Арбалетчик', icon: '🎯', cost: 4, hp: 30, dmg: 15, init: 8, move: 2, range: 4, role: 'Ranged',
-                arrowProtect: 0, skillName: 'Бронебой', skillDesc: 'Вызывает кровотечение на 2 хода.'
+                arrowProtect: 0, skillName: 'Бронебойный болт', 
+                skillDesc: 'Атака вызывает **Кровотечение** на 2 хода (цель получает **3 ед. урона** в начале своего хода).'
             },
             {
                 id: 'trapper', name: 'Следопыт', icon: '🌲', cost: 4, hp: 32, dmg: 11, init: 10, move: 3, range: 3, role: 'Ranged',
-                arrowProtect: 0, skillName: 'Ловушка', skillDesc: 'Атака снижает ход и скорость врага.'
+                arrowProtect: 0, skillName: 'Капкан', 
+                skillDesc: 'Выстрел наносит урон и **Замедляет** цель на 2 хода (снижает дальность хода на -1 клетку).'
             },
             {
                 id: 'knight_rider', name: 'Кавалерист', icon: '🐎', cost: 5, hp: 50, dmg: 16, init: 14, move: 4, range: 1, role: 'Melee',
-                arrowProtect: 0.1, skillName: 'Натиск', skillDesc: 'Высокая скорость и дальность хода.'
+                arrowProtect: 0.1, skillName: 'Конный натиск', 
+                skillDesc: 'Высокая мобильность (**4 клетки**) и максимальная инициатива (14). Небольшой щит (-10% от стрел).'
             },
             {
                 id: 'chaplain', name: 'Капеллан', icon: '⛪', cost: 4, hp: 35, dmg: 5, init: 6, move: 2, range: 3, role: 'Support',
-                arrowProtect: 0, skillName: 'Исцеление', skillDesc: 'Лечит союзника на 12 HP + дает Щит.'
+                arrowProtect: 0, skillName: 'Молитва о жизни', 
+                skillDesc: 'Вместо атаки исцеляет союзника на **12 HP** и вешает **Святой щит** (поглощает 5 ед. входящего урона 2 хода).'
             },
             {
                 id: 'banner', name: 'Знаменосец', icon: '🚩', cost: 4, hp: 38, dmg: 8, init: 13, move: 2, range: 1, role: 'Support',
-                arrowProtect: 0, skillName: 'Аура', skillDesc: 'Повышает урон соседей на +20%.'
+                arrowProtect: 0, skillName: 'Боевая Аура', 
+                skillDesc: 'Пассивно увеличивает урон всех соседних союзных юнитов на **+20%**.'
             },
             {
                 id: 'mage', name: 'Маг', icon: '🧙‍♂️', cost: 6, hp: 28, dmg: 18, init: 9, move: 2, range: 4, role: 'Ranged',
-                arrowProtect: 0, skillName: 'Огонь', skillDesc: 'Поджигает цель на 3 хода (по 4 урона).'
+                arrowProtect: 0, skillName: 'Огненный шар', 
+                skillDesc: 'Вызывает **Поджог** на 3 хода (цель получает **4 ед. ожога** в начале каждого своего хода).'
             }
         ];
 
@@ -470,7 +480,7 @@
                 }
             }
 
-            if (unitOnCell) showUnitDetails(unitOnCell.type, unitOnCell.hp);
+            if (unitOnCell) showUnitDetails(unitOnCell.type, unitOnCell.hp, unitOnCell.effects);
         }
 
         function getEffectiveMove(unit) {
@@ -553,12 +563,12 @@
             if (unit.effects.burn > 0) {
                 unit.hp -= 4;
                 unit.effects.burn--;
-                log(`🔥 ${unit.type.name} горит! -4 HP`, 'log-hit');
+                log(`🔥 ${unit.type.name} горит! -4 HP (осталось ${unit.effects.burn}х)`, 'log-hit');
             }
             if (unit.effects.bleed > 0) {
                 unit.hp -= 3;
                 unit.effects.bleed--;
-                log(`🩸 ${unit.type.name} кровоточит! -3 HP`, 'log-hit');
+                log(`🩸 ${unit.type.name} кровоточит! -3 HP (осталось ${unit.effects.bleed}х)`, 'log-hit');
             }
             if (unit.effects.slow > 0) unit.effects.slow--;
             if (unit.effects.shield > 0) unit.effects.shield--;
@@ -576,13 +586,14 @@
             if (hasBanner) dmg = Math.round(dmg * 1.2);
 
             if (attacker.type.role === 'Ranged' && defender.type.arrowProtect > 0) {
+                const reduced = Math.round(dmg * defender.type.arrowProtect);
                 dmg = Math.round(dmg * (1 - defender.type.arrowProtect));
-                log(`🛡️ Щит ослабил стрелу!`, 'log-skill');
+                log(`🛡️ Щит снизил урон от стрел на -${reduced}!`, 'log-skill');
             }
 
             if (defender.effects.shield > 0) {
                 dmg = Math.max(1, dmg - 5);
-                log(`✨ Святой щит поглотил урон!`, 'log-skill');
+                log(`✨ Святой щит поглотил 5 урона!`, 'log-skill');
             }
 
             const cell = getCell(defender.x, defender.y);
@@ -609,7 +620,7 @@
             const healAmt = 12;
             target.hp = Math.min(target.maxHp, target.hp + healAmt);
             target.effects.shield = 2;
-            log(`✨ ${healer.type.name} исцелил ${target.type.name} (+${healAmt} HP)!`, 'log-heal');
+            log(`✨ ${healer.type.name} исцелил ${target.type.name} (+${healAmt} HP) и дал Святой Щит!`, 'log-heal');
         }
 
         function smartEnemyAI() {
@@ -736,11 +747,24 @@
             return false;
         }
 
-        function showUnitDetails(type, currentHp) {
+        function showUnitDetails(type, currentHp, effects) {
+            let activeEffectsTxt = '';
+            if (effects) {
+                let effList = [];
+                if (effects.burn > 0) effList.push(`🔥 Горит (${effects.burn}х)`);
+                if (effects.bleed > 0) effList.push(`🩸 Кровотечение (${effects.bleed}х)`);
+                if (effects.slow > 0) effList.push(`🦶 Замедлен (${effects.slow}х)`);
+                if (effects.shield > 0) effList.push(`✨ Святой щит (${effects.shield}х)`);
+                if (effList.length > 0) {
+                    activeEffectsTxt = `<div style="color:#e74c3c; margin-top:1px;">Эффекты: <b>${effList.join(', ')}</b></div>`;
+                }
+            }
+
             document.getElementById('unit-details').innerHTML = `
                 <div style="font-weight:bold; color:var(--text-gold)">${type.icon} ${type.name} (${type.cost} очк.)</div>
-                <div>HP: <b>${currentHp || type.hp}/${type.hp}</b> | Урон: <b>${type.dmg}</b> | Ход: <b>${type.move}к.</b> | Атака: <b>${type.range}к.</b></div>
+                <div>HP: <b>${currentHp || type.hp}/${type.hp}</b> | Урон: <b>${type.dmg}</b> | Ход: <b>${type.move}к.</b> | Атака: <b>${type.range}к.</b> | Иниц: <b>${type.init}</b></div>
                 <div style="color: #f39c12; margin-top:2px;"><b>${type.skillName}:</b> ${type.skillDesc}</div>
+                ${activeEffectsTxt}
             `;
         }
 
