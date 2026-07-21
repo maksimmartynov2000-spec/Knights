@@ -74,7 +74,7 @@
         .obstacle {
             width: 90%; height: 90%; background: #555; border: 2px solid #888; border-radius: 4px;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            font-size: 12px; color: #fff; z-index: 2; box-shadow: inset 0 0 5px #000;
+            font-size: 12px; color: #fff; z-index: 2; box-shadow: inset 0 0 5px #000; cursor: pointer;
         }
 
         @keyframes pulse { from { box-shadow: 0 0 4px #f39c12; } to { box-shadow: 0 0 12px 4px #f1c40f; } }
@@ -156,9 +156,6 @@
     let activeAction = null; 
     let pendingTarget = null; 
 
-    let doubleArrowShotsLeft = 0;
-    let arrowRainShotsLeft = 0;
-
     const UNIT_TYPES = {
         swordsman: { 
             name: 'Мечник', maxHp: 50, damage: 10, initiative: 8, speed: 2, range: 1, symbol: '⚔️',
@@ -185,7 +182,7 @@
             passivesList: [
                 "1. Магический щит: +10 брони себе и соседям каждый ход (до 30)",
                 "2. Аура защиты: +50% защиты от атак себе и соседям",
-                "3. Благословение: Атака Мага по СОЮЗНИКУ лечит его на 10 HP",
+                "3. Благословение: Атака Мага по СОЮЗНОКУ лечит его на 10 HP",
                 "4. Иллюзорное тело: Игнорирует каждую 2-ю атаку по себе",
                 "5. Размытие: 60% шанс увернуться от атаки"
             ]
@@ -207,15 +204,15 @@
 
         summonSwordsman: { name: "Призыв мечника", desc: "Призывает Мечника на соседнюю клетку на 5 ходов.", cdMax: 10 },
         summonArcher: { name: "Призыв лучника", desc: "Призывает Лучника на соседнюю клетку на 5 ходов.", cdMax: 10 },
-        wall: { name: "Стена силы", desc: "Ставит преграду 2х2 клетки с 200 HP.", cdMax: 10 },
+        wall: { name: "Стена силы", desc: "Ставит преграду 2х2 из 4 клеток по 50 HP каждая.", cdMax: 10 },
         teleport: { name: "Телепортация", desc: "Перемещает Мага на любую свободую клетку поля.", cdMax: 10 },
         storm: { name: "Чародейская буря", desc: "Зона 3х3: Оглушает всех врагов (стакается +1 ход).", cdMax: 10 },
-        poisonZone: { name: "Ядовитое облако", desc: "Зона 4х4: Накладывает стак отравления (2 маг. урона/ход на 10 ходов). Стакается!", cdMax: 10 }
+        poisonZone: { name: "Ядовитое облако", desc: "Зона 4х4: Накладывает отравление ровно на 10 ходов (2 маг. урона/ход). Стакается!", cdMax: 10 }
     };
 
     function initGame() {
         createBoardDOM();
-        logMessage("Расставьте свои войска (синяя зона) и войска противника (красная зона) кликом по клеткам.");
+        logMessage("Расставьте войска (синяя - ваши, красная - врага). Клик по клетке переключает юнита.");
     }
 
     function createUnit(typeKey, team, r, c, idNum, summonDuration = null) {
@@ -235,6 +232,7 @@
             lastAttackedTarget: null, vulnerabilityStack: 0,
             summonDuration: summonDuration,
             attacksReceivedCount: 0,
+            arrowRainShotsLeft: 0,
             cooldowns: { 
                 spear:0, buff:0, heal:0, rage:0, stun:0, 
                 fireArrow:0, kneeShot:0, doubleArrow:0, bullseye:0, arrowRain:0,
@@ -339,6 +337,7 @@
 
     function handleCellClick(r, c) {
         let targetUnit = getUnitAt(r, c);
+        let targetObstacle = getObstacleAt(r, c);
 
         if (gamePhase === 'setup') {
             let team = null;
@@ -367,7 +366,7 @@
         if (!activeUnit || activeUnit.team !== 'player') return;
 
         if (activeAction === 'move') {
-            if (board[r][c].classList.contains('highlight-move') && !targetUnit && !getObstacleAt(r,c)) {
+            if (board[r][c].classList.contains('highlight-move') && !targetUnit && !targetObstacle) {
                 activeUnit.r = r; activeUnit.c = c;
                 activeUnit.hasMoved = true;
                 logMessage(`${activeUnit.name} переместился.`);
@@ -429,20 +428,21 @@
 
         if (targetableActions.includes(activeAction)) {
             if (board[r][c].classList.contains('highlight-attack') || board[r][c].classList.contains('highlight-heal-target') || board[r][c].classList.contains('highlight-move')) {
-                if (targetUnit) {
-                    if (pendingTarget === targetUnit) {
-                        if (activeAction === 'attack') handleAttackAction(activeUnit, targetUnit);
-                        else if (activeAction === 'spear') { executeSpear(activeUnit, targetUnit); endCurrentUnitTurn(); }
-                        else if (activeAction === 'stun') { executeStun(activeUnit, targetUnit); endCurrentUnitTurn(); }
-                        else if (activeAction === 'buff') { executeReinforce(activeUnit, targetUnit); endCurrentUnitTurn(); }
-                        else if (activeAction === 'heal') { executeHeal(activeUnit, targetUnit); endCurrentUnitTurn(); }
-                        else if (activeAction === 'rage') { executeRage(activeUnit, targetUnit); endCurrentUnitTurn(); }
+                let targetEntity = targetUnit || targetObstacle;
+                if (targetEntity) {
+                    if (pendingTarget === targetEntity) {
+                        if (activeAction === 'attack') handleAttackAction(activeUnit, targetEntity);
+                        else if (activeAction === 'spear') { executeSpear(activeUnit, targetEntity); endCurrentUnitTurn(); }
+                        else if (activeAction === 'stun' && targetUnit) { executeStun(activeUnit, targetUnit); endCurrentUnitTurn(); }
+                        else if (activeAction === 'buff' && targetUnit) { executeReinforce(activeUnit, targetUnit); endCurrentUnitTurn(); }
+                        else if (activeAction === 'heal' && targetUnit) { executeHeal(activeUnit, targetUnit); endCurrentUnitTurn(); }
+                        else if (activeAction === 'rage' && targetUnit) { executeRage(activeUnit, targetUnit); endCurrentUnitTurn(); }
                     } else {
-                        pendingTarget = targetUnit;
+                        pendingTarget = targetEntity;
                         renderBoard();
                         reapplyHighlights();
                         board[r][c].classList.add('highlight-target-preview');
-                        showAbilityPreviewText(activeAction, targetUnit);
+                        showAbilityPreviewText(activeAction, targetEntity);
                     }
                 }
             }
@@ -458,12 +458,12 @@
                     if (target && target.team !== activeUnit.team) {
                         target.stunTurns += 1;
                         count++;
-                        logMessage(`${target.name} оглушен Бурей! (Всего ходов оглушения: ${target.stunTurns})`);
+                        logMessage(`${target.name} оглушен Бурей! (Всего ходов: ${target.stunTurns})`);
                     }
                 }
             }
         }
-        if (count === 0) logMessage(`${activeUnit.name} кастанул Чародейскую бурю в пустую область.`);
+        if (count === 0) logMessage(`${activeUnit.name} применил Чародейскую бурю в пустую область.`);
     }
 
     function executePoisonArea(topR, topC) {
@@ -475,7 +475,7 @@
                     if (target && target.team !== activeUnit.team) {
                         target.dotPoison.push({ duration: 10 });
                         count++;
-                        logMessage(`${target.name} отравлен! (Стаков яда: ${target.dotPoison.length})`);
+                        logMessage(`${target.name} отравлен на 10 ходов! (Стаков яда: ${target.dotPoison.length})`);
                     }
                 }
             }
@@ -487,7 +487,7 @@
         a.hasActed = true; 
         a.cooldowns.stun = 3; 
         d.stunTurns += 1; 
-        logMessage(`${a.name} оглушил ${d.name}! (Всего ходов оглушения: ${d.stunTurns})`); 
+        logMessage(`${a.name} оглушил ${d.name}! (Всего ходов: ${d.stunTurns})`); 
     }
 
     function processTurnEffects(unit) {
@@ -495,7 +495,7 @@
             unit.summonDuration--;
             if (unit.summonDuration <= 0) {
                 unit.isAlive = false;
-                logMessage(`${unit.name} (призванный) исчерпал время жизни и исчез!`);
+                logMessage(`${unit.name} (призванный) исчез!`);
                 return;
             }
         }
@@ -525,7 +525,7 @@
         if (unit.dotPoison.length > 0) {
             let totalPoisonDmg = unit.dotPoison.length * 2;
             applyDamageDirectly(unit, totalPoisonDmg);
-            logMessage(`${unit.name} получает ${totalPoisonDmg} маг. урона от яда! (${unit.dotPoison.length} стаков)`);
+            logMessage(`${unit.name} получает ${totalPoisonDmg} маг. урона от яда! (${unit.dotPoison.length} стак.)`);
             unit.dotPoison.forEach(p => p.duration--);
             unit.dotPoison = unit.dotPoison.filter(p => p.duration > 0);
         }
@@ -538,8 +538,8 @@
         if (unit.buffs.noAttackDuration > 0) {
             unit.buffs.noAttackDuration--;
             if (unit.buffs.noAttackDuration === 0) {
-                arrowRainShotsLeft = 5;
-                logMessage(`${unit.name}: Запрет на атаку снят! ГОТОВ К ГРАДУ СТРЕЛ (5 выстрелов подряд)!`);
+                unit.arrowRainShotsLeft = 5;
+                logMessage(`${unit.name}: Готов к ГРАДУ СТРЕЛ (5 выстрелов подряд)!`);
             }
         }
 
@@ -584,7 +584,6 @@
 
         activeUnit.hasMoved = false;
         activeUnit.hasActed = false;
-        doubleArrowShotsLeft = 0;
         pendingTarget = null;
         decrementCooldowns(activeUnit);
         processTurnEffects(activeUnit);
@@ -592,7 +591,7 @@
         if (!activeUnit.isAlive) { nextTurn(); return; }
 
         if (activeUnit.stunTurns > 0) {
-            logMessage(`${activeUnit.name} оглушен и пропускает ход! (Осталось оглушения: ${activeUnit.stunTurns - 1})`);
+            logMessage(`${activeUnit.name} оглушен и пропускает ход! (Осталось: ${activeUnit.stunTurns - 1})`);
             activeUnit.stunTurns--;
             endCurrentUnitTurn();
             return;
@@ -693,18 +692,23 @@
         }
     }
 
-    function applyDamageDirectly(unit, amount) {
-        if (unit.armor > 0) {
-            if (unit.armor >= amount) {
-                unit.armor -= amount;
-                amount = 0;
-            } else {
-                amount -= unit.armor;
-                unit.armor = 0;
+    function applyDamageDirectly(target, amount) {
+        if (target.hp !== undefined) {
+            if (target.armor && target.armor > 0) {
+                if (target.armor >= amount) {
+                    target.armor -= amount;
+                    amount = 0;
+                } else {
+                    amount -= target.armor;
+                    target.armor = 0;
+                }
+            }
+            target.hp -= amount;
+            if (target.hp <= 0) { 
+                target.hp = 0; 
+                if (target.isAlive !== undefined) target.isAlive = false; 
             }
         }
-        unit.hp -= amount;
-        if (unit.hp <= 0) { unit.hp = 0; unit.isAlive = false; }
     }
 
     function skipMovePhase() {
@@ -730,8 +734,6 @@
         highlightedInitUnit = null;
         activeAction = null;
         pendingTarget = null;
-        doubleArrowShotsLeft = 0;
-        arrowRainShotsLeft = 0;
         document.getElementById('skip-move-btn').style.display = 'none';
         document.getElementById('ability-desc-box').style.display = 'none';
         nextTurn();
@@ -776,8 +778,23 @@
         return valid;
     }
 
-    function handleAttackAction(attacker, defender) {
-        executeAttack(attacker, defender);
+    function handleAttackAction(attacker, target) {
+        if (attacker.buffs.noAttackDuration > 0) {
+            logMessage(`${attacker.name} подготовливает Град стрел и не может атаковать еще ${attacker.buffs.noAttackDuration} ходов!`);
+            return;
+        }
+
+        if (attacker.arrowRainShotsLeft > 0) {
+            logMessage(`${attacker.name} обрушивает ГРАД СТРЕЛ!`);
+            for (let i = 0; i < 5; i++) {
+                if (target.hp > 0 && (target.isAlive === undefined || target.isAlive)) {
+                    executeAttack(attacker, target);
+                }
+            }
+            attacker.arrowRainShotsLeft = 0;
+        } else {
+            executeAttack(attacker, target);
+        }
         endCurrentUnitTurn();
     }
 
@@ -786,20 +803,21 @@
         let textEl = document.getElementById('ability-desc-text');
         descBox.style.display = 'block';
 
+        let name = target.name || "Стена";
+
         if (action === 'attack') {
             if (activeUnit.typeKey === 'mage' && target.team === activeUnit.team) {
-                textEl.innerHTML = `<b>Цель: ${target.name} (Союзник)</b><br>Пассивка «Благословение»: <span style="color:#2ecc71; font-weight:bold;">Восстановит 10 HP</span>.<br><i>Кликните повторно для использования!</i>`;
+                textEl.innerHTML = `<b>Цель: ${name} (Союзник)</b><br>Пассивка «Благословение»: <span style="color:#2ecc71; font-weight:bold;">Восстановит 10 HP</span>.<br><i>Кликните повторно!</i>`;
                 return;
             }
 
-            let aType = (activeUnit.typeKey === 'archer') ? 'ranged' : 'melee';
-            let def = calculateTotalDefense(target, aType);
+            let def = target.hp !== undefined && target.typeKey ? calculateTotalDefense(target, (activeUnit.typeKey === 'archer') ? 'ranged' : 'melee') : 0;
             let rawDmg = activeUnit.damage;
 
             if (activeUnit.buffs.bullseyeCharges > 0) rawDmg += 10;
             let dmg = Math.max(1, Math.round(rawDmg * (1 - def / 100)));
 
-            textEl.innerHTML = `<b>Цель: ${target.name}</b><br>Прогнозируемый урон: <span style="color:#e74c3c; font-weight:bold;">${dmg} HP</span> (${def}% защ).<br><i>Кликните повторно для атаки!</i>`;
+            textEl.innerHTML = `<b>Цель: ${name}</b><br>Прогнозируемый урон: <span style="color:#e74c3c; font-weight:bold;">${dmg} HP</span> (${def}% защ).<br><i>Кликните повторно для атаки!</i>`;
         }
     }
 
@@ -835,12 +853,15 @@
                 let dist = Math.max(Math.abs(r - unit.r), Math.abs(c - unit.c));
                 if (dist > 0 && dist <= effRange) {
                     let target = getUnitAt(r, c);
+                    let obstacle = getObstacleAt(r, c);
                     if (target) {
                         if (target.team !== unit.team) {
                             board[r][c].classList.add('highlight-attack');
                         } else if (unit.typeKey === 'mage') {
                             board[r][c].classList.add('highlight-heal-target');
                         }
+                    } else if (obstacle) {
+                        board[r][c].classList.add('highlight-attack');
                     }
                 }
             }
@@ -851,6 +872,7 @@
     function getObstacleAt(r, c) { return obstacles.find(o => o.hp > 0 && o.r === r && o.c === c); }
 
     function calculateTotalDefense(defender, attackType) {
+        if (!defender.typeKey) return 0;
         let baseDef = 0;
 
         if (defender.typeKey === 'swordsman') {
@@ -889,7 +911,7 @@
         }
 
         baseDef += defenderProtection;
-        if (defender.buffs.customDefenseDuration > 0) baseDef += defender.buffs.customDefenseVal;
+        if (defender.buffs && defender.buffs.customDefenseDuration > 0) baseDef += defender.buffs.customDefenseVal;
 
         return Math.min(90, baseDef);
     }
@@ -897,27 +919,29 @@
     function executeAttack(attacker, defender) {
         attacker.hasActed = true;
 
-        if (attacker.typeKey === 'mage' && attacker.team === defender.team) {
+        if (defender.hp === undefined) return;
+
+        if (attacker.typeKey === 'mage' && defender.team && attacker.team === defender.team) {
             defender.hp = Math.min(defender.maxHp, defender.hp + 10);
-            logMessage(`[Благословение] ${attacker.name} подействовал на ${defender.name} и исцелил его на +10 HP!`);
+            logMessage(`[Благословение] ${attacker.name} исцелил ${defender.name} на +10 HP!`);
             return;
         }
 
         if (defender.typeKey === 'mage' && Math.random() < 0.60) {
-            logMessage(`${defender.name} увернулся от атаки! (Пассивка: Размытие)`);
+            logMessage(`${defender.name} увернулся от атаки! (Размытие)`);
             return;
         }
 
         if (defender.typeKey === 'mage') {
             defender.attacksReceivedCount = (defender.attacksReceivedCount || 0) + 1;
             if (defender.attacksReceivedCount % 2 === 0) {
-                logMessage(`${defender.name} проигнорировал атаку! (Пассивка: Иллюзорное тело)`);
+                logMessage(`${defender.name} проигнорировал атаку! (Иллюзорное тело)`);
                 return;
             }
         }
 
         if (defender.typeKey === 'archer' && Math.random() < 0.40) {
-            logMessage(`${defender.name} увернулся от атаки! (Пассивка: Ловкость)`);
+            logMessage(`${defender.name} увернулся от атаки! (Ловкость)`);
             return;
         }
 
@@ -943,17 +967,20 @@
         }
 
         applyDamageDirectly(defender, dmg);
-        logMessage(`${attacker.name} атаковал ${defender.name}: ${dmg} урона (${def}% защ).`);
+        let name = defender.name || "Стену";
+        logMessage(`${attacker.name} атаковал ${name}: ${dmg} урона (${def}% защ).`);
 
-        if (attacker.buffs.fireArrowCharges > 0) {
-            attacker.buffs.fireArrowCharges--;
-            defender.dotBurn.push({ duration: 2 });
-        }
+        if (defender.typeKey) {
+            if (attacker.buffs.fireArrowCharges > 0) {
+                attacker.buffs.fireArrowCharges--;
+                defender.dotBurn.push({ duration: 2 });
+            }
 
-        if (attacker.buffs.kneeShotCharge) {
-            attacker.buffs.kneeShotCharge = false;
-            defender.buffs.slowDuration = 2;
-            defender.buffs.slowValue = 2;
+            if (attacker.buffs.kneeShotCharge) {
+                attacker.buffs.kneeShotCharge = false;
+                defender.buffs.slowDuration = 2;
+                defender.buffs.slowValue = 2;
+            }
         }
     }
 
@@ -1020,12 +1047,12 @@
     function executeWallPlacement(topR, topC) {
         for (let r = topR; r < topR + 2; r++) {
             for (let c = topC; c < topC + 2; c++) {
-                if (r < ROWS && c < COLS) obstacles.push({ r: r, c: c, hp: 200 });
+                if (r < ROWS && c < COLS) obstacles.push({ r: r, c: c, hp: 50 });
             }
         }
     }
 
-    function executeSpear(a, d) { a.hasActed = true; a.cooldowns.spear = 3; applyDamageDirectly(d, 10); logMessage(`${a.name} метнул копье в ${d.name} (10 урона)`); }
+    function executeSpear(a, d) { a.hasActed = true; a.cooldowns.spear = 3; applyDamageDirectly(d, 10); logMessage(`${a.name} метнул копье (10 урона)`); }
     function executeReinforce(c, t) { c.hasActed = true; c.cooldowns.buff = 3; t.buffs.customDefenseDuration = 2; t.buffs.customDefenseVal += 30; logMessage(`${c.name} применил Укрепление на ${t.name}`); }
     function executeHeal(c, t) { c.hasActed = true; c.cooldowns.heal = 3; t.buffs.regenDuration = 5; t.buffs.regenValue += 5; logMessage(`${c.name} применил Лечение на ${t.name}`); }
     function executeRage(c, t) { c.hasActed = true; c.cooldowns.rage = 3; t.buffs.rageDuration = 3; t.buffs.rageValue += 5; t.damage += 5; logMessage(`${c.name} применил Ярость на ${t.name}`); }
@@ -1043,8 +1070,26 @@
 
         function getDistance(u1, u2) { return Math.max(Math.abs(u1.r - u2.r), Math.abs(u1.c - u2.c)); }
 
+        if (ai.typeKey === 'swordsman') {
+            if (ai.hp < ai.maxHp * 0.6 && ai.cooldowns.heal === 0) {
+                executeHeal(ai, ai);
+                renderBoard(); setTimeout(endCurrentUnitTurn, 600); return;
+            }
+            if (ai.hp < ai.maxHp * 0.5 && ai.cooldowns.buff === 0) {
+                executeReinforce(ai, ai);
+                renderBoard(); setTimeout(endCurrentUnitTurn, 600); return;
+            }
+        }
+
+        if (ai.typeKey === 'archer') {
+            if (ai.cooldowns.arrowRain === 0 && !ai.buffs.noAttackDuration && ai.arrowRainShotsLeft === 0) {
+                selectAbility('arrowRain');
+                renderBoard(); setTimeout(endCurrentUnitTurn, 600); return;
+            }
+        }
+
         if (ai.typeKey === 'mage') {
-            let injuredAlly = allies.find(a => a.hp < a.maxHp);
+            let injuredAlly = allies.find(a => a.hp < a.maxHp * 0.7);
             if (injuredAlly) {
                 executeAttack(ai, injuredAlly);
                 renderBoard(); setTimeout(endCurrentUnitTurn, 600); return;
@@ -1149,7 +1194,8 @@
 
             let inRangeEnemies = enemies.filter(e => getDistance(ai, e) <= getUnitEffectiveRange(ai));
             if (inRangeEnemies.length > 0) {
-                executeAttack(ai, inRangeEnemies[0]);
+                handleAttackAction(ai, inRangeEnemies[0]);
+                return;
             }
         }
 
