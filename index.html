@@ -3,292 +3,338 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Рыцари: Битва Героев</title>
+    <title>Рыцари: Битва Героев (Тактика)</title>
     <style>
-        * {
-            box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, sans-serif; }
+        body { background: #1a1510; color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; }
 
-        body {
-            background-color: #1a1a1a;
-            color: #fff;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            margin: 0;
-        }
-
-        .game-container {
-            width: 600px;
-            background: #2b2b2b;
-            border: 2px solid #555;
-            border-radius: 12px;
-            padding: 20px;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
-            text-align: center;
-        }
-
-        h1 { margin-top: 0; color: #f1c40f; }
-
-        .arena {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 20px;
-        }
-
-        .fighter {
-            width: 45%;
-            background: #3a3a3a;
-            padding: 15px;
+        h1 { color: #f1c40f; margin-bottom: 10px; text-shadow: 2px 2px 4px #000; }
+        
+        #game-board {
+            display: grid;
+            grid-template-columns: repeat(8, 65px);
+            grid-template-rows: repeat(5, 65px);
+            gap: 4px;
+            background: #2b1d0c;
+            padding: 10px;
+            border: 4px solid #8b5a2b;
             border-radius: 8px;
-            transition: transform 0.1s;
+            box-shadow: 0 0 20px rgba(0,0,0,0.8);
         }
 
-        .avatar {
-            font-size: 50px;
-            margin-top: 15px;
-        }
-
-        .bar-container {
-            background: #555;
-            border-radius: 6px;
-            height: 20px;
-            margin: 8px 0;
+        .cell {
+            width: 65px;
+            height: 65px;
+            background: #3a2a1a;
+            border: 1px solid #5a4028;
+            border-radius: 4px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            padding: 4px;
+            cursor: pointer;
             position: relative;
-            overflow: hidden;
+            user-select: none;
         }
 
-        .bar {
-            height: 100%;
-            width: 100%;
-            transition: width 0.3s ease;
+        .cell:hover { border-color: #f1c40f; }
+        .cell.reachable { background: #2e4d25; border-color: #27ae60; } /* Зеленая подсветка для хода */
+        .cell.attackable { background: #5c1d1d; border-color: #e74c3c; } /* Красная подсветка для атаки */
+
+        .unit {
+            font-size: 28px;
+            line-height: 1;
+            margin-top: 2px;
         }
 
-        .hp-bar { background-color: #e74c3c; }
-        .mp-bar { background-color: #3498db; }
-
-        .bar-container span {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
+        .unit-count {
             font-size: 11px;
             font-weight: bold;
-            text-shadow: 1px 1px 2px #000;
+            background: rgba(0,0,0,0.7);
+            padding: 1px 4px;
+            border-radius: 3px;
+            color: #fff;
         }
 
-        .controls {
-            background: #333;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 15px;
+        .player-unit { color: #3498db; }
+        .enemy-unit { color: #e74c3c; }
+
+        .active-unit {
+            outline: 2px solid #f1c40f;
+            box-shadow: inset 0 0 10px #f1c40f;
         }
 
-        .control-group {
-            margin-bottom: 10px;
-        }
+        #turn-info { margin: 10px; font-size: 16px; font-weight: bold; color: #e67e22; }
 
-        .control-group h3 { margin: 5px 0; font-size: 14px; color: #ccc; }
-
-        .actions button {
-            background: #27ae60;
-            color: white;
-            border: none;
-            padding: 10px 15px;
-            margin: 5px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-weight: bold;
-        }
-
-        .actions button:hover { background: #2ecc71; }
-        .actions button:disabled { background: #7f8c8d; cursor: not-allowed; }
-
-        .log {
-            height: 120px;
-            background: #111;
+        #log-box {
+            width: 540px;
+            height: 100px;
+            background: #0f0b07;
+            border: 2px solid #5a4028;
             border-radius: 6px;
-            padding: 10px;
+            padding: 8px;
             overflow-y: auto;
-            text-align: left;
+            margin-top: 10px;
             font-size: 13px;
         }
 
-        .log p { margin: 4px 0; }
-        .hit { color: #e74c3c; }
-        .block { color: #3498db; }
-        .crit { color: #f1c40f; font-weight: bold; }
+        .log-hit { color: #e74c3c; }
+        .log-move { color: #2ecc71; }
+        .log-system { color: #f1c40f; }
     </style>
 </head>
 <body>
-    <div class="game-container">
-        <h1>Битва Рыцарей</h1>
 
-        <!-- Арена -->
-        <div class="arena">
-            <!-- Игрок -->
-            <div class="fighter" id="player-box">
-                <h2>Игрок (Рыцарь)</h2>
-                <div class="bar-container">
-                    <div class="bar hp-bar" id="player-hp-bar"></div>
-                    <span id="player-hp-text">100 / 100 HP</span>
-                </div>
-                <div class="bar-container">
-                    <div class="bar mp-bar" id="player-mp-bar"></div>
-                    <span id="player-mp-text">50 / 50 MP</span>
-                </div>
-                <div class="avatar">🛡️⚔️</div>
-            </div>
-
-            <!-- Враг -->
-            <div class="fighter" id="enemy-box">
-                <h2>Темный Рыцарь</h2>
-                <div class="bar-container">
-                    <div class="bar hp-bar" id="enemy-hp-bar"></div>
-                    <span id="enemy-hp-text">120 / 120 HP</span>
-                </div>
-                <div class="avatar">😈🗡️</div>
-            </div>
-        </div>
-
-        <!-- Выбор Зон Атаки и Защиты -->
-        <div class="controls" id="controls">
-            <div class="control-group">
-                <h3>Куда бьем:</h3>
-                <label><input type="radio" name="attack" value="head" checked> Голова</label>
-                <label><input type="radio" name="attack" value="body"> Торс</label>
-                <label><input type="radio" name="attack" value="legs"> Ноги</label>
-            </div>
-
-            <div class="control-group">
-                <h3>Что защищаем:</h3>
-                <label><input type="radio" name="defend" value="head"> Голова</label>
-                <label><input type="radio" name="defend" value="body" checked> Торс</label>
-                <label><input type="radio" name="defend" value="legs"> Ноги</label>
-            </div>
-
-            <div class="actions">
-                <button id="btn-attack" onclick="makeTurn('attack')">Обычный Удар</button>
-                <button id="btn-skill" onclick="makeTurn('skill')">Мощный Удар (20 MP)</button>
-            </div>
-        </div>
-
-        <!-- Лог боя -->
-        <div class="log" id="log">
-            <p>Битва начинается! Выберите зоны и нажмите "Обычный Удар".</p>
-        </div>
-    </div>
+    <h1>Рыцари: Битва Героев</h1>
+    <div id="turn-info">Загрузка...</div>
+    <div id="game-board"></div>
+    <div id="log-box"></div>
 
     <script>
-        // Состояние персонажей
-        const player = {
-            hp: 100, maxHp: 100,
-            mp: 50, maxMp: 50,
-            baseDamage: 15
+        const GRID_WIDTH = 8;
+        const GRID_HEIGHT = 5;
+
+        // Данные о юнитах
+        const UNIT_TYPES = {
+            KNIGHT: { name: 'Рыцарь', icon: '🛡️', hp: 20, dmg: 5, moveRange: 2, attackRange: 1, isRanged: false },
+            ARCHER: { name: 'Лучник', icon: '🏹', hp: 12, dmg: 4, moveRange: 1, attackRange: 4, isRanged: true },
+            SKELETON: { name: 'Скелет', icon: '💀', hp: 15, dmg: 4, moveRange: 2, attackRange: 1, isRanged: false }
         };
 
-        const enemy = {
-            hp: 120, maxHp: 120,
-            baseDamage: 12
-        };
-
-        const zones = ['head', 'body', 'legs'];
-
-        function updateUI() {
-            // Обновляем HP / MP игрока
-            document.getElementById('player-hp-bar').style.width = `${(player.hp / player.maxHp) * 100}%`;
-            document.getElementById('player-hp-text').innerText = `${Math.max(0, player.hp)} / ${player.maxHp} HP`;
+        // Размещение отрядов на поле
+        let units = [
+            // Игрок (Слева)
+            { id: 1, team: 'player', type: UNIT_TYPES.KNIGHT, count: 5, hp: 20, x: 0, y: 1 },
+            { id: 2, team: 'player', type: UNIT_TYPES.ARCHER, count: 8, hp: 12, x: 0, y: 3 },
             
-            document.getElementById('player-mp-bar').style.width = `${(player.mp / player.maxMp) * 100}%`;
-            document.getElementById('player-mp-text').innerText = `${player.mp} / ${player.maxMp} MP`;
+            // Враг (Справа)
+            { id: 3, team: 'enemy', type: UNIT_TYPES.SKELETON, count: 10, hp: 15, x: 7, y: 1 },
+            { id: 4, team: 'enemy', type: UNIT_TYPES.SKELETON, count: 6, hp: 15, x: 7, y: 3 }
+        ];
 
-            // Обновляем HP врага
-            document.getElementById('enemy-hp-bar').style.width = `${(enemy.hp / enemy.maxHp) * 100}%`;
-            document.getElementById('enemy-hp-text').innerText = `${Math.max(0, enemy.hp)} / ${enemy.maxHp} HP`;
+        let activeUnitIndex = 0;
 
-            // Блокируем кнопку супер-удара, если нет маны
-            document.getElementById('btn-skill').disabled = player.mp < 20;
+        function initBoard() {
+            const board = document.getElementById('game-board');
+            board.innerHTML = '';
+
+            for (let y = 0; y < GRID_HEIGHT; y++) {
+                for (let x = 0; x < GRID_WIDTH; x++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    cell.dataset.x = x;
+                    cell.dataset.y = y;
+                    cell.onclick = () => onCellClick(x, y);
+                    board.appendChild(cell);
+                }
+            }
+            render();
         }
 
-        function logMessage(text, className = '') {
-            const logBox = document.getElementById('log');
+        function getCurrentUnit() {
+            return units[activeUnitIndex];
+        }
+
+        function render() {
+            // Очистка клеток
+            document.querySelectorAll('.cell').forEach(cell => {
+                cell.innerHTML = '';
+                cell.className = 'cell';
+            });
+
+            const currentUnit = getCurrentUnit();
+
+            // Отрисовка юнитов
+            units.forEach(u => {
+                const cell = getCell(u.x, u.y);
+                if (cell) {
+                    const unitDiv = document.createElement('div');
+                    unitDiv.className = `unit ${u.team === 'player' ? 'player-unit' : 'enemy-unit'}`;
+                    unitDiv.innerText = u.type.icon;
+
+                    const countDiv = document.createElement('div');
+                    countDiv.className = 'unit-count';
+                    countDiv.innerText = u.count;
+
+                    cell.appendChild(unitDiv);
+                    cell.appendChild(countDiv);
+
+                    if (u === currentUnit) {
+                        cell.classList.add('active-unit');
+                    }
+                }
+            });
+
+            // Подсветка ходов и атак
+            if (currentUnit) {
+                document.getElementById('turn-info').innerText = 
+                    `Ход: ${currentUnit.team === 'player' ? 'Игрок' : 'Враг'} (${currentUnit.type.name} x${currentUnit.count})`;
+
+                for (let y = 0; y < GRID_HEIGHT; y++) {
+                    for (let x = 0; x < GRID_WIDTH; x++) {
+                        const dist = Math.abs(x - currentUnit.x) + Math.abs(y - currentUnit.y);
+                        const targetUnit = getUnitAt(x, y);
+
+                        // Проверка перемещения
+                        if (!targetUnit && dist <= currentUnit.type.moveRange) {
+                            getCell(x, y).classList.add('reachable');
+                        }
+
+                        // Проверка атаки
+                        if (targetUnit && targetUnit.team !== currentUnit.team && dist <= currentUnit.type.attackRange) {
+                            getCell(x, y).classList.add('attackable');
+                        }
+                    }
+                }
+            }
+        }
+
+        function getCell(x, y) {
+            return document.querySelector(`.cell[data-x="${x}"][data-y="${y}"]`);
+        }
+
+        function getUnitAt(x, y) {
+            return units.find(u => u.x === x && u.y === y);
+        }
+
+        function log(msg, type = '') {
+            const logBox = document.getElementById('log-box');
             const p = document.createElement('p');
-            if (className) p.classList.add(className);
-            p.innerText = text;
+            if (type) p.className = type;
+            p.innerText = msg;
             logBox.appendChild(p);
             logBox.scrollTop = logBox.scrollHeight;
         }
 
-        function getRandomZone() {
-            return zones[Math.floor(Math.random() * zones.length)];
+        function nextTurn() {
+            if (checkGameOver()) return;
+
+            activeUnitIndex = (activeUnitIndex + 1) % units.length;
+            render();
+
+            // ИИ для врага
+            const currentUnit = getCurrentUnit();
+            if (currentUnit.team === 'enemy') {
+                setTimeout(enemyAI, 600);
+            }
         }
 
-        function makeTurn(actionType) {
-            if (player.hp <= 0 || enemy.hp <= 0) return;
+        function onCellClick(x, y) {
+            const currentUnit = getCurrentUnit();
+            if (!currentUnit || currentUnit.team !== 'player') return;
 
-            // Выбор игрока
-            const playerAttack = document.querySelector('input[name="attack"]:checked').value;
-            const playerDefend = document.querySelector('input[name="defend"]:checked').value;
+            const targetUnit = getUnitAt(x, y);
+            const dist = Math.abs(x - currentUnit.x) + Math.abs(y - currentUnit.y);
 
-            // Выбор бота (случайно)
-            const enemyAttack = getRandomZone();
-            const enemyDefend = getRandomZone();
-
-            logMessage("--- Новый ход ---");
-
-            // === 1. АТАКА ИГРОКА ===
-            let pDamage = player.baseDamage;
-            if (actionType === 'skill') {
-                player.mp -= 20;
-                pDamage *= 1.8;
+            // Атака врага
+            if (targetUnit && targetUnit.team === 'enemy' && dist <= currentUnit.type.attackRange) {
+                attack(currentUnit, targetUnit);
+                nextTurn();
+            } 
+            // Перемещение
+            else if (!targetUnit && dist <= currentUnit.type.moveRange) {
+                currentUnit.x = x;
+                currentUnit.y = y;
+                log(`Вы переместили ${currentUnit.type.name} на (${x + 1}, ${y + 1})`, 'log-move');
+                nextTurn();
             }
-
-            if (playerAttack === enemyDefend) {
-                logMessage(`🛡️ Враг заблокировал ваш удар в ${playerAttack}!`, 'block');
-            } else {
-                const isCrit = Math.random() < 0.2; // Шанс крита 20%
-                if (isCrit) pDamage *= 1.5;
-
-                pDamage = Math.round(pDamage);
-                enemy.hp -= pDamage;
-                logMessage(`⚔️ Вы нанесли ${pDamage} урона в ${playerAttack}${isCrit ? ' (КРИТ!)' : ''}`, isCrit ? 'crit' : 'hit');
-            }
-
-            // Восстановление маны каждый ход
-            if (player.mp < player.maxMp) player.mp = Math.min(player.maxMp, player.mp + 5);
-
-            // Проверка победы
-            if (enemy.hp <= 0) {
-                enemy.hp = 0;
-                updateUI();
-                logMessage("🎉 ПОБЕДА! Вы повергли Темного Рыцаря!", 'crit');
-                return;
-            }
-
-            // === 2. АТАКА ВРАГА ===
-            let eDamage = enemy.baseDamage;
-            if (enemyAttack === playerDefend) {
-                logMessage(`🛡️ Вы заблокировали удар врага в ${enemyAttack}!`, 'block');
-            } else {
-                eDamage = Math.round(eDamage * (0.9 + Math.random() * 0.3));
-                player.hp -= eDamage;
-                logMessage(`💥 Враг нанес вам ${eDamage} урона в ${enemyAttack}!`, 'hit');
-            }
-
-            // Проверка поражения
-            if (player.hp <= 0) {
-                player.hp = 0;
-                logMessage("☠️ ПОРАЖЕНИЕ! Вы пали в бою...", 'hit');
-            }
-
-            updateUI();
         }
 
-        // Инициализация при загрузке страницы
-        updateUI();
+        function attack(attacker, defender) {
+            // Урон зависит от количества воинов в отряде
+            const totalDamage = attacker.count * attacker.type.dmg;
+            
+            // Расчет уничтожения юнитов
+            let remainingHpPool = (defender.count - 1) * defender.type.hp + defender.hp - totalDamage;
+
+            if (remainingHpPool <= 0) {
+                log(`⚔️ ${attacker.type.name} уничтожили весь отряд ${defender.type.name}!`, 'log-hit');
+                units = units.filter(u => u !== defender);
+                // Корректировка индекса активного юнита при удалении
+                const deadIndex = units.indexOf(defender);
+                if (deadIndex !== -1 && deadIndex < activeUnitIndex) {
+                    activeUnitIndex--;
+                }
+            } else {
+                const newCount = Math.ceil(remainingHpPool / defender.type.hp);
+                const newHp = remainingHpPool % defender.type.hp || defender.type.hp;
+                const killed = defender.count - newCount;
+
+                defender.count = newCount;
+                defender.hp = newHp;
+                log(`⚔️ ${attacker.type.name} нанесли ${totalDamage} урона. Погибло ${killed} ${defender.type.name}.`, 'log-hit');
+            }
+        }
+
+        function enemyAI() {
+            const enemyUnit = getCurrentUnit();
+            if (!enemyUnit || enemyUnit.team !== 'enemy') return;
+
+            // Ищем ближайшего игрока
+            let target = null;
+            let minDistance = 999;
+
+            units.filter(u => u.team === 'player').forEach(playerUnit => {
+                const dist = Math.abs(playerUnit.x - enemyUnit.x) + Math.abs(playerUnit.y - enemyUnit.y);
+                if (dist < minDistance) {
+                    minDistance = dist;
+                    target = playerUnit;
+                }
+            });
+
+            if (target) {
+                // Если достает — атакует
+                if (minDistance <= enemyUnit.type.attackRange) {
+                    attack(enemyUnit, target);
+                } 
+                // Иначе подбирается ближе
+                else {
+                    let bestX = enemyUnit.x;
+                    let bestY = enemyUnit.y;
+                    let bestDist = minDistance;
+
+                    for (let y = 0; y < GRID_HEIGHT; y++) {
+                        for (let x = 0; x < GRID_WIDTH; x++) {
+                            const distToCell = Math.abs(x - enemyUnit.x) + Math.abs(y - enemyUnit.y);
+                            if (!getUnitAt(x, y) && distToCell <= enemyUnit.type.moveRange) {
+                                const distToTarget = Math.abs(x - target.x) + Math.abs(y - target.y);
+                                if (distToTarget < bestDist) {
+                                    bestDist = distToTarget;
+                                    bestX = x;
+                                    bestY = y;
+                                }
+                            }
+                        }
+                    }
+                    enemyUnit.x = bestX;
+                    enemyUnit.y = bestY;
+                    log(`💀 Вражеский ${enemyUnit.type.name} продвинулся ближе.`, 'log-move');
+                }
+            }
+            nextTurn();
+        }
+
+        function checkGameOver() {
+            const playerAlive = units.some(u => u.team === 'player');
+            const enemyAlive = units.some(u => u.team === 'enemy');
+
+            if (!playerAlive) {
+                log("☠️ ПОРАЖЕНИЕ! Все ваши отряды разбиты.", 'log-system');
+                document.getElementById('turn-info').innerText = "Конец боя - Поражение";
+                return true;
+            }
+            if (!enemyAlive) {
+                log("🎉 ПОБЕДА! Вы разгромили армию врага!", 'log-system');
+                document.getElementById('turn-info').innerText = "Конец боя - Победа!";
+                return true;
+            }
+            return false;
+        }
+
+        // Запуск игры
+        initBoard();
+        log("Битва началась! Нажимайте на зеленые клетки для хода или красные для атаки.", 'log-system');
     </script>
 </body>
 </html>
-
