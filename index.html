@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Цитадели: Полный Баланс и Способности</title>
+    <title>Цитадели: Пошаговый Баланс</title>
     <style>
         :root {
             --bg-main: #090807;
@@ -45,6 +45,7 @@
         .shop-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 2px; margin-top: 4px; }
         .shop-btn { background: #1a130d; border: 1px solid var(--border-dark); border-radius: 3px; padding: 2px 1px; display: flex; flex-direction: column; align-items: center; cursor: pointer; font-size: 7px; color: #ccc; }
         .shop-btn.selected { border-color: #2ecc71; background: #102414; }
+        .shop-btn.disabled { opacity: 0.3; cursor: not-allowed; }
 
         .skills-container { display: flex; gap: 4px; margin-top: 4px; flex-wrap: wrap; }
         .btn-skill { background: linear-gradient(180deg, #d35400 0%, #a04000 100%); border: 1px solid #f39c12; color: #fff; font-weight: bold; padding: 3px 6px; border-radius: 3px; cursor: pointer; font-size: 8px; }
@@ -54,7 +55,7 @@
 </head>
 <body>
 
-    <h1>🏰 ЦИТАДЕЛИ: ПОЛНЫЙ БАЛАНС</h1>
+    <h1>🏰 ЦИТАДЕЛИ: ФАЗЫ И БАЛАНС</h1>
 
     <div class="wrapper">
         <div class="res-bar">
@@ -65,8 +66,8 @@
         </div>
 
         <div style="font-size: 8.5px; color: var(--text-gold); display:flex; justify-content:space-between; align-items:center;">
-            <span>⏳ ОЧЕРЕДЬ ХОДОВ:</span>
-            <button class="btn btn-skip" onclick="passTurn()">ПРОПУСТИТЬ ХОД ⏩</button>
+            <span id="phase-status">⏳ ОЧЕРЕДЬ ХОДОВ:</span>
+            <button class="btn btn-skip" id="btn-end-turn" onclick="passTurn()">ЗАВЕРШИТЬ ХОД ⏩</button>
         </div>
 
         <div id="timeline-bar"></div>
@@ -81,8 +82,8 @@
         </div>
 
         <div class="panel-box">
-            <div style="font-size:8.5px; color:var(--text-gold); font-weight:bold;">
-                Найм (Нажмите на юнита, затем на подсвеченную клетку у Цитадели)
+            <div id="shop-title" style="font-size:8.5px; color:var(--text-gold); font-weight:bold;">
+                🔒 НАЙМ ДОСТУПЕН ТОЛЬКО В ХОД ЦИТАДЕЛИ
             </div>
             <div class="shop-grid" id="shop-list"></div>
         </div>
@@ -91,66 +92,25 @@
     <script>
         const GRID_W = 13, GRID_H = 15;
 
-        // ПОЛНАЯ БАЗА ДАННЫХ ВСЕХ ЮНИТОВ
         const UNITS_DB = {
-            citadel_player: { name:'Ваша Цитадель', icon:'🏰', hp:500, dmg:0, move:0, range:0, init:20, desc:'Приносит +40💰 и +25🪨 за ход.' },
+            citadel_player: { name:'Ваша Цитадель', icon:'🏰', hp:500, dmg:0, move:0, range:0, init:20, desc:'Приносит +40💰 и +25🪨. Фаза строительства.' },
             citadel_enemy:  { name:'Цитадель Врага', icon:'🏰', hp:500, dmg:0, move:0, range:0, init:20, desc:'Приносит ресурсы врагу.' },
 
-            warrior: {
-                name:'Воин', icon:'⚔️', costG:40, costS:0, hp:55, dmg:12, move:2, range:1, init:10,
-                desc:'Базовый пехотинец.',
-                skills: [{ id:'javelin', name:'🎯 Дротик', dmgMult:1.2, isFree:false }]
-            },
-            knight: {
-                name:'Рыцарь', icon:'🛡️', costG:45, costS:10, hp:85, dmg:15, move:2, range:1, init:9,
-                desc:'Танк с защитной стойкой.',
-                skills: [{ id:'defend', name:'🛡️ Глухая оборона', isFree:false }]
-            },
-            swordsman: {
-                name:'Мечник', icon:'🗡️', costG:45, costS:0, hp:60, dmg:14, move:2, range:1, init:11,
-                desc:'Атакующий пехотинец с критом.',
-                skills: [{ id:'crit', name:'⚔️ Мощный выпад', dmgMult:1.6, isFree:false }]
-            },
-            archer: {
-                name:'Лучник', icon:'🏹', costG:50, costS:0, hp:35, dmg:12, move:2, range:3, init:14,
-                desc:'Мобильный стрелок.',
-                skills: [{ id:'power_shot', name:'🎯 Дальний выстрел', dmgMult:1.4, isFree:false }]
-            },
-            sniper: {
-                name:'Снайпер', icon:'🎯', costG:60, costS:15, hp:45, dmg:18, move:2, range:4, init:15,
-                desc:'Дальнобойный стрелок с высоким уроном.',
-                skills: [{ id:'headshot', name:'💥 Прицельный выстрел', dmgMult:1.5, isFree:false }]
-            },
-            rider: {
-                name:'Всадник', icon:'🐎', costG:65, costS:0, hp:65, dmg:16, move:4, range:1, init:17,
-                desc:'Быстрый фланговый юнит.',
-                skills: [{ id:'charge', name:'⚡ Наскок', dmgMult:1.3, isFree:false }]
-            },
-            cavalry: {
-                name:'Кавалерист', icon:'♞', costG:80, costS:20, hp:95, dmg:22, move:4, range:1, init:18,
-                desc:'Тяжелая и быстрая кавалерия.',
-                skills: [{ id:'breakthrough', name:'💥 Прорыв', dmgMult:1.4, isFree:false }]
-            },
-            ballista: {
-                name:'Баллиста', icon:'🏹', costG:70, costS:35, hp:50, dmg:16, move:1, range:3, init:6,
-                desc:'Осада с хорошим уроном.',
-                skills: [{ id:'pierce', name:'Залп по броне', dmgMult:1.2, isFree:false }]
-            },
-            catapult: {
-                name:'Катапульта', icon:'☄️', costG:85, costS:50, hp:70, dmg:28, move:1, range:5, init:4,
-                desc:'Мощнейшее осадное орудие.',
-                skills: [{ id:'boulder', name:'☄️ Огненный валун', dmgMult:1.5, isFree:false }]
-            },
-            vampire: {
-                name:'Вампир', icon:'🧛', costG:90, costS:0, hp:70, dmg:16, move:3, range:1, init:16,
-                desc:'Восстанавливает HP при атаке.',
-                skills: [{ id:'vamp_bite', name:'🩸 Укус', dmgMult:1.2, isFree:false }]
-            },
-            elder_vampire: {
-                name:'Древний Вампир', icon:'🦇', costG:110, costS:30, hp:100, dmg:22, move:3, range:1, init:20,
-                desc:'Элитный мистик с высокой инициативой.',
-                skills: [{ id:'vamp_bite', name:'🩸 Жажда крови', dmgMult:1.4, isFree:false }]
-            }
+            // Базовые юниты (доступны всегда)
+            warrior: { name:'Воин', icon:'⚔️', costG:40, costS:0, hp:55, dmg:12, move:2, range:1, init:10, req: null, desc:'Базовый пехотинец.', skills: [{ id:'javelin', name:'🎯 Дротик', dmgMult:1.2 }] },
+            archer: { name:'Лучник', icon:'🏹', costG:50, costS:0, hp:35, dmg:12, move:2, range:3, init:14, req: null, desc:'Мобильный стрелок.', skills: [{ id:'power_shot', name:'🎯 Дальний выстрел', dmgMult:1.4 }] },
+            rider: { name:'Всадник', icon:'🐎', costG:65, costS:0, hp:65, dmg:16, move:4, range:1, init:17, req: null, desc:'Быстрый фланговый юнит.', skills: [{ id:'charge', name:'⚡ Наскок', dmgMult:1.3 }] },
+            vampire: { name:'Вампир', icon:'🧛', costG:90, costS:10, hp:70, dmg:16, move:3, range:1, init:16, req: null, limit: 2, desc:'Восстанавливает HP (лимит 2 на поле).', skills: [{ id:'vamp_bite', name:'🩸 Укус', dmgMult:1.2 }] },
+
+            // Продвинутые юниты (требуют наличии Базовых или ограничение)
+            knight: { name:'Рыцарь', icon:'🛡️', costG:55, costS:15, hp:85, dmg:15, move:2, range:1, init:9, req: 'warrior', desc:'Танк (требует Воина на поле).', skills: [{ id:'defend', name:'🛡️ Оборона' }] },
+            sniper: { name:'Снайпер', icon:'🎯', costG:65, costS:20, hp:45, dmg:18, move:2, range:4, init:15, req: 'archer', desc:'Дальнобойный (требует Лучника).', skills: [{ id:'headshot', name:'💥 Точный выстрел', dmgMult:1.5 }] },
+            cavalry: { name:'Кавалерист', icon:'♞', costG:85, costS:25, hp:95, dmg:22, move:4, range:1, init:18, req: 'rider', desc:'Тяжелая кавалерия (требует Всадника).', skills: [{ id:'breakthrough', name:'💥 Прорыв', dmgMult:1.4 }] },
+            
+            // Элитные и Осадные юниты
+            ballista: { name:'Баллиста', icon:'🏹', costG:75, costS:40, hp:50, dmg:18, move:1, range:3, init:6, req: null, desc:'Осадное орудие.', skills: [{ id:'pierce', name:'Залп по броне', dmgMult:1.2 }] },
+            catapult: { name:'Катапульта', icon:'☄️', costG:95, costS:60, hp:70, dmg:30, move:1, range:5, init:4, req: 'ballista', desc:'Дальнобойная осада (требует Баллисту).', skills: [{ id:'boulder', name:'☄️ Валун', dmgMult:1.5 }] },
+            elder_vampire: { name:'Древний Вампир', icon:'🦇', costG:130, costS:50, hp:100, dmg:24, move:3, range:1, init:20, req: 'vampire', limit: 1, desc:'Элитный мистик (требует Вампира, лимит 1).', skills: [{ id:'vamp_bite', name:'🩸 Жажда крови', dmgMult:1.4 }] }
         };
 
         const PLAYER_CITADEL = { x: 0, y: 11, w: 4, h: 4, hp: 500, maxHp: 500 };
@@ -162,17 +122,17 @@
         let activeUnit = null;
         let selectedShopKey = null;
         let selectedSkillMode = null;
+        let isBuildPhase = false;
 
         function init() {
             createBoard();
-            renderShop();
-
-            // Добавляем Цитадели прямо в массив юнитов с координатами
+            
             units.push({ id: 'cit_p', team: 'player', typeKey: 'citadel_player', hp: 500, maxHp: 500, x: 0, y: 11, delay: 0 });
             units.push({ id: 'cit_e', team: 'enemy', typeKey: 'citadel_enemy', hp: 500, maxHp: 500, x: 9, y: 0, delay: 0 });
 
             updateRes();
-            log("🎮 Игра началась! Нанимайте юнитов и нападайте.", "log-skill");
+            renderShop();
+            log("🎮 Игра началась! Наступает первый ход.", "log-skill");
             processNextTurn();
         }
 
@@ -209,29 +169,35 @@
             activeUnit = activeUnits[0];
 
             selectedSkillMode = null;
+            selectedShopKey = null;
+
+            if (activeUnit.typeKey === 'citadel_player') {
+                isBuildPhase = true;
+                playerGold += 40; playerStone += 25;
+                updateRes();
+                log("🛠️ ФАЗА СТРОИТЕЛЬСТВА/НАЙМА! +40💰 и +25🪨 полученo.", "log-heal");
+                document.getElementById('shop-title').innerText = "🔨 НАЙМ ЮНИТОВ (Выберите тип, затем подсвеченную клетку)";
+                document.getElementById('phase-status').innerText = "🛠️ ФАЗА СТРОИТЕЛЬСТВА";
+            } else if (activeUnit.typeKey === 'citadel_enemy') {
+                isBuildPhase = false;
+                enemyGold += 40; enemyStone += 25;
+                updateRes();
+                log("🏰 Враг получил ресурсы.", "log-hit");
+                endAction(1.0);
+                return;
+            } else {
+                isBuildPhase = false;
+                document.getElementById('shop-title').innerText = "🔒 НАЙМ ДОСТУПЕН ТОЛЬКО В ХОД ЦИТАДЕЛИ";
+                document.getElementById('phase-status').innerText = `⏳ ХОД: ${UNITS_DB[activeUnit.typeKey].name}`;
+            }
+
+            renderShop();
             renderTimeline();
             render();
 
-            if (activeUnit.typeKey === 'citadel_player') {
-                playerGold += 40; playerStone += 25;
-                updateRes();
-                log("💰 Ваша Цитадель начислила +40 Монет и +25 Камня!", "log-heal");
-                endAction(1.0);
-                return;
-            }
-
-            if (activeUnit.typeKey === 'citadel_enemy') {
-                enemyGold += 40; enemyStone += 25;
-                updateRes();
-                log("🏰 Цитадель врага получила ресурсы.", "log-hit");
-                endAction(1.0);
-                return;
-            }
-
             showUnitDetails(activeUnit);
-            if (activeUnit.team === 'player') {
-                log(`Ваш ход: ${UNITS_DB[activeUnit.typeKey].name}`, 'log-skill');
-            } else {
+
+            if (activeUnit.team === 'enemy' && !activeUnit.typeKey.startsWith('citadel')) {
                 log(`Ход врага: ${UNITS_DB[activeUnit.typeKey].name}`, 'log-hit');
                 setTimeout(runAITurn, 600);
             }
@@ -246,8 +212,13 @@
         }
 
         function passTurn() {
-            if (activeUnit && activeUnit.team === 'player' && !activeUnit.typeKey.startsWith('citadel')) {
-                log(`${UNITS_DB[activeUnit.typeKey].name} пропустил ход.`, "log-move");
+            if (activeUnit && activeUnit.team === 'player') {
+                if (isBuildPhase) {
+                    log("Строительство завершено.", "log-move");
+                    isBuildPhase = false;
+                } else {
+                    log(`${UNITS_DB[activeUnit.typeKey].name} пропустил ход.`, "log-move");
+                }
                 endAction(1.0);
             }
         }
@@ -255,14 +226,15 @@
         function handleCellClick(x, y) {
             const clickedUnit = getUnitAt(x, y);
 
-            if (selectedShopKey && !clickedUnit) {
+            // Обработка покупок в фазу строительства
+            if (isBuildPhase && selectedShopKey && !clickedUnit) {
                 if (isAdjacentToCitadel(x, y, PLAYER_CITADEL)) {
                     buyUnit(selectedShopKey, x, y, 'player');
                     return;
                 }
             }
 
-            if (!activeUnit || activeUnit.team !== 'player' || activeUnit.typeKey.startsWith('citadel')) {
+            if (!activeUnit || activeUnit.team !== 'player' || isBuildPhase) {
                 if (clickedUnit) showUnitDetails(clickedUnit);
                 return;
             }
@@ -302,13 +274,52 @@
             if (clickedUnit) showUnitDetails(clickedUnit);
         }
 
+        function canBuy(key) {
+            if (!isBuildPhase) return false;
+            const db = UNITS_DB[key];
+            if (playerGold < db.costG || playerStone < db.costS) return false;
+
+            // Проверка требований (требуется юнит на поле)
+            if (db.req) {
+                const hasReq = units.some(u => u.team === 'player' && u.typeKey === db.req);
+                if (!hasReq) return false;
+            }
+
+            // Проверка лимитов
+            if (db.limit) {
+                const count = units.filter(u => u.team === 'player' && u.typeKey === key).length;
+                if (count >= db.limit) return false;
+            }
+
+            return true;
+        }
+
+        function buyUnit(key, x, y, team) {
+            if (!canBuy(key)) return;
+
+            const db = UNITS_DB[key];
+            playerGold -= db.costG;
+            playerStone -= db.costS;
+            updateRes();
+
+            units.push({
+                id: Date.now(), team: team, typeKey: key,
+                hp: db.hp, maxHp: db.hp, x: x, y: y, delay: activeUnit ? activeUnit.delay : 0
+            });
+
+            log(`Вы наняли: ${db.name}`, 'log-skill');
+            selectedShopKey = null;
+            renderShop();
+            render();
+        }
+
         function executeSkill(skill, targetX, targetY) {
             const uDb = UNITS_DB[activeUnit.typeKey];
             const targetUnit = getUnitAt(targetX, targetY);
 
             if (skill.id === 'defend') {
                 activeUnit.isDefending = true;
-                log(`🛡️ ${uDb.name} встал в Глухую Оборону (-50% урона)!`, 'log-skill');
+                log(`🛡️ ${uDb.name} встал в Глухую Оборону!`, 'log-skill');
                 endAction(1.0);
                 return;
             }
@@ -353,25 +364,6 @@
             citadel.hp = Math.max(0, citadel.hp - dmg);
             log(`💥 ${aDb.name} нанес ${dmg} урона по ЦИТАДЕЛИ!`, 'log-hit');
             updateRes();
-        }
-
-        function buyUnit(key, x, y, team) {
-            const db = UNITS_DB[key];
-            if (playerGold < db.costG || playerStone < db.costS) return;
-
-            playerGold -= db.costG;
-            playerStone -= db.costS;
-            updateRes();
-
-            units.push({
-                id: Date.now(), team: team, typeKey: key,
-                hp: db.hp, maxHp: db.hp, x: x, y: y, delay: activeUnit ? activeUnit.delay : 0
-            });
-
-            log(`Вы наняли: ${db.name}`, 'log-skill');
-            selectedShopKey = null;
-            renderShop();
-            render();
         }
 
         function isAdjacentToCitadel(x, y, cit) {
@@ -429,7 +421,7 @@
             html += `<span style="color:#f39c12">${db.desc}</span>`;
             document.getElementById('unit-details').innerHTML = html;
 
-            if (unit.team === 'player' && db.skills) {
+            if (unit.team === 'player' && db.skills && !isBuildPhase) {
                 db.skills.forEach(sk => {
                     const btn = document.createElement('button');
                     btn.className = 'btn-skill';
@@ -449,8 +441,15 @@
             Object.keys(UNITS_DB).filter(k => !k.startsWith('citadel')).forEach(k => {
                 const db = UNITS_DB[k];
                 const btn = document.createElement('div');
-                btn.className = `shop-btn ${selectedShopKey === k ? 'selected' : ''}`;
-                btn.onclick = () => { selectedShopKey = (selectedShopKey === k) ? null : k; renderShop(); render(); };
+                const allowed = canBuy(k);
+                btn.className = `shop-btn ${selectedShopKey === k ? 'selected' : ''} ${!allowed ? 'disabled' : ''}`;
+                btn.onclick = () => {
+                    if (allowed) {
+                        selectedShopKey = (selectedShopKey === k) ? null : k;
+                        renderShop();
+                        render();
+                    }
+                };
                 btn.innerHTML = `<div style="font-size:11px">${db.icon}</div><div>${db.costG}💰</div>`;
                 list.appendChild(btn);
             });
@@ -474,18 +473,15 @@
                 const x = parseInt(c.dataset.x), y = parseInt(c.dataset.y);
                 c.className = 'cell';
 
-                // Отрисовка зон Цитаделей
                 if (isCitadelCell(x, y, PLAYER_CITADEL)) c.classList.add('citadel-cell');
                 if (isCitadelCell(x, y, ENEMY_CITADEL)) c.classList.add('citadel-enemy');
 
-                // Подсветка клеток спавна при выборе юнита в магазине
-                if (selectedShopKey && isAdjacentToCitadel(x, y, PLAYER_CITADEL) && !getUnitAt(x, y)) {
+                if (isBuildPhase && selectedShopKey && isAdjacentToCitadel(x, y, PLAYER_CITADEL) && !getUnitAt(x, y)) {
                     c.classList.add('reachable');
                 }
             });
 
-            // Подсветка доступных ходов для активного юнита
-            if (activeUnit && activeUnit.team === 'player' && !activeUnit.typeKey.startsWith('citadel')) {
+            if (!isBuildPhase && activeUnit && activeUnit.team === 'player' && !activeUnit.typeKey.startsWith('citadel')) {
                 const reachable = getReachableCells(activeUnit);
                 reachable.forEach(rc => {
                     const c = document.querySelector(`.cell[data-x="${rc.x}"][data-y="${rc.y}"]`);
@@ -493,7 +489,6 @@
                 });
             }
 
-            // Отрисовка всех юнитов
             units.forEach(u => {
                 if (u.x !== undefined && u.y !== undefined && !u.typeKey.startsWith('citadel')) {
                     const c = document.querySelector(`.cell[data-x="${u.x}"][data-y="${u.y}"]`);
