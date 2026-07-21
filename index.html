@@ -306,27 +306,27 @@
             {
                 id: 'archer', name: 'Лучник', icon: '🏹', cost: 3, hp: 25, dmg: 9, init: 12, move: 2, range: 4, role: 'Ranged',
                 arrowProtect: 0, skillName: 'Быстрый залп', 
-                skillDesc: 'Обладает высокой инициативой (12), позволяющей атаковать первым с безопасного расстояния.'
+                skillDesc: 'Высокая инициатива (12). Если враг подошел вплотную, может атаковать только соседние клетки!'
             },
             {
                 id: 'crossbow', name: 'Арбалетчик', icon: '🎯', cost: 4, hp: 30, dmg: 15, init: 8, move: 2, range: 4, role: 'Ranged',
                 arrowProtect: 0, skillName: 'Бронебойный болт', 
-                skillDesc: 'Атака вызывает **Кровотечение** на 2 хода (цель получает **3 ед. урона** в начале своего хода).'
+                skillDesc: 'Вызывает **Кровотечение** на 2 хода (3 ед. урона/ход). Заблокирован вплотную врагом.'
             },
             {
                 id: 'trapper', name: 'Следопыт', icon: '🌲', cost: 4, hp: 32, dmg: 11, init: 10, move: 3, range: 3, role: 'Ranged',
                 arrowProtect: 0, skillName: 'Капкан', 
-                skillDesc: 'Выстрел наносит урон и **Замедляет** цель на 2 хода (снижает дальность хода на -1 клетку).'
+                skillDesc: 'Выстрел наносит урон и **Замедляет** цель на 2 хода. Заблокирован вплотную врагом.'
             },
             {
                 id: 'knight_rider', name: 'Кавалерист', icon: '🐎', cost: 5, hp: 50, dmg: 16, init: 14, move: 4, range: 1, role: 'Melee',
                 arrowProtect: 0.1, skillName: 'Конный натиск', 
-                skillDesc: 'Высокая мобильность (**4 клетки**) и максимальная инициатива (14). Небольшой щит (-10% от стрел).'
+                skillDesc: 'Высокая мобильность (**4 клетки**) и максимальная инициатива (14). Перепрыгивает только своих.'
             },
             {
                 id: 'chaplain', name: 'Капеллан', icon: '⛪', cost: 4, hp: 35, dmg: 5, init: 6, move: 2, range: 3, role: 'Support',
                 arrowProtect: 0, skillName: 'Молитва о жизни', 
-                skillDesc: 'Вместо атаки исцеляет союзника на **12 HP** и вешает **Святой щит** (поглощает 5 ед. входящего урона 2 хода).'
+                skillDesc: 'Исцеляет союзника на **12 HP** и вешает **Святой щит** (поглощает 5 урона 2 хода).'
             },
             {
                 id: 'banner', name: 'Знаменосец', icon: '🚩', cost: 4, hp: 38, dmg: 8, init: 13, move: 2, range: 1, role: 'Support',
@@ -336,7 +336,7 @@
             {
                 id: 'mage', name: 'Маг', icon: '🧙‍♂️', cost: 6, hp: 28, dmg: 18, init: 9, move: 2, range: 4, role: 'Ranged',
                 arrowProtect: 0, skillName: 'Огненный шар', 
-                skillDesc: 'Вызывает **Поджог** на 3 хода (цель получает **4 ед. ожога** в начале каждого своего хода).'
+                skillDesc: 'Вызывает **Поджог** на 3 хода (4 ед. урона/ход). Заблокирован вплотную врагом.'
             }
         ];
 
@@ -429,6 +429,84 @@
             document.getElementById('limit-txt').innerText = `${playerPoints} / ${MAX_LIMIT} Очк.`;
         }
 
+        // --- ВСПМОГАТЕЛЬНЫЕ ФУНКЦИИ ДИСТАНЦИИ И ПУТИ ---
+
+        // Соседство по диагонали и прямым (8 направлений)
+        function isAdjacent(u1, x2, y2) {
+            return Math.max(Math.abs(u1.x - x2), Math.abs(u1.y - y2)) === 1;
+        }
+
+        // Проверка, есть ли враг вплотную на 8 соседних клетках
+        function hasEnemyAdjacent(unit) {
+            return units.some(u => u.team !== unit.team && isAdjacent(unit, u.x, u.y));
+        }
+
+        // Вычисление эффективной дальности атаки с учетом окружения
+        function getEffectiveRange(unit) {
+            if (unit.type.range > 1 && hasEnemyAdjacent(unit)) {
+                return 1; // Заблокирован вплотную — может бить только рядом!
+            }
+            return unit.type.range;
+        }
+
+        // Проверка возможности атаковать/лечить цель с учетом диагоналей и блокировки
+        function canTarget(attacker, targetX, targetY) {
+            const effRange = getEffectiveRange(attacker);
+            const dx = Math.abs(attacker.x - targetX);
+            const dy = Math.abs(attacker.y - targetY);
+
+            if (effRange === 1) {
+                return Math.max(dx, dy) === 1; // 8 соседних клеток (включая диагонали)
+            } else {
+                return (dx + dy) <= effRange; // Манхэттенское расстояние для дальнего боя
+            }
+        }
+
+        // Поиск доступных клеток для перемещения (BFS):
+        // Можно проходить только через пустые клетки или клетки со СВОИМИ бойцами.
+        function getReachableCells(unit) {
+            const maxMove = getEffectiveMove(unit);
+            const visited = {};
+            const queue = [{ x: unit.x, y: unit.y, dist: 0 }];
+            const reachable = [];
+
+            const key = (x, y) => `${x},${y}`;
+            visited[key(unit.x, unit.y)] = true;
+
+            const dirs = [
+                {x: 0, y: -1}, {x: 0, y: 1}, {x: -1, y: 0}, {x: 1, y: 0},
+                {x: -1, y: -1}, {x: 1, y: -1}, {x: -1, y: 1}, {x: 1, y: 1}
+            ];
+
+            while (queue.length > 0) {
+                const current = queue.shift();
+
+                if (current.dist > 0 && !units.find(u => u.x === current.x && u.y === current.y)) {
+                    reachable.push({ x: current.x, y: current.y });
+                }
+
+                if (current.dist < maxMove) {
+                    for (const d of dirs) {
+                        const nx = current.x + d.x;
+                        const ny = current.y + d.y;
+
+                        if (nx >= 0 && nx < GRID_W && ny >= 0 && ny < GRID_H) {
+                            const nKey = key(nx, ny);
+                            if (!visited[nKey]) {
+                                const unitOnCell = units.find(u => u.x === nx && u.y === ny);
+                                // Проходимо если клетка пуста ИЛИ там свой юнит (перепрыгиваем)
+                                if (!unitOnCell || unitOnCell.team === unit.team) {
+                                    visited[nKey] = true;
+                                    queue.push({ x: nx, y: ny, dist: current.dist + 1 });
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            return reachable;
+        }
+
         function handleCellClick(x, y) {
             const unitOnCell = units.find(u => u.x === x && u.y === y);
 
@@ -461,18 +539,19 @@
                 const cur = turnQueue[currentUnitIndex];
                 if (!cur || cur.team !== 'player') return;
 
-                const dist = Math.abs(x - cur.x) + Math.abs(y - cur.y);
+                const reachableCells = getReachableCells(cur);
+                const canReachMove = reachableCells.some(c => c.x === x && c.y === y);
 
-                if (cur.type.id === 'chaplain' && unitOnCell && unitOnCell.team === 'player' && dist <= cur.type.range) {
+                if (cur.type.id === 'chaplain' && unitOnCell && unitOnCell.team === 'player' && canTarget(cur, x, y)) {
                     healUnit(cur, unitOnCell);
                     nextTurn();
                     return;
                 }
 
-                if (unitOnCell && unitOnCell.team === 'enemy' && dist <= cur.type.range) {
+                if (unitOnCell && unitOnCell.team === 'enemy' && canTarget(cur, x, y)) {
                     attack(cur, unitOnCell);
                     nextTurn();
-                } else if (!unitOnCell && dist <= getEffectiveMove(cur)) {
+                } else if (!unitOnCell && canReachMove) {
                     cur.x = x;
                     cur.y = y;
                     log(`Ваш ${cur.type.name} переместился`, 'log-move');
@@ -540,7 +619,8 @@
 
             applyStatusEffects(cur);
 
-            if (cur.hp <= 0) {
+            // Проверяем: если юнит погиб от периодического урона (огня/крови), передаем ход
+            if (cur.hp <= 0 || !units.includes(cur)) {
                 nextTurn();
                 return;
             }
@@ -550,7 +630,11 @@
             const skipBtn = document.getElementById('skip-btn');
 
             if (cur.team === 'player') {
-                document.getElementById('game-status').innerText = `ХОД: ${cur.type.name}`;
+                let statusText = `ХОД: ${cur.type.name}`;
+                if (hasEnemyAdjacent(cur) && cur.type.range > 1) {
+                    statusText += ` (Враг вплотную!)`;
+                }
+                document.getElementById('game-status').innerText = statusText;
                 skipBtn.style.display = 'block';
             } else {
                 document.getElementById('game-status').innerText = `ХОД ВРАГА: ${cur.type.name}...`;
@@ -559,6 +643,7 @@
             }
         }
 
+        // ПРОВЕРКА СМЕРТИ ОТ ЭФФЕКТОВ
         function applyStatusEffects(unit) {
             if (unit.effects.burn > 0) {
                 unit.hp -= 4;
@@ -570,8 +655,15 @@
                 unit.effects.bleed--;
                 log(`🩸 ${unit.type.name} кровоточит! -3 HP (осталось ${unit.effects.bleed}х)`, 'log-hit');
             }
+
             if (unit.effects.slow > 0) unit.effects.slow--;
             if (unit.effects.shield > 0) unit.effects.shield--;
+
+            // Если здоровье опустилось до 0 и ниже от эффектов
+            if (unit.hp <= 0) {
+                log(`☠️ ${unit.type.name} погиб от периодического урона!`, 'log-hit');
+                units = units.filter(u => u !== unit);
+            }
         }
 
         function nextTurn() {
@@ -582,7 +674,7 @@
         function attack(attacker, defender) {
             let dmg = attacker.type.dmg;
 
-            const hasBanner = units.some(u => u.team === attacker.team && u.type.id === 'banner' && Math.abs(u.x - attacker.x) <= 1 && Math.abs(u.y - attacker.y) <= 1);
+            const hasBanner = units.some(u => u.team === attacker.team && u.type.id === 'banner' && isAdjacent(attacker, u.x, u.y));
             if (hasBanner) dmg = Math.round(dmg * 1.2);
 
             if (attacker.type.role === 'Ranged' && defender.type.arrowProtect > 0) {
@@ -625,7 +717,7 @@
 
         function smartEnemyAI() {
             const cur = turnQueue[currentUnitIndex];
-            if (!cur || cur.team !== 'enemy') return;
+            if (!cur || cur.team !== 'enemy' || cur.hp <= 0) return;
 
             const playerUnits = units.filter(u => u.team === 'player');
             if (playerUnits.length === 0) return;
@@ -635,7 +727,7 @@
                 if (injured.length > 0) {
                     injured.sort((a, b) => (a.hp / a.maxHp) - (b.hp / b.maxHp));
                     const targetToHeal = injured[0];
-                    if (Math.abs(targetToHeal.x - cur.x) + Math.abs(targetToHeal.y - cur.y) <= cur.type.range) {
+                    if (canTarget(cur, targetToHeal.x, targetToHeal.y)) {
                         healUnit(cur, targetToHeal);
                         nextTurn();
                         return;
@@ -643,28 +735,29 @@
                 }
             }
 
-            playerUnits.sort((a, b) => (a.hp / a.maxHp) - (b.hp / b.maxHp));
-            let target = playerUnits[0];
+            // Поиск цели, которую можно атаковать
+            const attackableTargets = playerUnits.filter(u => canTarget(cur, u.x, u.y));
 
-            const dist = Math.abs(target.x - cur.x) + Math.abs(target.y - cur.y);
-
-            if (dist <= cur.type.range) {
-                attack(cur, target);
+            if (attackableTargets.length > 0) {
+                attackableTargets.sort((a, b) => (a.hp / a.maxHp) - (b.hp / b.maxHp));
+                attack(cur, attackableTargets[0]);
             } else {
-                let bestX = cur.x, bestY = cur.y, bestDist = dist;
-                const maxM = getEffectiveMove(cur);
+                // Если нельзя атаковать, ищем движение по доступным клеткам
+                playerUnits.sort((a, b) => (a.hp / a.maxHp) - (b.hp / b.maxHp));
+                let target = playerUnits[0];
 
-                for (let y = 0; y < GRID_H; y++) {
-                    for (let x = 0; x < GRID_W; x++) {
-                        const dToCell = Math.abs(x - cur.x) + Math.abs(y - cur.y);
-                        if (!units.find(u => u.x === x && u.y === y) && dToCell <= maxM) {
-                            const dToT = Math.abs(x - target.x) + Math.abs(y - target.y);
-                            if (dToT < bestDist) { bestDist = dToT; bestX = x; bestY = y; }
-                        }
-                    }
+                const reachable = getReachableCells(cur);
+                if (reachable.length > 0) {
+                    reachable.sort((a, b) => {
+                        const dA = Math.abs(a.x - target.x) + Math.abs(a.y - target.y);
+                        const dB = Math.abs(b.x - target.x) + Math.abs(b.y - target.y);
+                        return dA - dB;
+                    });
+
+                    cur.x = reachable[0].x;
+                    cur.y = reachable[0].y;
+                    log(`👹 Враг продвигается ближе`, 'log-move');
                 }
-                cur.x = bestX; cur.y = bestY;
-                log(`👹 Враг продвигается ближе`, 'log-move');
             }
             nextTurn();
         }
@@ -690,25 +783,21 @@
                 if (cur && cur.team === 'player') {
                     getCell(cur.x, cur.y).classList.add('active-cell');
 
+                    // Подсветка атаки/лечения
                     units.forEach(u => {
-                        const dist = Math.abs(u.x - cur.x) + Math.abs(u.y - cur.y);
-                        if (u.team === 'enemy' && dist <= cur.type.range) {
+                        if (u.team === 'enemy' && canTarget(cur, u.x, u.y)) {
                             getCell(u.x, u.y).classList.add('attackable');
                         }
-                        if (cur.type.id === 'chaplain' && u.team === 'player' && dist <= cur.type.range) {
+                        if (cur.type.id === 'chaplain' && u.team === 'player' && canTarget(cur, u.x, u.y)) {
                             getCell(u.x, u.y).classList.add('healable');
                         }
                     });
 
-                    const effMove = getEffectiveMove(cur);
-                    for (let y = 0; y < GRID_H; y++) {
-                        for (let x = 0; x < GRID_W; x++) {
-                            const dist = Math.abs(x - cur.x) + Math.abs(y - cur.y);
-                            if (!units.find(u => u.x === x && u.y === y) && dist <= effMove) {
-                                getCell(x, y).classList.add('reachable');
-                            }
-                        }
-                    }
+                    // Подсветка перемещения через граф путей
+                    const reachable = getReachableCells(cur);
+                    reachable.forEach(c => {
+                        getCell(c.x, c.y).classList.add('reachable');
+                    });
                 }
             }
 
