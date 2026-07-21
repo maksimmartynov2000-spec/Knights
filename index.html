@@ -169,9 +169,9 @@
 
     const ABILITY_DATA = {
         spear: { name: "Бросить копье", desc: "Урон 10, дальность 3. Выберите врага.", cdMax: 3 },
-        buff: { name: "Укрепление", desc: "+30% защиты союзнику на 2 хода (дальность 2).", cdMax: 3 },
-        heal: { name: "Лечение", desc: "+5 HP/ход на 5 ходов союзнику в пределах 2 клеток.", cdMax: 3 },
-        rage: { name: "Ярость", desc: "+5 урона на 3 хода союзнику в пределах 2 клеток.", cdMax: 3 },
+        buff: { name: "Укрепление", desc: "+30% защиты союзнику на 2 хода. СТАКАЕТСЯ!", cdMax: 3 },
+        heal: { name: "Лечение", desc: "+5 HP/ход на 5 ходов. СТАКАЕТСЯ по значению!", cdMax: 3 },
+        rage: { name: "Ярость", desc: "+5 урона на 3 хода. СТАКАЕТСЯ!", cdMax: 3 },
         stun: { name: "Оглушение", desc: "Враг пропускает 1 ход (дальность 1).", cdMax: 3 },
         
         fireArrow: { name: "Огненные стрелы", desc: "Следующие 3 атаки поджигают цели (+1 маг. урона на 2 хода). Заряды НЕ сбрасываются.", cdMax: 10 },
@@ -424,17 +424,22 @@
         if (unit.buffs.regenDuration > 0) {
             unit.hp = Math.min(unit.maxHp, unit.hp + unit.buffs.regenValue);
             unit.buffs.regenDuration--;
-            logMessage(`${unit.name} восстановил 5 HP (Лечение).`);
+            logMessage(`${unit.name} восстановил ${unit.buffs.regenValue} HP (Лечение).`);
+            if (unit.buffs.regenDuration === 0) unit.buffs.regenValue = 0;
         }
 
         if (unit.buffs.rageDuration > 0) {
             unit.buffs.rageDuration--;
             if (unit.buffs.rageDuration === 0) {
                 unit.damage -= unit.buffs.rageValue;
-                logMessage(`Эффект "Ярость" у ${unit.name} истек.`);
+                logMessage(`Эффект "Ярость" (+${unit.buffs.rageValue}) у ${unit.name} истек.`);
+                unit.buffs.rageValue = 0;
             }
         }
-        if (unit.buffs.customDefenseDuration > 0) unit.buffs.customDefenseDuration--;
+        if (unit.buffs.customDefenseDuration > 0) {
+            unit.buffs.customDefenseDuration--;
+            if (unit.buffs.customDefenseDuration === 0) unit.buffs.customDefenseVal = 0;
+        }
     }
 
     function skipMovePhase() {
@@ -649,11 +654,14 @@
         } else if (action === 'stun') {
             textEl.innerHTML = `<b>Цель: ${target.name}</b><br>Эффект: Пропуск 1 хода.<br><i>Кликните повторно!</i>`;
         } else if (action === 'buff') {
-            textEl.innerHTML = `<b>Цель: ${target.name}</b><br>Эффект: +30% защиты на 2 хода.<br><i>Кликните повторно!</i>`;
+            let curDef = target.buffs.customDefenseVal || 0;
+            textEl.innerHTML = `<b>Цель: ${target.name}</b><br>Эффект: +30% защиты (Текущий бонус: +${curDef}% -> Будет: +${curDef+30}%). Сброс таймера на 2 хода.<br><i>Кликните повторно!</i>`;
         } else if (action === 'heal') {
-            textEl.innerHTML = `<b>Цель: ${target.name}</b><br>Эффект: Лечение (+5 HP/ход на 5 ходов).<br><i>Кликните повторно!</i>`;
+            let curReg = target.buffs.regenValue || 0;
+            textEl.innerHTML = `<b>Цель: ${target.name}</b><br>Эффект: +5 HP/ход (Текущее: +${curReg}/ход -> Будет: +${curReg+5}/ход). Сброс таймера на 5 ходов.<br><i>Кликните повторно!</i>`;
         } else if (action === 'rage') {
-            textEl.innerHTML = `<b>Цель: ${target.name}</b><br>Эффект: +5 урона на 3 хода.<br><i>Кликните повторно!</i>`;
+            let curRage = target.buffs.rageValue || 0;
+            textEl.innerHTML = `<b>Цель: ${target.name}</b><br>Эффект: +5 урона (Текущий бонус: +${curRage} -> Будет: +${curRage+5}). Сброс таймера на 3 хода.<br><i>Кликните повторно!</i>`;
         }
     }
 
@@ -867,9 +875,33 @@
     }
 
     function executeSpear(a, d) { a.hasActed = true; a.cooldowns.spear = 3; d.hp -= 10; logMessage(`${a.name} метнул копье в ${d.name} (10 урона)`); if(d.hp<=0){d.hp=0;d.isAlive=false;} }
-    function executeReinforce(c, t) { c.hasActed = true; c.cooldowns.buff = 3; t.buffs.customDefenseDuration = 2; t.buffs.customDefenseVal = 30; logMessage(`${c.name} применил Укрепление на ${t.name}`); }
-    function executeHeal(c, t) { c.hasActed = true; c.cooldowns.heal = 3; t.buffs.regenDuration = 5; t.buffs.regenValue = 5; logMessage(`${c.name} применил Лечение на ${t.name}`); }
-    function executeRage(c, t) { c.hasActed = true; c.cooldowns.rage = 3; t.buffs.rageDuration = 3; t.buffs.rageValue = 5; t.damage += 5; logMessage(`${c.name} применил Ярость на ${t.name}`); }
+
+    // --- СТАКАЕМЫЕ ЭФФЕКТЫ МЕЧНИКА ---
+    function executeReinforce(c, t) { 
+        c.hasActed = true; 
+        c.cooldowns.buff = 3; 
+        t.buffs.customDefenseDuration = 2; 
+        t.buffs.customDefenseVal += 30; // Накопление защиты
+        logMessage(`${c.name} применил Укрепление на ${t.name} (Текущий бонус защ.: +${t.buffs.customDefenseVal}%)`); 
+    }
+
+    function executeHeal(c, t) { 
+        c.hasActed = true; 
+        c.cooldowns.heal = 3; 
+        t.buffs.regenDuration = 5; 
+        t.buffs.regenValue += 5; // Накопление лечения
+        logMessage(`${c.name} применил Лечение на ${t.name} (Текущее восстановление: +${t.buffs.regenValue} HP/ход)`); 
+    }
+
+    function executeRage(c, t) { 
+        c.hasActed = true; 
+        c.cooldowns.rage = 3; 
+        t.buffs.rageDuration = 3; 
+        t.buffs.rageValue += 5; // Накопление бонуса урона
+        t.damage += 5; 
+        logMessage(`${c.name} применил Ярость на ${t.name} (Текущий бонус урона: +${t.buffs.rageValue})`); 
+    }
+
     function executeStun(a, d) { a.hasActed = true; a.cooldowns.stun = 3; d.stunned = true; logMessage(`${a.name} оглушил ${d.name}`); }
 
     function decrementCooldowns(unit) {
@@ -896,10 +928,8 @@
             return enemies.filter(e => Math.max(Math.abs(e.r - posR), Math.abs(e.c - posC)) <= range);
         }
 
-        // ВЫБОР САМОЙ ВЫГОДНОЙ ЦЕЛИ ДЛЯ АТАКИ
         function getBestTarget(targets) {
             if (targets.length === 0) return null;
-            // Приоритет: 1. Можно добить прямо сейчас 2. Выбор цели с наименьшим текущим HP 3. Лучник вместо мечника
             let killable = targets.filter(e => calculateExpectedDamage(ai, e) >= e.hp);
             if (killable.length > 0) {
                 killable.sort((a,b) => a.hp - b.hp);
@@ -915,9 +945,9 @@
 
         // --- 1. ТАКТИКА МЕЧНИКА ИИ ---
         if (ai.typeKey === 'swordsman') {
-            // А) Каст лечения, если союзник критически ранен (<50% HP)
+            // А) Каст лечения (можно стакать на раненых)
             if (ai.cooldowns.heal === 0) {
-                let wounded = allies.filter(a => getDistance(ai, a) <= 2 && a.hp <= a.maxHp * 0.5 && a.buffs.regenDuration === 0)
+                let wounded = allies.filter(a => getDistance(ai, a) <= 2 && a.hp <= a.maxHp * 0.8)
                                     .sort((a,b) => (a.hp/a.maxHp) - (b.hp/b.maxHp));
                 if (wounded.length > 0) {
                     executeHeal(ai, wounded[0]);
@@ -935,16 +965,25 @@
                 }
             }
 
-            // В) Укрепление союзника под огнем
+            // В) Каст Ярости для стака урона
+            if (ai.cooldowns.rage === 0) {
+                let readySwordsmen = allies.filter(a => getDistance(ai, a) <= 2 && a.typeKey === 'swordsman');
+                if (readySwordsmen.length > 0) {
+                    executeRage(ai, readySwordsmen[0]);
+                    renderBoard(); setTimeout(endCurrentUnitTurn, 600); return;
+                }
+            }
+
+            // Г) Укрепление союзников (стаканье защиты под огнем)
             if (ai.cooldowns.buff === 0) {
-                let allyNearEnemies = allies.filter(a => getDistance(ai, a) <= 2 && getEnemiesInRangeFrom(a.r, a.c, 2).length > 0 && a.buffs.customDefenseDuration === 0);
+                let allyNearEnemies = allies.filter(a => getDistance(ai, a) <= 2 && getEnemiesInRangeFrom(a.r, a.c, 2).length > 0);
                 if (allyNearEnemies.length > 0) {
                     executeReinforce(ai, allyNearEnemies[0]);
                     renderBoard(); setTimeout(endCurrentUnitTurn, 600); return;
                 }
             }
 
-            // Г) Бросок копья, если до врага не дотянуться вплотную
+            // Д) Бросок копья
             let inMelee = getEnemiesInRangeFrom(ai.r, ai.c, 1);
             if (inMelee.length === 0 && ai.cooldowns.spear === 0) {
                 let spearTargets = getEnemiesInRangeFrom(ai.r, ai.c, 3);
@@ -955,9 +994,9 @@
                 }
             }
 
-            // Д) Перемещение и Атака
+            // Е) Перемещение и Атака
             let validMoves = getValidMoveCells(ai);
-            validMoves.push({ r: ai.r, c: ai.c }); // Позиция на месте
+            validMoves.push({ r: ai.r, c: ai.c });
 
             let bestMove = null;
             let bestScore = -9999;
@@ -967,7 +1006,6 @@
                 let distToEnemy = getDistance({r: pos.r, c: pos.c}, targetEnemy);
                 let score = -distToEnemy * 10;
                 
-                // Бонус за соседство с союзными мечниками (Пассивка: Строй)
                 let adjSwordsmen = 0;
                 allies.forEach(a => {
                     if (a !== ai && a.typeKey === 'swordsman' && Math.max(Math.abs(a.r - pos.r), Math.abs(a.c - pos.c)) === 1) adjSwordsmen++;
@@ -989,10 +1027,9 @@
 
         // --- 2. ТАКТИКА ЛУЧНИКА ИИ ---
         if (ai.typeKey === 'archer') {
-            // А) Использование баффов ДО атаки (Баффы накапливаются)
             if (ai.cooldowns.bullseye === 0 && ai.buffs.bullseyeCharges === 0) {
                 ai.buffs.bullseyeCharges += 2; ai.cooldowns.bullseye = 10; ai.hasActed = true;
-                logMessage(`${ai.name} (ИИ) стратегически активировал "В яблочко"!`);
+                logMessage(`${ai.name} (ИИ) активировал "В яблочко"!`);
                 renderBoard(); setTimeout(endCurrentUnitTurn, 600); return;
             }
             if (ai.cooldowns.fireArrow === 0 && ai.buffs.fireArrowCharges === 0) {
@@ -1006,7 +1043,6 @@
                 renderBoard(); setTimeout(endCurrentUnitTurn, 600); return;
             }
 
-            // Б) Кайтинг (Держать дистанцию от мечников)
             let validMoves = getValidMoveCells(ai);
             validMoves.push({ r: ai.r, c: ai.c });
 
@@ -1015,13 +1051,11 @@
 
             validMoves.forEach(pos => {
                 let targetsFromPos = getEnemiesInRangeFrom(pos.r, pos.c, effRange);
-                if (targetsFromPos.length === 0) return; // Позиция бессмысленна, если нет врагов в зоне поражения
+                if (targetsFromPos.length === 0) return;
 
                 let closestEnemyDist = Math.min(...enemies.map(e => getDistance({r: pos.r, c: pos.c}, e)));
-                // Оценка: стрелять из максимально безопасного расстояния (дистанция 3-4 идеальна)
                 let score = closestEnemyDist * 15;
 
-                // Соседство с другими лучниками (+5 Инициативы)
                 let adjArchers = 0;
                 allies.forEach(a => {
                     if (a !== ai && a.typeKey === 'archer' && Math.max(Math.abs(a.r - pos.r), Math.abs(a.c - pos.c)) === 1) adjArchers++;
@@ -1035,12 +1069,10 @@
                 ai.r = bestMove.r; ai.c = bestMove.c; ai.hasMoved = true;
             }
 
-            // В) Атака или комбо-способности
             let availableTargets = getEnemiesInRangeFrom(ai.r, ai.c, effRange);
             let targetToAttack = getBestTarget(availableTargets);
 
             if (targetToAttack && ai.buffs.noAttackDuration === 0) {
-                // Использование Двойной стрелы при наличии целей
                 if (ai.cooldowns.doubleArrow === 0) {
                     ai.cooldowns.doubleArrow = 10;
                     logMessage(`${ai.name} (ИИ) применяет ДВОЙНУЮ СТРЕЛУ!`);
@@ -1068,9 +1100,9 @@
         if (u.buffs.bullseyeCharges > 0) effects.push(`🎯Яблочко (${u.buffs.bullseyeCharges})`);
         if (u.buffs.kneeShotCharge) effects.push(`🦵В колено`);
         if (u.buffs.noAttackDuration > 0) effects.push(`Не атака (${u.buffs.noAttackDuration}х)`);
-        if (u.buffs.regenDuration > 0) effects.push(`Лечение (${u.buffs.regenDuration}х)`);
-        if (u.buffs.rageDuration > 0) effects.push(`Ярость (${u.buffs.rageDuration}х)`);
-        if (u.buffs.customDefenseDuration > 0) effects.push(`Укрепление (${u.buffs.customDefenseDuration}х)`);
+        if (u.buffs.regenDuration > 0) effects.push(`Лечение (+${u.buffs.regenValue}/ход, ${u.buffs.regenDuration}х)`);
+        if (u.buffs.rageDuration > 0) effects.push(`Ярость (+${u.buffs.rageValue} dmg, ${u.buffs.rageDuration}х)`);
+        if (u.buffs.customDefenseDuration > 0) effects.push(`Укрепление (+${u.buffs.customDefenseVal}% def, ${u.buffs.customDefenseDuration}х)`);
         if (u.buffs.slowDuration > 0) effects.push(`Замедлен (-2 speed)`);
         if (u.dotBurn.length > 0) effects.push(`Горение (${u.dotBurn.length})`);
         if (u.stunned) effects.push(`Оглушен`);
