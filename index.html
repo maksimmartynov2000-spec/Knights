@@ -338,7 +338,7 @@
     }
 
     function handleCellClick(r, c) {
-        if (isAiProcessing) return; // Блокировка ввода во время хода ИИ
+        if (isAiProcessing) return;
 
         let targetUnit = getUnitAt(r, c);
         let targetObstacle = getObstacleAt(r, c);
@@ -1074,9 +1074,8 @@
         for (let key in unit.cooldowns) { if (unit.cooldowns[key] > 0) unit.cooldowns[key]--; }
     }
 
-    // ИИ с защитой от случайного выполнения в ход игрока
+    // УЛУЧШЕННЫЙ ИИ
     function aiTurn() {
-        // Жесткая проверка: если не фаза боя, или нет активного юнита, или активный юнит - ИГРОК, выходим!
         if (gamePhase !== 'battle' || !activeUnit || activeUnit.team !== 'enemy') {
             isAiProcessing = false;
             return;
@@ -1087,24 +1086,84 @@
         let allies = units.filter(u => u.team === 'enemy' && u.isAlive);
         if (enemies.length === 0) { isAiProcessing = false; return; }
 
-        function getDistance(u1, u2) { return Math.max(Math.abs(u1.r - u2.r), Math.abs(u1.c - u2.c)); }
+        function getDistance(pos1, pos2) { 
+            return Math.max(Math.abs(pos1.r - pos2.r), Math.abs(pos1.c - pos2.c)); 
+        }
+
+        // Выбор самой приоритетной цели среди игроков (сначала добиваем слабых, затем ценных)
+        function getBestEnemyTarget(targets) {
+            if (!targets || targets.length === 0) return null;
+            return [...targets].sort((a, b) => {
+                let aKillable = a.hp <= 10 ? 1 : 0;
+                let bKillable = b.hp <= 10 ? 1 : 0;
+                if (aKillable !== bKillable) return bKillable - aKillable;
+
+                let priority = { mage: 3, archer: 2, swordsman: 1 };
+                let pDiff = (priority[b.typeKey] || 0) - (priority[a.typeKey] || 0);
+                if (pDiff !== 0) return pDiff;
+
+                return a.hp - b.hp;
+            })[0];
+        }
 
         // --- ЛОГИКА МЕЧНИКА ИИ ---
         if (ai.typeKey === 'swordsman') {
-            if (ai.hp < ai.maxHp * 0.6 && ai.cooldowns.heal === 0) {
+            // Использование баффов самосохранения и усиления
+            if (ai.hp < ai.maxHp * 0.5 && ai.cooldowns.heal === 0) {
                 executeHeal(ai, ai);
                 renderBoard(); setTimeout(endCurrentUnitTurn, 600); return;
             }
-            if (ai.hp < ai.maxHp * 0.5 && ai.cooldowns.buff === 0) {
+            if (ai.hp < ai.maxHp * 0.6 && ai.cooldowns.buff === 0) {
                 executeReinforce(ai, ai);
+                renderBoard(); setTimeout(endCurrentUnitTurn, 600); return;
+            }
+            if (ai.cooldowns.rage === 0) {
+                let adjEnemies = enemies.filter(e => getDistance(ai, e) <= 1);
+                if (adjEnemies.length > 0) {
+                    executeRage(ai, ai);
+                    renderBoard(); setTimeout(endCurrentUnitTurn, 600); return;
+                }
+            }
+
+            // Движение к ближайшему врагу
+            let validMoves = getValidMoveCells(ai);
+            validMoves.push({ r: ai.r, c: ai.c });
+            let bestMove = validMoves[0];
+            let minDistance = 999;
+
+            validMoves.forEach(pos => {
+                enemies.forEach(e => {
+                    let d = getDistance(pos, e);
+                    if (d < minDistance) { minDistance = d; bestMove = pos; }
+                });
+            });
+
+            ai.r = bestMove.r; ai.c = bestMove.c; ai.hasMoved = true;
+
+            // Применение контролирующих/дальнобойных скиллов вблизи
+            let adjEnemies = enemies.filter(e => getDistance(ai, e) <= 1);
+            if (adjEnemies.length > 0) {
+                let target = getBestEnemyTarget(adjEnemies);
+                if (ai.cooldowns.stun === 0) {
+                    executeStun(ai, target);
+                    renderBoard(); setTimeout(endCurrentUnitTurn, 600); return;
+                }
+                handleAttackAction(ai, target);
+                return;
+            }
+
+            let spearEnemies = enemies.filter(e => getDistance(ai, e) <= 3);
+            if (spearEnemies.length > 0 && ai.cooldowns.spear === 0) {
+                let target = getBestEnemyTarget(spearEnemies);
+                executeSpear(ai, target);
                 renderBoard(); setTimeout(endCurrentUnitTurn, 600); return;
             }
         }
 
-        // --- УМНАЯ ЛОГИКА ЛУЧНИКА ИИ ---
+        // --- ЛОГИКА ЛУЧНИКА ИИ ---
         if (ai.typeKey === 'archer') {
+            // Если готовит град стрел - отступает
             if (ai.buffs.noAttackDuration > 0) {
-                logMessage(`${ai.name} (ИИ) готовит Град стрел и отступает! (${ai.buffs.noAttackDuration} ходов остав.)`);
                 let validMoves = getValidMoveCells(ai);
                 if (validMoves.length > 0) {
                     let bestFleePos = validMoves[0];
@@ -1118,49 +1177,101 @@
                     });
                     ai.r = bestFleePos.r; ai.c = bestFleePos.c; ai.hasMoved = true;
                 }
-                renderBoard();
-                setTimeout(endCurrentUnitTurn, 600);
-                return;
-            }
-
-            if (ai.arrowRainShotsLeft > 0) {
-                let inRangeEnemies = enemies.filter(e => getDistance(ai, e) <= getUnitEffectiveRange(ai));
-                if (inRangeEnemies.length > 0) {
-                    handleAttackAction(ai, inRangeEnemies[0]);
-                    return;
-                }
-            }
-
-            if (ai.hp < ai.maxHp * 0.6) {
-                let validMoves = getValidMoveCells(ai);
-                let closestEnemyDist = Math.min(...enemies.map(e => getDistance(ai, e)));
-
-                if (closestEnemyDist > 2 || validMoves.length > 0) {
-                    if (ai.hp < ai.maxHp * 0.4) {
-                        ai.hasMoved = false;
-                        ai.hasActed = false;
-                        logMessage(`${ai.name} (ИИ) решает восстановить силы (+20% HP и +1 к Дальности)!`);
-                        renderBoard();
-                        setTimeout(endCurrentUnitTurn, 600);
-                        return;
-                    }
-                }
-            }
-
-            if (ai.cooldowns.arrowRain === 0 && !ai.buffs.noAttackDuration && ai.arrowRainShotsLeft === 0) {
-                selectAbility('arrowRain');
                 renderBoard(); setTimeout(endCurrentUnitTurn, 600); return;
+            }
+
+            // Активация баффов стрелка
+            if (ai.cooldowns.bullseye === 0 && ai.buffs.bullseyeCharges === 0) {
+                ai.buffs.bullseyeCharges += 2;
+                ai.cooldowns.bullseye = 10; ai.hasActed = true;
+                logMessage(`${ai.name} (ИИ) применил «В яблочко»!`);
+                renderBoard(); setTimeout(endCurrentUnitTurn, 600); return;
+            }
+
+            // Кайт (дистанцирование от врагов ближнего боя)
+            let validMoves = getValidMoveCells(ai);
+            validMoves.push({ r: ai.r, c: ai.c });
+            let bestMove = { r: ai.r, c: ai.c };
+            let maxSafetyScore = -999;
+
+            validMoves.forEach(pos => {
+                let minDistToEnemy = Math.min(...enemies.map(e => getDistance(pos, e)));
+                let score = minDistToEnemy;
+                if (minDistToEnemy >= 2 && minDistToEnemy <= getUnitEffectiveRange(ai)) {
+                    score += 5; // Оптимальная дистанция стрельбы
+                }
+                if (score > maxSafetyScore) {
+                    maxSafetyScore = score;
+                    bestMove = pos;
+                }
+            });
+
+            ai.r = bestMove.r; ai.c = bestMove.c; ai.hasMoved = true;
+
+            let inRangeEnemies = enemies.filter(e => getDistance(ai, e) <= getUnitEffectiveRange(ai));
+            if (inRangeEnemies.length > 0) {
+                let target = getBestEnemyTarget(inRangeEnemies);
+                handleAttackAction(ai, target);
+                return;
             }
         }
 
         // --- ЛОГИКА МАГА ИИ ---
         if (ai.typeKey === 'mage') {
-            let injuredAlly = allies.find(a => a.hp < a.maxHp * 0.7);
-            if (injuredAlly) {
+            // Лечение тяжело раненых союзников
+            let injuredAlly = allies.find(a => a.hp < a.maxHp * 0.6);
+            if (injuredAlly && getDistance(ai, injuredAlly) <= getUnitEffectiveRange(ai)) {
                 executeAttack(ai, injuredAlly);
                 renderBoard(); setTimeout(endCurrentUnitTurn, 600); return;
             }
 
+            // Поиск оптимальной зоны для Массового оглушения (Буря 3х3)
+            if (ai.cooldowns.storm === 0) {
+                let bestStormPos = null, maxHit = 0;
+                for (let r = 0; r <= ROWS - 3; r++) {
+                    for (let c = 0; c <= COLS - 3; c++) {
+                        let count = 0;
+                        for (let dr = 0; dr < 3; dr++) {
+                            for (let dc = 0; dc < 3; dc++) {
+                                let u = getUnitAt(r + dr, c + dc);
+                                if (u && u.team !== ai.team) count++;
+                            }
+                        }
+                        if (count > maxHit) { maxHit = count; bestStormPos = { r, c }; }
+                    }
+                }
+                if (bestStormPos && maxHit >= 1) {
+                    executeStormArea(bestStormPos.r, bestStormPos.c);
+                    ai.cooldowns.storm = 10; ai.hasActed = true;
+                    logMessage(`${ai.name} (ИИ) обрушил Чародейскую бурю!`);
+                    renderBoard(); setTimeout(endCurrentUnitTurn, 600); return;
+                }
+            }
+
+            // Поиск зоны для Отравления (Яд 4х4)
+            if (ai.cooldowns.poisonZone === 0) {
+                let bestPoisonPos = null, maxHit = 0;
+                for (let r = 0; r <= ROWS - 4; r++) {
+                    for (let c = 0; c <= COLS - 4; c++) {
+                        let count = 0;
+                        for (let dr = 0; dr < 4; dr++) {
+                            for (let dc = 0; dc < 4; dc++) {
+                                let u = getUnitAt(r + dr, c + dc);
+                                if (u && u.team !== ai.team) count++;
+                            }
+                        }
+                        if (count > maxHit) { maxHit = count; bestPoisonPos = { r, c }; }
+                    }
+                }
+                if (bestPoisonPos && maxHit >= 1) {
+                    executePoisonArea(bestPoisonPos.r, bestPoisonPos.c);
+                    ai.cooldowns.poisonZone = 10; ai.hasActed = true;
+                    logMessage(`${ai.name} (ИИ) применил Ядовитое облако!`);
+                    renderBoard(); setTimeout(endCurrentUnitTurn, 600); return;
+                }
+            }
+
+            // Призыв существ на соседние клетки
             if (ai.cooldowns.summonSwordsman === 0 || ai.cooldowns.summonArcher === 0) {
                 let emptyCells = [];
                 for (let dr = -1; dr <= 1; dr++) {
@@ -1183,89 +1294,19 @@
                 }
             }
 
-            if (ai.cooldowns.storm === 0) {
-                for (let r = 0; r <= ROWS - 3; r++) {
-                    for (let c = 0; c <= COLS - 3; c++) {
-                        let count = 0;
-                        for (let dr = 0; dr < 3; dr++) {
-                            for (let dc = 0; dc < 3; dc++) {
-                                let u = getUnitAt(r + dr, c + dc);
-                                if (u && u.team !== ai.team) count++;
-                            }
-                        }
-                        if (count >= 2) {
-                            executeStormArea(r, c);
-                            ai.cooldowns.storm = 10; ai.hasActed = true;
-                            logMessage(`${ai.name} (ИИ) обрушил Чародейскую бурю!`);
-                            renderBoard(); setTimeout(endCurrentUnitTurn, 600); return;
-                        }
-                    }
-                }
-            }
-
-            if (ai.cooldowns.poisonZone === 0) {
-                for (let r = 0; r <= ROWS - 4; r++) {
-                    for (let c = 0; c <= COLS - 4; c++) {
-                        let count = 0;
-                        for (let dr = 0; dr < 4; dr++) {
-                            for (let dc = 0; dc < 4; dc++) {
-                                let u = getUnitAt(r + dr, c + dc);
-                                if (u && u.team !== ai.team) count++;
-                            }
-                        }
-                        if (count >= 2) {
-                            executePoisonArea(r, c);
-                            ai.cooldowns.poisonZone = 10; ai.hasActed = true;
-                            logMessage(`${ai.name} (ИИ) применил Ядовитое облако!`);
-                            renderBoard(); setTimeout(endCurrentUnitTurn, 600); return;
-                        }
-                    }
-                }
-            }
-
-            let bestPos = { r: ai.r, c: ai.c };
-            let maxAlliesNearby = -1;
+            // Перемещение Мага ближе к группе своих войск для защиты аурой
             let validMoves = getValidMoveCells(ai);
             validMoves.push({ r: ai.r, c: ai.c });
+            let bestPos = { r: ai.r, c: ai.c }, maxAlliesNearby = -1;
 
             validMoves.forEach(pos => {
                 let alliesCount = 0;
-                allies.forEach(a => {
-                    if (a !== ai && getDistance(pos, a) <= 1) alliesCount++;
-                });
-                if (alliesCount > maxAlliesNearby) {
-                    maxAlliesNearby = alliesCount;
-                    bestPos = pos;
-                }
+                allies.forEach(a => { if (a !== ai && getDistance(pos, a) <= 1) alliesCount++; });
+                if (alliesCount > maxAlliesNearby) { maxAlliesNearby = alliesCount; bestPos = pos; }
             });
 
             ai.r = bestPos.r; ai.c = bestPos.c; ai.hasMoved = true;
             renderBoard(); setTimeout(endCurrentUnitTurn, 600); return;
-        }
-
-        // --- ДВИЖЕНИЕ И АТАКА (ОБЩАЯ ДЛЯ МЕЧНИКА И ЛУЧНИКА) ---
-        if (ai.typeKey === 'swordsman' || ai.typeKey === 'archer') {
-            let validMoves = getValidMoveCells(ai);
-            validMoves.push({ r: ai.r, c: ai.c });
-            let bestMove = validMoves[0];
-            let minDistance = 999;
-
-            validMoves.forEach(pos => {
-                enemies.forEach(e => {
-                    let d = getDistance(pos, e);
-                    if (d < minDistance) { minDistance = d; bestMove = pos; }
-                });
-            });
-
-            ai.r = bestMove.r; ai.c = bestMove.c; ai.hasMoved = true;
-
-            if (ai.buffs.noAttackDuration === 0) {
-                let inRangeEnemies = enemies.filter(e => getDistance(ai, e) <= getUnitEffectiveRange(ai));
-                if (inRangeEnemies.length > 0) {
-                    handleAttackAction(ai, inRangeEnemies[0]);
-                    return;
-                }
-            }
         }
 
         renderBoard();
