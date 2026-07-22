@@ -180,7 +180,7 @@
         mage: {
             name: 'Маг', maxHp: 10, damage: 0, initiative: 10, speed: 1, range: 12, symbol: '🧙‍♂️',
             passivesList: [
-                "1. Магический щит: +10 брони себе и соседям каждый ход (до 30)",
+                "1. Магический щит: +2 брони себе и соседям каждый ход (до 10)",
                 "2. Аура защиты: +50% защиты от атак себе и соседям",
                 "3. Благословение: Атака Мага по СОЮЗНОКУ лечит его на 10 HP",
                 "4. Иллюзорное тело: Игнорирует каждую 2-ю атаку по себе",
@@ -500,14 +500,15 @@
             }
         }
 
+        // ПРАВКА БАЛАНСА МАГА: дает +2 брони себе и соседям (до максимума 10)
         if (unit.typeKey === 'mage') {
             for (let dr = -1; dr <= 1; dr++) {
                 for (let dc = -1; dc <= 1; dc++) {
                     let ally = getUnitAt(unit.r + dr, unit.c + dc);
                     if (ally && ally.team === unit.team && ally.isAlive) {
-                        if (ally.armor < 30) {
-                            ally.armor = Math.min(30, ally.armor + 10);
-                            logMessage(`[Магический щит] ${ally.name} получил +10 брони (Всего: ${ally.armor})`);
+                        if (ally.armor < 10) {
+                            ally.armor = Math.min(10, ally.armor + 2);
+                            logMessage(`[Магический щит] ${ally.name} получил +2 брони (Всего: ${ally.armor})`);
                         }
                     }
                 }
@@ -780,7 +781,7 @@
 
     function handleAttackAction(attacker, target) {
         if (attacker.buffs.noAttackDuration > 0) {
-            logMessage(`${attacker.name} подготовливает Град стрел и не может атаковать еще ${attacker.buffs.noAttackDuration} ходов!`);
+            logMessage(`${attacker.name} подготавливает Град стрел и не может атаковать еще ${attacker.buffs.noAttackDuration} ходов!`);
             return;
         }
 
@@ -1061,6 +1062,7 @@
         for (let key in unit.cooldowns) { if (unit.cooldowns[key] > 0) unit.cooldowns[key]--; }
     }
 
+    // ПОЛНОСТЬЮ ИСПРАВЛЕННЫЙ И ОБНОВЛЕННЫЙ ИИ
     function aiTurn() {
         if (gamePhase !== 'battle' || !activeUnit) return;
         let ai = activeUnit;
@@ -1070,6 +1072,7 @@
 
         function getDistance(u1, u2) { return Math.max(Math.abs(u1.r - u2.r), Math.abs(u1.c - u2.c)); }
 
+        // --- ЛОГИКА МЕЧНИКА ИИ ---
         if (ai.typeKey === 'swordsman') {
             if (ai.hp < ai.maxHp * 0.6 && ai.cooldowns.heal === 0) {
                 executeHeal(ai, ai);
@@ -1081,13 +1084,48 @@
             }
         }
 
+        // --- ЛОГИКА ЛУЧНИКА ИИ (БЕЗ ЗАВИСАНИЙ) ---
         if (ai.typeKey === 'archer') {
+            // Если включен таймер ожидания "Града стрел" — он НЕ может атаковать
+            if (ai.buffs.noAttackDuration > 0) {
+                logMessage(`${ai.name} (ИИ) готовит Град стрел и не может атаковать aún! (${ai.buffs.noAttackDuration} ходов остав.)`);
+                
+                // ИИ пытается отступить подальше от врагов пока заряжается
+                let validMoves = getValidMoveCells(ai);
+                if (validMoves.length > 0) {
+                    let bestFleePos = validMoves[0];
+                    let maxDist = -1;
+                    validMoves.forEach(pos => {
+                        let minDistToEnemy = Math.min(...enemies.map(e => getDistance(pos, e)));
+                        if (minDistToEnemy > maxDist) {
+                            maxDist = minDistToEnemy;
+                            bestFleePos = pos;
+                        }
+                    });
+                    ai.r = bestFleePos.r; ai.c = bestFleePos.c; ai.hasMoved = true;
+                }
+                renderBoard();
+                setTimeout(endCurrentUnitTurn, 600);
+                return;
+            }
+
+            // Если Град Стрел готов к выпуску (5 выстрелов)
+            if (ai.arrowRainShotsLeft > 0) {
+                let inRangeEnemies = enemies.filter(e => getDistance(ai, e) <= getUnitEffectiveRange(ai));
+                if (inRangeEnemies.length > 0) {
+                    handleAttackAction(ai, inRangeEnemies[0]);
+                    return;
+                }
+            }
+
+            // Активация навыка «Град стрел», если откатился
             if (ai.cooldowns.arrowRain === 0 && !ai.buffs.noAttackDuration && ai.arrowRainShotsLeft === 0) {
                 selectAbility('arrowRain');
                 renderBoard(); setTimeout(endCurrentUnitTurn, 600); return;
             }
         }
 
+        // --- ЛОГИКА МАГА ИИ ---
         if (ai.typeKey === 'mage') {
             let injuredAlly = allies.find(a => a.hp < a.maxHp * 0.7);
             if (injuredAlly) {
@@ -1177,6 +1215,7 @@
             renderBoard(); setTimeout(endCurrentUnitTurn, 600); return;
         }
 
+        // --- ДВИЖЕНИЕ И АТАКА (ОБЩАЯ ДЛЯ МЕЧНИКА И ЛУЧНИКА) ---
         if (ai.typeKey === 'swordsman' || ai.typeKey === 'archer') {
             let validMoves = getValidMoveCells(ai);
             validMoves.push({ r: ai.r, c: ai.c });
@@ -1192,10 +1231,13 @@
 
             ai.r = bestMove.r; ai.c = bestMove.c; ai.hasMoved = true;
 
-            let inRangeEnemies = enemies.filter(e => getDistance(ai, e) <= getUnitEffectiveRange(ai));
-            if (inRangeEnemies.length > 0) {
-                handleAttackAction(ai, inRangeEnemies[0]);
-                return;
+            // Проверка атаки после ходьбы (только если нет запрета на атаку)
+            if (ai.buffs.noAttackDuration === 0) {
+                let inRangeEnemies = enemies.filter(e => getDistance(ai, e) <= getUnitEffectiveRange(ai));
+                if (inRangeEnemies.length > 0) {
+                    handleAttackAction(ai, inRangeEnemies[0]);
+                    return;
+                }
             }
         }
 
