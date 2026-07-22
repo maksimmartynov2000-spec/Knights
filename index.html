@@ -500,7 +500,6 @@
             }
         }
 
-        // ПРАВКА БАЛАНСА МАГА: дает +2 брони себе и соседям (до максимума 10)
         if (unit.typeKey === 'mage') {
             for (let dr = -1; dr <= 1; dr++) {
                 for (let dc = -1; dc <= 1; dc++) {
@@ -1084,13 +1083,11 @@
             }
         }
 
-        // --- ЛОГИКА ЛУЧНИКА ИИ (БЕЗ ЗАВИСАНИЙ) ---
+        // --- УМНАЯ ЛОГИКА ЛУЧНИКА ИИ ---
         if (ai.typeKey === 'archer') {
-            // Если включен таймер ожидания "Града стрел" — он НЕ может атаковать
+            // 1. Если подготавливает Град стрел
             if (ai.buffs.noAttackDuration > 0) {
-                logMessage(`${ai.name} (ИИ) готовит Град стрел и не может атаковать aún! (${ai.buffs.noAttackDuration} ходов остав.)`);
-                
-                // ИИ пытается отступить подальше от врагов пока заряжается
+                logMessage(`${ai.name} (ИИ) готовит Град стрел и отступает! (${ai.buffs.noAttackDuration} ходов остав.)`);
                 let validMoves = getValidMoveCells(ai);
                 if (validMoves.length > 0) {
                     let bestFleePos = validMoves[0];
@@ -1109,7 +1106,7 @@
                 return;
             }
 
-            // Если Град Стрел готов к выпуску (5 выстрелов)
+            // 2. Если Град Стрел готов
             if (ai.arrowRainShotsLeft > 0) {
                 let inRangeEnemies = enemies.filter(e => getDistance(ai, e) <= getUnitEffectiveRange(ai));
                 if (inRangeEnemies.length > 0) {
@@ -1118,7 +1115,24 @@
                 }
             }
 
-            // Активация навыка «Град стрел», если откатился
+            // 3. ОСОЗНАННОЕ ЛЕЧЕНИЕ: Если у Лучника мало HP (< 60%), ему выгодно пропустить ход!
+            if (ai.hp < ai.maxHp * 0.6) {
+                let validMoves = getValidMoveCells(ai);
+                let closestEnemyDist = Math.min(...enemies.map(e => getDistance(ai, e)));
+
+                if (closestEnemyDist > 2 || validMoves.length > 0) {
+                    if (ai.hp < ai.maxHp * 0.4) {
+                        ai.hasMoved = false;
+                        ai.hasActed = false;
+                        logMessage(`${ai.name} (ИИ) решает восстановить силы (+20% HP и +1 к Дальности)!`);
+                        renderBoard();
+                        setTimeout(endCurrentUnitTurn, 600);
+                        return;
+                    }
+                }
+            }
+
+            // 4. Использование «Града стрел», если откатился
             if (ai.cooldowns.arrowRain === 0 && !ai.buffs.noAttackDuration && ai.arrowRainShotsLeft === 0) {
                 selectAbility('arrowRain');
                 renderBoard(); setTimeout(endCurrentUnitTurn, 600); return;
@@ -1231,7 +1245,6 @@
 
             ai.r = bestMove.r; ai.c = bestMove.c; ai.hasMoved = true;
 
-            // Проверка атаки после ходьбы (только если нет запрета на атаку)
             if (ai.buffs.noAttackDuration === 0) {
                 let inRangeEnemies = enemies.filter(e => getDistance(ai, e) <= getUnitEffectiveRange(ai));
                 if (inRangeEnemies.length > 0) {
