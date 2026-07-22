@@ -155,6 +155,8 @@
     let gamePhase = 'setup'; 
     let activeAction = null; 
     let pendingTarget = null; 
+    let isAiProcessing = false;
+    let aiTimeoutId = null;
 
     const UNIT_TYPES = {
         swordsman: { 
@@ -317,7 +319,7 @@
     }
 
     function handleCellHover(r, c) {
-        if (gamePhase !== 'battle' || !activeUnit || activeUnit.team !== 'player') return;
+        if (gamePhase !== 'battle' || !activeUnit || activeUnit.team !== 'player' || isAiProcessing) return;
 
         if (activeAction === 'storm' || activeAction === 'poisonZone' || activeAction === 'wall') {
             renderBoard();
@@ -336,6 +338,8 @@
     }
 
     function handleCellClick(r, c) {
+        if (isAiProcessing) return; // Блокировка ввода во время хода ИИ
+
         let targetUnit = getUnitAt(r, c);
         let targetObstacle = getObstacleAt(r, c);
 
@@ -564,11 +568,16 @@
     }
 
     function nextTurn() {
+        if (aiTimeoutId) {
+            clearTimeout(aiTimeoutId);
+            aiTimeoutId = null;
+        }
+
         let playerAlive = units.some(u => u.team === 'player' && u.isAlive);
         let enemyAlive = units.some(u => u.team === 'enemy' && u.isAlive);
 
-        if (!playerAlive) { alert("Поражение!"); return; }
-        if (!enemyAlive) { alert("Победа!"); return; }
+        if (!playerAlive) { isAiProcessing = false; alert("Поражение!"); return; }
+        if (!enemyAlive) { isAiProcessing = false; alert("Победа!"); return; }
 
         updateInitiatives();
 
@@ -603,13 +612,15 @@
         renderBoard();
 
         if (activeUnit.team === 'player') {
+            isAiProcessing = false;
             document.getElementById('skip-move-btn').style.display = 'block';
             showMoveRange(activeUnit);
         } else {
+            isAiProcessing = true;
             document.getElementById('skip-move-btn').style.display = 'none';
             document.getElementById('abilities-section').style.display = 'none';
             document.getElementById('main-action-btn').disabled = true;
-            setTimeout(aiTurn, 600);
+            aiTimeoutId = setTimeout(aiTurn, 600);
         }
     }
 
@@ -670,6 +681,8 @@
     }
 
     function handleMainButtonClick() {
+        if (isAiProcessing) return;
+
         if (gamePhase === 'setup') {
             let pCount = units.filter(u => u.team === 'player' && u.isAlive).length;
             let eCount = units.filter(u => u.team === 'enemy' && u.isAlive).length;
@@ -712,7 +725,7 @@
     }
 
     function skipMovePhase() {
-        if (!activeUnit || activeUnit.team !== 'player' || activeUnit.hasMoved) return;
+        if (isAiProcessing || !activeUnit || activeUnit.team !== 'player' || activeUnit.hasMoved) return;
         activeUnit.hasMoved = true;
         document.getElementById('skip-move-btn').style.display = 'none';
         showActionOptions(activeUnit);
@@ -986,7 +999,7 @@
 
     function selectAbility(key) {
         let u = activeUnit;
-        if (!u || u.cooldowns[key] > 0 || u.hasActed) return;
+        if (isAiProcessing || !u || u.cooldowns[key] > 0 || u.hasActed) return;
 
         pendingTarget = null;
         let info = ABILITY_DATA[key];
@@ -1061,13 +1074,18 @@
         for (let key in unit.cooldowns) { if (unit.cooldowns[key] > 0) unit.cooldowns[key]--; }
     }
 
-    // ПОЛНОСТЬЮ ИСПРАВЛЕННЫЙ И ОБНОВЛЕННЫЙ ИИ
+    // ИИ с защитой от случайного выполнения в ход игрока
     function aiTurn() {
-        if (gamePhase !== 'battle' || !activeUnit) return;
+        // Жесткая проверка: если не фаза боя, или нет активного юнита, или активный юнит - ИГРОК, выходим!
+        if (gamePhase !== 'battle' || !activeUnit || activeUnit.team !== 'enemy') {
+            isAiProcessing = false;
+            return;
+        }
+
         let ai = activeUnit;
         let enemies = units.filter(u => u.team === 'player' && u.isAlive);
         let allies = units.filter(u => u.team === 'enemy' && u.isAlive);
-        if (enemies.length === 0) return;
+        if (enemies.length === 0) { isAiProcessing = false; return; }
 
         function getDistance(u1, u2) { return Math.max(Math.abs(u1.r - u2.r), Math.abs(u1.c - u2.c)); }
 
@@ -1085,7 +1103,6 @@
 
         // --- УМНАЯ ЛОГИКА ЛУЧНИКА ИИ ---
         if (ai.typeKey === 'archer') {
-            // 1. Если подготавливает Град стрел
             if (ai.buffs.noAttackDuration > 0) {
                 logMessage(`${ai.name} (ИИ) готовит Град стрел и отступает! (${ai.buffs.noAttackDuration} ходов остав.)`);
                 let validMoves = getValidMoveCells(ai);
@@ -1106,7 +1123,6 @@
                 return;
             }
 
-            // 2. Если Град Стрел готов
             if (ai.arrowRainShotsLeft > 0) {
                 let inRangeEnemies = enemies.filter(e => getDistance(ai, e) <= getUnitEffectiveRange(ai));
                 if (inRangeEnemies.length > 0) {
@@ -1115,7 +1131,6 @@
                 }
             }
 
-            // 3. ОСОЗНАННОЕ ЛЕЧЕНИЕ: Если у Лучника мало HP (< 60%), ему выгодно пропустить ход!
             if (ai.hp < ai.maxHp * 0.6) {
                 let validMoves = getValidMoveCells(ai);
                 let closestEnemyDist = Math.min(...enemies.map(e => getDistance(ai, e)));
@@ -1132,7 +1147,6 @@
                 }
             }
 
-            // 4. Использование «Града стрел», если откатился
             if (ai.cooldowns.arrowRain === 0 && !ai.buffs.noAttackDuration && ai.arrowRainShotsLeft === 0) {
                 selectAbility('arrowRain');
                 renderBoard(); setTimeout(endCurrentUnitTurn, 600); return;
@@ -1286,7 +1300,7 @@
             <span style="color:#aaa; font-size:8px;">${passivesStr}</span></details>
         `;
 
-        if (gamePhase === 'battle' && u.team === 'player') {
+        if (gamePhase === 'battle' && u.team === 'player' && !isAiProcessing) {
             document.getElementById('main-action-btn').disabled = false;
             abSec.style.display = 'block';
             
