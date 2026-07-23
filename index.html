@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Срадневековье</title>
+    <title>Medieval Tactics</title>
     <style>
         :root {
             --bg-color: #121212;
@@ -122,13 +122,18 @@
             z-index: 10;
             box-shadow: 0 2px 4px rgba(0,0,0,0.8);
         }
-        .unit.dragon {
-            width: 194%;
-            height: 194%;
+        
+        /* Исправление для юнитов 2х2 (Дракон) — занимают ровно 2 клетки в ширину и высоту */
+        .unit.size-2 {
+            width: calc(200% + 1px);
+            height: calc(200% + 1px);
             border-radius: 12px;
             z-index: 12;
-            pointer-events: none;
+            top: 0;
+            left: 0;
+            font-size: 28px;
         }
+
         .unit.wall {
             width: 90%;
             height: 90%;
@@ -142,25 +147,31 @@
 
         .hp-bar {
             position: absolute;
-            bottom: -5px;
-            left: 0;
-            width: 100%;
-            height: 4px;
+            bottom: 4px;
+            left: 8%;
+            width: 84%;
+            height: 5px;
             background: #444;
-            border-radius: 2px;
+            border-radius: 3px;
             overflow: hidden;
             border: 1px solid #000;
+        }
+        .size-2 .hp-bar {
+            bottom: 8px;
+            left: 10%;
+            width: 80%;
+            height: 6px;
         }
         .hp-fill { height: 100%; background: #00ff00; }
         
         .buff-icon {
             position: absolute;
-            top: -4px;
-            right: -4px;
+            top: 4px;
+            right: 4px;
             font-size: 10px;
             background: #fff;
             border-radius: 50%;
-            width: 14px; height: 14px;
+            width: 16px; height: 16px;
             display: flex; justify-content: center; align-items: center;
             z-index: 15;
             color: black;
@@ -379,10 +390,7 @@
                         let cx = x + dx, cy = y + dy;
                         let occupier = this.getUnitAt(cx, cy);
                         if (occupier) {
-                            if (occupier.id === 'wall') {
-                                if (movingUnit && movingUnit.id === 'dragon') continue;
-                                return false;
-                            }
+                            if (occupier === movingUnit) continue;
                             return false;
                         }
                     }
@@ -415,7 +423,7 @@
                     if (existingUnit) {
                         this.units = this.units.filter(u => u !== existingUnit);
                     } else {
-                        let validZone = (team === 'player' && y >= 9) || (team === 'enemy' && y <= 2);
+                        let validZone = (team === 'player' && y >= 9 - (tpl.size - 1)) || (team === 'enemy' && y <= 2);
                         if (validZone && this.isCellFree(x, y, tpl.size)) {
                             this.units.push({
                                 ...tpl, x, y, team,
@@ -852,6 +860,7 @@
                     
                     const uDiv = document.createElement('div');
                     uDiv.className = `unit ${u.team} ${u.id}`;
+                    if (u.size === 2) uDiv.classList.add('size-2');
                     uDiv.innerText = u.icon;
                     
                     const hpBar = document.createElement('div');
