@@ -9,7 +9,6 @@
             --bg-color: #121212;
             --cell-bg: #2a2a2a;
             --cell-border: #333;
-            --highlight-active: rgba(255, 255, 0, 0.6);
             --highlight-move: rgba(0, 255, 0, 0.4);
             --highlight-attack: rgba(255, 0, 0, 0.5);
             --highlight-summon: rgba(128, 0, 128, 0.5);
@@ -105,13 +104,12 @@
         .cell.setup-player { background-color: var(--zone-player); }
         .cell.setup-enemy { background-color: var(--zone-enemy); }
         
-        /* Четкие независимые подсветки */
-        .cell.highlight-active { box-shadow: inset 0 0 0 3px #ffd700; z-index: 5; }
         .cell.highlight-move { background-color: var(--highlight-move) !important; cursor: pointer; }
         .cell.highlight-attack { background-color: var(--highlight-attack) !important; cursor: pointer; }
         .cell.highlight-summon { background-color: var(--highlight-summon) !important; cursor: pointer; }
         .cell.highlight-heal { background-color: var(--highlight-heal) !important; cursor: pointer; }
 
+        /* Юниты */
         .unit {
             position: absolute;
             width: 85%;
@@ -177,6 +175,13 @@
             z-index: 15;
             color: black;
         }
+
+        /* Красивая желтая рамка активного юнита (поддерживает 2х2) */
+        .cell.active-tl { border-top: 3px solid #ffd700; border-left: 3px solid #ffd700; z-index: 15; }
+        .cell.active-tr { border-top: 3px solid #ffd700; border-right: 3px solid #ffd700; z-index: 15; }
+        .cell.active-bl { border-bottom: 3px solid #ffd700; border-left: 3px solid #ffd700; z-index: 15; }
+        .cell.active-br { border-bottom: 3px solid #ffd700; border-right: 3px solid #ffd700; z-index: 15; }
+        .cell.active-single { box-shadow: inset 0 0 0 3px #ffd700; z-index: 15; }
 
         #action-panel {
             background: #1a1a1a;
@@ -317,7 +322,7 @@
                     </select>
                 </div>
                 <div style="font-size: 10px; color: #aaa; text-align: center; margin-bottom: 4px;">
-                    Синие в ряды 9-11, Красные в 0-2. Клик по юниту — удалить.
+                    Синие в ряды 9-11, Красные в 0-2. Клик по юниту — удалить/инфо.
                 </div>
                 <button id="start-battle-btn" class="success" style="width: 100%; padding: 8px;">⚔️ НАЧАТЬ БОЙ ⚔️</button>
             </div>
@@ -381,12 +386,12 @@
                 return this.units.find(u => {
                     if (u.hp <= 0) return false;
                     if (u.size === 1) return u.x === x && u.y === y;
-                    if (u.size === 2) return (x === u.x || x === u.x + 1) && (y === u.y || y === u.y + 1);
+                    if (u.size === 2) return (x >= u.x && x < u.x + 2) && (y >= u.y && y < u.y + 2);
                 });
             }
 
             isCellFree(x, y, size = 1, movingUnit = null) {
-                if (x < 0 || y < 0 || x + size - 1 >= COLS || y + size - 1 >= ROWS) return false;
+                if (x < 0 || y < 0 || x + size > COLS || y + size > ROWS) return false;
                 
                 for (let dy = 0; dy < size; dy++) {
                     for (let dx = 0; dx < size; dx++) {
@@ -417,16 +422,17 @@
             }
 
             handleCellClick(x, y) {
+                const targetUnit = this.getUnitAt(x, y);
+
                 if (this.state === 'SETUP') {
                     const team = document.getElementById('setup-team').value;
                     const type = document.getElementById('setup-type').value;
                     const tpl = UNIT_TYPES[type];
 
-                    const existingUnit = this.getUnitAt(x, y);
-                    if (existingUnit) {
-                        this.units = this.units.filter(u => u !== existingUnit);
+                    if (targetUnit) {
+                        this.showUnitInfo(targetUnit);
                     } else {
-                        let validZone = (team === 'player' && y >= 9 - (tpl.size - 1)) || (team === 'enemy' && y <= 2);
+                        let validZone = (team === 'player' && y >= 9 - (tpl.size - 1)) || (team === 'enemy' && y <= 2 + (tpl.size === 2 ? 1 : 0));
                         if (validZone && this.isCellFree(x, y, tpl.size)) {
                             this.units.push({
                                 ...tpl, x, y, team,
@@ -441,8 +447,6 @@
                     this.renderGrid();
                 } 
                 else if (this.state === 'BATTLE') {
-                    const targetUnit = this.getUnitAt(x, y);
-                    
                     if (this.selectedAction === null) {
                         if (targetUnit) this.showUnitInfo(targetUnit);
                         return;
@@ -635,7 +639,6 @@
                     if (cd > 0) { btn.disabled = true; btn.innerText += ` (${cd})`; }
                 }
 
-                // Кнопка пропуска хода для абсолютно каждого юнита
                 this.createBtn(panel, '⏭ Пропустить ход', 'secondary', () => {
                     this.endTurn();
                 });
@@ -859,7 +862,10 @@
             clearHighlights() {
                 for (let y = 0; y < ROWS; y++) {
                     for (let x = 0; x < COLS; x++) {
-                        this.cells[y][x].classList.remove('highlight-move', 'highlight-attack', 'highlight-summon', 'highlight-heal', 'highlight-active');
+                        this.cells[y][x].classList.remove(
+                            'highlight-move', 'highlight-attack', 'highlight-summon', 'highlight-heal',
+                            'active-tl', 'active-tr', 'active-bl', 'active-br', 'active-single'
+                        );
                     }
                 }
             }
@@ -873,17 +879,16 @@
                     }
                 }
                 
-                // Подсветка активного юнита (желтая рамка ячейки/ячеек)
+                // Подсветка активного юнита (с учетом размера 2х2)
                 if (this.state === 'BATTLE' && this.activeUnit) {
                     let au = this.activeUnit;
-                    for (let dy = 0; dy < au.size; dy++) {
-                        for (let dx = 0; dx < au.size; dx++) {
-                            let cx = au.x + dx;
-                            let cy = au.y + dy;
-                            if (this.cells[cy] && this.cells[cy][cx]) {
-                                this.cells[cy][cx].classList.add('highlight-active');
-                            }
-                        }
+                    if (au.size === 2) {
+                        if (this.cells[au.y]?.[au.x]) this.cells[au.y][au.x].classList.add('active-tl');
+                        if (this.cells[au.y]?.[au.x + 1]) this.cells[au.y][au.x + 1].classList.add('active-tr');
+                        if (this.cells[au.y + 1]?.[au.x]) this.cells[au.y + 1][au.x].classList.add('active-bl');
+                        if (this.cells[au.y + 1]?.[au.x + 1]) this.cells[au.y + 1][au.x + 1].classList.add('active-br');
+                    } else {
+                        if (this.cells[au.y]?.[au.x]) this.cells[au.y][au.x].classList.add('active-single');
                     }
                 }
 
