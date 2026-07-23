@@ -195,7 +195,7 @@
             color: black;
         }
 
-        /* Желтая рамка активного юнита (поддерживает 2х2) */
+        /* Желтая рамка активного юнита */
         .cell.active-tl { border-top: 3px solid #ffd700; border-left: 3px solid #ffd700; z-index: 15; }
         .cell.active-tr { border-top: 3px solid #ffd700; border-right: 3px solid #ffd700; z-index: 15; }
         .cell.active-bl { border-bottom: 3px solid #ffd700; border-left: 3px solid #ffd700; z-index: 15; }
@@ -491,8 +491,9 @@
                             this.units.push({
                                 ...tpl, x, y, team,
                                 maxHp: tpl.hp,
-                                maxArmor: tpl.id === 'ent' ? 50 : 0, // Стартовая броня для энтов как сверх-ХП
+                                maxArmor: tpl.id === 'ent' ? 50 : 0,
                                 armor: tpl.id === 'ent' ? 50 : 0,
+                                actionPoints: 0,
                                 isPrepared: false,
                                 cooldowns: {}
                             });
@@ -542,6 +543,12 @@
 
             startBattle() {
                 if (this.units.length === 0) return alert("Поставьте юнитов!");
+                
+                // Гарантируем, что у всех юнитов есть очки действий при старте
+                this.units.forEach(u => {
+                    u.actionPoints = 0;
+                });
+
                 this.state = 'BATTLE';
                 document.getElementById('setup-ui').classList.add('hidden');
                 document.getElementById('actions').classList.remove('hidden');
@@ -583,7 +590,6 @@
                         this.activeUnit = readyUnits[0];
                         this.activeUnit.actionPoints -= 100;
                         
-                        // Спецэффект стены: на свой ход получает +5 к броне
                         if (this.activeUnit.id === 'wall') {
                             this.activeUnit.armor = (this.activeUnit.armor || 0) + 5;
                             this.activeUnit.maxArmor = Math.max(this.activeUnit.maxArmor || 0, this.activeUnit.armor);
@@ -634,7 +640,8 @@
                 let forecast = [];
                 for (let i = 0; i < 15; i++) {
                     let found = false;
-                    while(!found) {
+                    let innerLoop = 1000;
+                    while(!found && innerLoop-- > 0) {
                         let ready = simUnits.filter(u => u.actionPoints >= 100 && u.init > 0);
                         if (ready.length > 0) {
                             ready.sort((a, b) => b.actionPoints - a.actionPoints);
@@ -667,7 +674,7 @@
                     this.renderActionButtons();
                 } else {
                     document.getElementById('actions').innerHTML = '<div style="color:#aaa; font-size:12px;">Думает...</div>';
-                    setTimeout(() => this.executeAI(), 350); // Ускоренное время анимации/действия ИИ
+                    setTimeout(() => this.executeAI(), 350);
                 }
             }
 
@@ -825,7 +832,7 @@
                 let dmg = attacker.dmg;
                 if (defender.id === 'necromancer') return 1;
                 if (defender.id === 'knight' && attacker.dmgType === 'Стрела') dmg = Math.floor(dmg * 0.1);
-                if (defender.id === 'ent' && attacker.dmgType === 'Физ') dmg = Math.floor(dmg * 0.2); // Оставляем сопротивление урону
+                if (defender.id === 'ent' && attacker.dmgType === 'Физ') dmg = Math.floor(dmg * 0.2);
 
                 if (attacker.id === 'ballista') {
                     if (defender.id === 'ent') dmg *= 3;
@@ -838,7 +845,6 @@
             applyDamageToUnit(attacker, defender, rawDmg) {
                 let currentArmor = defender.armor || 0;
                 
-                // Если у юнита есть броня (сверх-ХП, как у энтов), урон сначала уходит в нее
                 if (currentArmor > 0) {
                     if (rawDmg >= currentArmor) {
                         let remainder = rawDmg - currentArmor;
@@ -1029,7 +1035,6 @@
                     if (u.size === 2) uDiv.classList.add('size-2');
                     uDiv.innerText = u.icon;
                     
-                    // Визуализация полоски ХП
                     const hpBar = document.createElement('div');
                     hpBar.className = 'hp-bar';
                     const hpFill = document.createElement('div');
@@ -1038,7 +1043,6 @@
                     hpBar.appendChild(hpFill);
                     uDiv.appendChild(hpBar);
 
-                    // Визуализация полоски брони (сверх-ХП)
                     if (u.armor > 0 || (u.maxArmor && u.maxArmor > 0)) {
                         const armorBar = document.createElement('div');
                         armorBar.className = 'armor-bar';
