@@ -156,12 +156,31 @@
             border: 1px solid #000;
         }
         .size-2 .hp-bar {
-            bottom: 8px;
+            bottom: 10px;
             left: 10%;
             width: 80%;
             height: 6px;
         }
         .hp-fill { height: 100%; background: #00ff00; }
+
+        .armor-bar {
+            position: absolute;
+            bottom: 10px;
+            left: 8%;
+            width: 84%;
+            height: 4px;
+            background: #222;
+            border-radius: 2px;
+            overflow: hidden;
+            border: 1px solid #000;
+        }
+        .size-2 .armor-bar {
+            bottom: 3px;
+            left: 10%;
+            width: 80%;
+            height: 5px;
+        }
+        .armor-fill { height: 100%; background: #00bcd4; }
         
         .buff-icon {
             position: absolute;
@@ -285,8 +304,8 @@
                 <h3 id="info-title">Имя</h3>
                 <p>Команда: <span id="info-team"></span></p>
                 <p>ХП: <span id="info-hp"></span></p>
-                <p>Урон: <span id="info-dmg"></span> (<span id="info-type"></span>)</p>
                 <p>Броня: <span id="info-armor"></span></p>
+                <p>Урон: <span id="info-dmg"></span> (<span id="info-type"></span>)</p>
                 <p>Инициатива: <span id="info-init"></span></p>
                 <p>Дальность/Ход: <span id="info-range"></span> / <span id="info-move"></span></p>
                 <p style="margin-top: 6px; color: #ffcc00; font-size: 12px;">📌 Пассивка: <span id="info-passive" style="color: #fff;"></span></p>
@@ -340,10 +359,10 @@
             knight: { id: 'knight', name: 'Рыцарь', hp: 50, dmg: 10, dmgType: 'Физ', init: 12, move: 2, range: 1, icon: '⚔️', size: 1, passive: 'Сопротивление стрелам (-90% урона от стрел).' },
             crossbow: { id: 'crossbow', name: 'Арбалетчик', hp: 20, dmg: 15, dmgType: 'Стрела', init: 18, move: 3, range: 2, icon: '🏹', size: 1, passive: 'Умеет восстанавливать здоровье союзникам (лечение).' },
             ballista: { id: 'ballista', name: 'Балиста', hp: 80, dmg: 40, dmgType: 'Физ', init: 8, move: 1, range: 4, icon: '🏗️', size: 1, passive: 'Требует подготовки перед выстрелом. Наносит х3 по Энтам и х2 по Драконам.' },
-            ent: { id: 'ent', name: 'Энт', hp: 250, dmg: 70, dmgType: 'Физ', init: 6, move: 1, range: 1, icon: '🌳', size: 1, passive: 'Ближняя атака наносит урон по площади (АОЕ вокруг себя). Сопротивление физ. урону (-80%).' },
+            ent: { id: 'ent', name: 'Энт', hp: 250, dmg: 70, dmgType: 'Физ', init: 6, move: 1, range: 1, icon: '🌳', size: 1, passive: 'Ближняя атака наносит урон по площади (АОЕ вокруг себя). Броня работает как сверх-ХП.' },
             dragon: { id: 'dragon', name: 'Дракон', hp: 120, dmg: 40, dmgType: 'Магия', init: 10, move: 2, range: 2, icon: '🐉', size: 2, passive: 'Размер 2х2. Перемещается сквозь союзников и врагов. Аура: враги вокруг в зоне 4х4 получают -5 инициативы (не действует на драконов, энтов и вампиров).' },
             vampire: { id: 'vampire', name: 'Вампир', hp: 40, dmg: 30, dmgType: 'Физ', init: 24, move: 5, range: 1, icon: '🦇', size: 1, passive: 'Исцеляет себя на количество нанесенного противнику урона (Лайфстил).' },
-            wall: { id: 'wall', name: 'Стена', hp: 100, dmg: 0, dmgType: 'Нет', init: 0, move: 0, range: 0, icon: '🧱', size: 1, passive: 'Неподвижное препятствие с запасом здоровья.' }
+            wall: { id: 'wall', name: 'Стена', hp: 100, dmg: 0, dmgType: 'Нет', init: 5, move: 0, range: 0, icon: '🧱', size: 1, passive: 'Инициатива 5. Автоматически получает +5 к броне в свой ход.' }
         };
 
         class GameEngine {
@@ -409,12 +428,10 @@
             canReachPosition(unit, targetX, targetY) {
                 if (!this.isCellFree(targetX, targetY, unit.size, unit)) return false;
 
-                // Дракон может перемещаться сквозь других юнитов и препятствия
                 if (unit.id === 'dragon') {
                     return this.getDistance(unit, targetX, targetY, unit.size) <= unit.move;
                 }
 
-                // Обычный алгоритм поиска пути ( BFS ) для остальных юнитов
                 let queue = [{x: unit.x, y: unit.y, dist: 0}];
                 let visited = new Set([`${unit.x},${unit.y}`]);
 
@@ -469,13 +486,13 @@
                     if (targetUnit) {
                         this.showUnitInfo(targetUnit);
                     } else {
-                        let validZone = (team === 'player' && y >= 6 - (tpl.size - 1)) || (team === 'enemy' && y <= 5 + (tpl.size === 2 ? 0 : 0));
+                        let validZone = (team === 'player' && y >= 6 - (tpl.size - 1)) || (team === 'enemy' && y <= 5);
                         if (validZone && this.isCellFree(x, y, tpl.size)) {
                             this.units.push({
                                 ...tpl, x, y, team,
                                 maxHp: tpl.hp,
-                                actionPoints: 0,
-                                armor: 0,
+                                maxArmor: tpl.id === 'ent' ? 50 : 0, // Стартовая броня для энтов как сверх-ХП
+                                armor: tpl.id === 'ent' ? 50 : 0,
                                 isPrepared: false,
                                 cooldowns: {}
                             });
@@ -499,16 +516,15 @@
                 document.getElementById('info-team').innerText = unit.team === 'player' ? 'Игрок' : 'Враг';
                 document.getElementById('info-team').style.color = unit.team === 'player' ? '#4da6ff' : '#ff4d4d';
                 document.getElementById('info-hp').innerText = `${unit.hp} / ${unit.maxHp}`;
+                document.getElementById('info-armor').innerText = `${unit.armor} / ${unit.maxArmor || unit.armor}`;
                 document.getElementById('info-dmg').innerText = unit.dmg;
                 document.getElementById('info-type').innerText = unit.dmgType;
-                document.getElementById('info-armor').innerText = unit.armor;
                 document.getElementById('info-init').innerText = unit.init;
                 document.getElementById('info-range').innerText = `${unit.range} / ${unit.move}`;
                 document.getElementById('info-passive').innerText = unit.passive || 'Нет пассивных способностей.';
                 
                 let buffs = [];
                 if (unit.isPrepared) buffs.push("Готов к выстрелу");
-                if (unit.armor > 0) buffs.push(`Броня: ${unit.armor}`);
                 
                 let baseInit = UNIT_TYPES[unit.id].init;
                 let auraDebuff = baseInit - unit.init;
@@ -533,24 +549,19 @@
                 this.nextTurn();
             }
 
-            // Пересчет инициативы юнитов с учетом ауры Дракона
             applyDragonAuras() {
-                // Сбрасываем инициативу к стандартной базе перед расчетом аур
                 this.units.forEach(u => {
                     u.init = UNIT_TYPES[u.id].init;
                 });
 
-                // Находим всех живых драконов
                 const dragons = this.units.filter(u => u.id === 'dragon' && u.hp > 0);
 
                 dragons.forEach(dragon => {
                     this.units.forEach(target => {
                         if (target.hp <= 0) return;
-                        if (target.team === dragon.team) return; // только враги
-                        // Не работает на других драконов, энтов и вампиров
+                        if (target.team === dragon.team) return;
                         if (['dragon', 'ent', 'vampire'].includes(target.id)) return;
 
-                        // Проверяем расстояние от дракона (размером 2х2) до цели (включая зону 4х4 вокруг)
                         let dist = this.getDistance(dragon, target.x, target.y, target.size);
                         if (dist <= 1) {
                             target.init = Math.max(0, target.init - 5);
@@ -561,7 +572,7 @@
 
             nextTurn() {
                 this.units = this.units.filter(u => u.hp > 0);
-                this.applyDragonAuras(); // Применяем ауры перед тиком ходов
+                this.applyDragonAuras();
                 
                 let maxLoops = 2000;
                 while (maxLoops-- > 0) {
@@ -572,6 +583,12 @@
                         this.activeUnit = readyUnits[0];
                         this.activeUnit.actionPoints -= 100;
                         
+                        // Спецэффект стены: на свой ход получает +5 к броне
+                        if (this.activeUnit.id === 'wall') {
+                            this.activeUnit.armor = (this.activeUnit.armor || 0) + 5;
+                            this.activeUnit.maxArmor = Math.max(this.activeUnit.maxArmor || 0, this.activeUnit.armor);
+                        }
+
                         for (let k in this.activeUnit.cooldowns) {
                             if (this.activeUnit.cooldowns[k] > 0) this.activeUnit.cooldowns[k]--;
                         }
@@ -593,7 +610,6 @@
                 
                 let simUnits = this.units.map(u => ({...u}));
                 
-                // Симуляция аур для очереди
                 const dragons = simUnits.filter(u => u.id === 'dragon' && u.hp > 0);
                 simUnits.forEach(u => u.init = UNIT_TYPES[u.id].init);
                 dragons.forEach(dragon => {
@@ -651,7 +667,7 @@
                     this.renderActionButtons();
                 } else {
                     document.getElementById('actions').innerHTML = '<div style="color:#aaa; font-size:12px;">Думает...</div>';
-                    setTimeout(() => this.executeAI(), 700);
+                    setTimeout(() => this.executeAI(), 350); // Ускоренное время анимации/действия ИИ
                 }
             }
 
@@ -696,7 +712,8 @@
                 if (u.id === 'knight') {
                     let cd = u.cooldowns['Armor'] || 0;
                     let btn = this.createBtn(panel, 'Щит (+10)', 'success', () => {
-                        u.armor += 10;
+                        u.armor = (u.armor || 0) + 10;
+                        u.maxArmor = Math.max(u.maxArmor || 0, u.armor);
                         u.cooldowns['Armor'] = 2;
                         this.endTurn();
                     });
@@ -723,7 +740,8 @@
                 if (u.id === 'ent') {
                     let cd = u.cooldowns['Petrify'] || 0;
                     let btn = this.createBtn(panel, 'Окаменение (+20)', 'success', () => {
-                        u.armor += 20;
+                        u.armor = (u.armor || 0) + 20;
+                        u.maxArmor = Math.max(u.maxArmor || 0, u.armor);
                         u.cooldowns['Petrify'] = 3;
                         this.endTurn();
                     });
@@ -770,7 +788,10 @@
                     if (dist <= au.range && this.isCellFree(x, y, UNIT_TYPES[this.summonType].size)) {
                         const tpl = UNIT_TYPES[this.summonType];
                         this.units.push({
-                            ...tpl, x, y, team: au.team, maxHp: tpl.hp, actionPoints: 0, armor: 0, isPrepared: false, cooldowns: {}
+                            ...tpl, x, y, team: au.team, maxHp: tpl.hp, 
+                            maxArmor: tpl.id === 'ent' ? 50 : 0, 
+                            armor: tpl.id === 'ent' ? 50 : 0, 
+                            actionPoints: 0, isPrepared: false, cooldowns: {}
                         });
                         au.cooldowns['summon_' + this.summonType] = 5;
                         this.endTurn();
@@ -804,18 +825,31 @@
                 let dmg = attacker.dmg;
                 if (defender.id === 'necromancer') return 1;
                 if (defender.id === 'knight' && attacker.dmgType === 'Стрела') dmg = Math.floor(dmg * 0.1);
-                if (defender.id === 'ent' && attacker.dmgType === 'Физ') dmg = Math.floor(dmg * 0.2);
+                if (defender.id === 'ent' && attacker.dmgType === 'Физ') dmg = Math.floor(dmg * 0.2); // Оставляем сопротивление урону
 
                 if (attacker.id === 'ballista') {
                     if (defender.id === 'ent') dmg *= 3;
                     if (defender.id === 'dragon') dmg *= 2;
                 }
 
-                if (defender.armor > 0) {
-                    let block = Math.min(defender.armor, dmg);
-                    dmg -= block;
-                }
                 return Math.max(1, dmg);
+            }
+
+            applyDamageToUnit(attacker, defender, rawDmg) {
+                let currentArmor = defender.armor || 0;
+                
+                // Если у юнита есть броня (сверх-ХП, как у энтов), урон сначала уходит в нее
+                if (currentArmor > 0) {
+                    if (rawDmg >= currentArmor) {
+                        let remainder = rawDmg - currentArmor;
+                        defender.armor = 0;
+                        defender.hp -= remainder;
+                    } else {
+                        defender.armor -= rawDmg;
+                    }
+                } else {
+                    defender.hp -= rawDmg;
+                }
             }
 
             executeAttack(attacker, defender) {
@@ -826,12 +860,12 @@
                         if ((u.team !== attacker.team || u.id === 'wall') && this.getDistance(attacker, u.x, u.y, u.size) <= 1) {
                             let dmg = this.calculateDamage(attacker, u);
                             if (typeof dmg !== 'number') dmg = attacker.dmg;
-                            u.hp -= dmg;
+                            this.applyDamageToUnit(attacker, u, dmg);
                         }
                     });
                 } else {
                     let dmg = this.calculateDamage(attacker, defender);
-                    defender.hp -= dmg;
+                    this.applyDamageToUnit(attacker, defender, dmg);
 
                     if (attacker.id === 'vampire') {
                         attacker.hp = Math.min(attacker.maxHp, attacker.hp + dmg);
@@ -866,7 +900,12 @@
                             for(let dx=-2; dx<=2; dx++) {
                                 if(this.isCellFree(me.x+dx, me.y+dy, UNIT_TYPES[toSummon].size)) {
                                     const tpl = UNIT_TYPES[toSummon];
-                                    this.units.push({...tpl, x: me.x+dx, y: me.y+dy, team: 'enemy', maxHp: tpl.hp, actionPoints: 0, armor: 0, isPrepared: false, cooldowns: {}});
+                                    this.units.push({
+                                        ...tpl, x: me.x+dx, y: me.y+dy, team: 'enemy', maxHp: tpl.hp, 
+                                        maxArmor: tpl.id === 'ent' ? 50 : 0, 
+                                        armor: tpl.id === 'ent' ? 50 : 0, 
+                                        actionPoints: 0, isPrepared: false, cooldowns: {}
+                                    });
                                     me.cooldowns['summon_' + toSummon] = 5;
                                     return this.endTurn();
                                 }
@@ -970,7 +1009,6 @@
                     }
                 }
                 
-                // Подсветка активного юнита (с учетом размера 2х2)
                 if (this.state === 'BATTLE' && this.activeUnit) {
                     let au = this.activeUnit;
                     if (au.size === 2) {
@@ -991,6 +1029,7 @@
                     if (u.size === 2) uDiv.classList.add('size-2');
                     uDiv.innerText = u.icon;
                     
+                    // Визуализация полоски ХП
                     const hpBar = document.createElement('div');
                     hpBar.className = 'hp-bar';
                     const hpFill = document.createElement('div');
@@ -999,7 +1038,19 @@
                     hpBar.appendChild(hpFill);
                     uDiv.appendChild(hpBar);
 
-                    let hasBuff = u.armor > 0 || u.isPrepared || (UNIT_TYPES[u.id].init > u.init);
+                    // Визуализация полоски брони (сверх-ХП)
+                    if (u.armor > 0 || (u.maxArmor && u.maxArmor > 0)) {
+                        const armorBar = document.createElement('div');
+                        armorBar.className = 'armor-bar';
+                        const armorFill = document.createElement('div');
+                        armorFill.className = 'armor-fill';
+                        let maxA = u.maxArmor || u.armor || 1;
+                        armorFill.style.width = `${Math.max(0, (u.armor / maxA) * 100)}%`;
+                        armorBar.appendChild(armorFill);
+                        uDiv.appendChild(armorBar);
+                    }
+
+                    let hasBuff = u.isPrepared || (UNIT_TYPES[u.id].init > u.init);
                     if (hasBuff) {
                         const icon = document.createElement('div');
                         icon.className = 'buff-icon';
