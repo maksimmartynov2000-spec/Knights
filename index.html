@@ -673,7 +673,8 @@
                     this.renderActionButtons();
                 } else {
                     document.getElementById('actions').innerHTML = '<div style="color:#aaa; font-size:12px;">Думает...</div>';
-                    setTimeout(() => this.executeAI(), 350);
+                    // Ускорили ход ИИ в 3 раза (110мс вместо 350мс)
+                    setTimeout(() => this.executeAI(), 110);
                 }
             }
 
@@ -799,7 +800,8 @@
                             armor: tpl.id === 'ent' ? 50 : 0, 
                             actionPoints: 0, isPrepared: false, cooldowns: {}
                         });
-                        au.cooldowns['summon_' + this.summonType] = (this.summonType === 'wall') ? 2 : 5;
+                        // Перезарядка призыва боевых юнитов — 20 ходов, стены — 2 хода
+                        au.cooldowns['summon_' + this.summonType] = (this.summonType === 'wall') ? 2 : 20;
                         this.endTurn();
                     }
                 }
@@ -830,7 +832,7 @@
 
                 let dmg = attacker.dmg;
                 if (defender.id === 'necromancer') return 1;
-                if (defender.id === 'knight' && attacker.dmgType === 'Стрела') dmg = Math.floor(dmg * 0.3); // Урон снижен на 70%
+                if (defender.id === 'knight' && attacker.dmgType === 'Стрела') dmg = Math.floor(dmg * 0.3);
                 if (defender.id === 'ent' && attacker.dmgType === 'Физ') dmg = Math.floor(dmg * 0.2);
 
                 if (attacker.id === 'ballista') {
@@ -911,7 +913,7 @@
                                         armor: tpl.id === 'ent' ? 50 : 0, 
                                         actionPoints: 0, isPrepared: false, cooldowns: {}
                                     });
-                                    me.cooldowns['summon_' + toSummon] = (toSummon === 'wall') ? 2 : 5;
+                                    me.cooldowns['summon_' + toSummon] = (toSummon === 'wall') ? 2 : 20;
                                     return this.endTurn();
                                 }
                             }
