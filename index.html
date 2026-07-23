@@ -355,12 +355,12 @@
         const ROWS = 12;
 
         const UNIT_TYPES = {
-            necromancer: { id: 'necromancer', name: 'Некромант', hp: 10, dmg: 5, dmgType: 'Магия', init: 10, move: 1, range: 2, icon: '🧙‍♂️', size: 1, passive: 'Призывает боевых юнитов разного типа.' },
-            knight: { id: 'knight', name: 'Рыцарь', hp: 50, dmg: 10, dmgType: 'Физ', init: 12, move: 2, range: 1, icon: '⚔️', size: 1, passive: 'Сопротивление стрелам (-90% урона от стрел).' },
+            necromancer: { id: 'necromancer', name: 'Некромант', hp: 10, dmg: 5, dmgType: 'Магия', init: 10, move: 1, range: 2, icon: '🧙‍♂️', size: 1, passive: 'Призывает боевых юнитов и стены.' },
+            knight: { id: 'knight', name: 'Рыцарь', hp: 50, dmg: 10, dmgType: 'Физ', init: 12, move: 2, range: 1, icon: '⚔️', size: 1, passive: 'Сопротивление стрелам (-70% урона от стрел).' },
             crossbow: { id: 'crossbow', name: 'Арбалетчик', hp: 20, dmg: 15, dmgType: 'Стрела', init: 18, move: 3, range: 2, icon: '🏹', size: 1, passive: 'Умеет восстанавливать здоровье союзникам (лечение).' },
             ballista: { id: 'ballista', name: 'Балиста', hp: 80, dmg: 40, dmgType: 'Физ', init: 8, move: 1, range: 4, icon: '🏗️', size: 1, passive: 'Требует подготовки перед выстрелом. Наносит х3 по Энтам и х2 по Драконам.' },
             ent: { id: 'ent', name: 'Энт', hp: 250, dmg: 70, dmgType: 'Физ', init: 6, move: 1, range: 1, icon: '🌳', size: 1, passive: 'Ближняя атака наносит урон по площади (АОЕ вокруг себя). Броня работает как сверх-ХП.' },
-            dragon: { id: 'dragon', name: 'Дракон', hp: 120, dmg: 40, dmgType: 'Магия', init: 10, move: 2, range: 2, icon: '🐉', size: 2, passive: 'Размер 2х2. Перемещается сквозь союзников и врагов. Аура: враги вокруг в зоне 4х4 получают -5 инициативы (не действует на драконов, энтов и вампиров).' },
+            dragon: { id: 'dragon', name: 'Дракон', hp: 120, dmg: 40, dmgType: 'Магия', init: 10, move: 5, range: 2, icon: '🐉', size: 2, passive: 'Размер 2х2. Перемещается сквозь союзников и врагов. Аура: враги вокруг в зоне 4х4 получают -5 инициативы (не действует на драконов, энтов и вампиров).' },
             vampire: { id: 'vampire', name: 'Вампир', hp: 40, dmg: 30, dmgType: 'Физ', init: 24, move: 5, range: 1, icon: '🦇', size: 1, passive: 'Исцеляет себя на количество нанесенного противнику урона (Лайфстил).' },
             wall: { id: 'wall', name: 'Стена', hp: 100, dmg: 0, dmgType: 'Нет', init: 5, move: 0, range: 0, icon: '🧱', size: 1, passive: 'Инициатива 5. Автоматически получает +5 к броне в свой ход.' }
         };
@@ -544,7 +544,6 @@
             startBattle() {
                 if (this.units.length === 0) return alert("Поставьте юнитов!");
                 
-                // Гарантируем, что у всех юнитов есть очки действий при старте
                 this.units.forEach(u => {
                     u.actionPoints = 0;
                 });
@@ -702,7 +701,7 @@
                 if (!canAttack) atkBtn.disabled = true;
 
                 if (u.id === 'necromancer') {
-                    ['knight','crossbow','ballista','ent','dragon','vampire'].forEach(type => {
+                    ['knight','crossbow','ballista','ent','dragon','vampire','wall'].forEach(type => {
                         let cdKey = 'summon_' + type;
                         let cd = u.cooldowns[cdKey] || 0;
                         let btn = this.createBtn(panel, `Призыв ${UNIT_TYPES[type].icon}`, 'success', () => {
@@ -800,7 +799,7 @@
                             armor: tpl.id === 'ent' ? 50 : 0, 
                             actionPoints: 0, isPrepared: false, cooldowns: {}
                         });
-                        au.cooldowns['summon_' + this.summonType] = 5;
+                        au.cooldowns['summon_' + this.summonType] = (this.summonType === 'wall') ? 2 : 5;
                         this.endTurn();
                     }
                 }
@@ -831,7 +830,7 @@
 
                 let dmg = attacker.dmg;
                 if (defender.id === 'necromancer') return 1;
-                if (defender.id === 'knight' && attacker.dmgType === 'Стрела') dmg = Math.floor(dmg * 0.1);
+                if (defender.id === 'knight' && attacker.dmgType === 'Стрела') dmg = Math.floor(dmg * 0.3); // Урон снижен на 70%
                 if (defender.id === 'ent' && attacker.dmgType === 'Физ') dmg = Math.floor(dmg * 0.2);
 
                 if (attacker.id === 'ballista') {
@@ -898,7 +897,7 @@
                 }
 
                 if (me.id === 'necromancer') {
-                    const types = ['knight','crossbow','ballista','ent','dragon','vampire'];
+                    const types = ['knight','crossbow','ballista','ent','dragon','vampire','wall'];
                     let availableTypes = types.filter(t => !me.cooldowns['summon_' + t] || me.cooldowns['summon_' + t] <= 0);
                     if (availableTypes.length > 0) {
                         let toSummon = availableTypes[Math.floor(Math.random() * availableTypes.length)];
@@ -912,7 +911,7 @@
                                         armor: tpl.id === 'ent' ? 50 : 0, 
                                         actionPoints: 0, isPrepared: false, cooldowns: {}
                                     });
-                                    me.cooldowns['summon_' + toSummon] = 5;
+                                    me.cooldowns['summon_' + toSummon] = (toSummon === 'wall') ? 2 : 5;
                                     return this.endTurn();
                                 }
                             }
