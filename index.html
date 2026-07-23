@@ -306,6 +306,7 @@
                 <p>ХП: <span id="info-hp"></span></p>
                 <p>Броня: <span id="info-armor"></span></p>
                 <p>Урон: <span id="info-dmg"></span> (<span id="info-type"></span>)</p>
+                <p>Снижение урона: <span id="info-dmg-debuff" style="color: #ff6666;"></span></p>
                 <p>Инициатива: <span id="info-init"></span></p>
                 <p>Дальность/Ход: <span id="info-range"></span> / <span id="info-move"></span></p>
                 <p style="margin-top: 6px; color: #ffcc00; font-size: 12px;">📌 Пассивка: <span id="info-passive" style="color: #fff;"></span></p>
@@ -358,10 +359,10 @@
             necromancer: { id: 'necromancer', name: 'Некромант', hp: 10, dmg: 5, dmgType: 'Магия', init: 10, move: 1, range: 2, icon: '🧙‍♂️', size: 1, passive: 'Призывает боевых юнитов и стены.' },
             knight: { id: 'knight', name: 'Рыцарь', hp: 50, dmg: 10, dmgType: 'Физ', init: 12, move: 2, range: 1, icon: '⚔️', size: 1, passive: 'Сопротивление стрелам (-70% урона от стрел).' },
             crossbow: { id: 'crossbow', name: 'Арбалетчик', hp: 20, dmg: 15, dmgType: 'Стрела', init: 18, move: 3, range: 2, icon: '🏹', size: 1, passive: 'Умеет восстанавливать здоровье союзникам (лечение).' },
-            ballista: { id: 'ballista', name: 'Балиста', hp: 80, dmg: 40, dmgType: 'Физ', init: 8, move: 1, range: 4, icon: '🏗️', size: 1, passive: 'Требует подготовки перед выстрелом. Наносит х3 по Энтам и х2 по Драконам.' },
+            ballista: { id: 'ballista', name: 'Балиста', hp: 80, dmg: 80, dmgType: 'Физ', init: 8, move: 1, range: 4, icon: '🏗️', size: 1, passive: 'Требует подготовки перед выстрелом. Наносит х3 по Энтам и х2 по Драконам.' },
             ent: { id: 'ent', name: 'Энт', hp: 250, dmg: 70, dmgType: 'Физ', init: 6, move: 1, range: 1, icon: '🌳', size: 1, passive: 'Ближняя атака наносит урон по площади (АОЕ вокруг себя). Броня работает как сверх-ХП.' },
-            dragon: { id: 'dragon', name: 'Дракон', hp: 120, dmg: 40, dmgType: 'Магия', init: 10, move: 5, range: 2, icon: '🐉', size: 2, passive: 'Размер 2х2. Перемещается сквозь союзников и врагов. Аура: враги вокруг в зоне 4х4 получают -5 инициативы (не действует на драконов, энтов и вампиров).' },
-            vampire: { id: 'vampire', name: 'Вампир', hp: 40, dmg: 30, dmgType: 'Физ', init: 24, move: 5, range: 1, icon: '🦇', size: 1, passive: 'Исцеляет себя на количество нанесенного противнику урона (Лайфстил).' },
+            dragon: { id: 'dragon', name: 'Дракон', hp: 120, dmg: 40, dmgType: 'Магия', init: 10, move: 6, range: 2, icon: '🐉', size: 2, passive: 'Размер 2х2. Аура: враги в радиусе 2 теряют 10 инициативы и 40% урона (не действует на драконов, энтов и вампиров).' },
+            vampire: { id: 'vampire', name: 'Вампир', hp: 40, dmg: 30, dmgType: 'Физ', init: 24, move: 5, range: 1, icon: '🦇', size: 1, passive: 'Лайфстил. Атакой снижает инициативу жертвы на 1 на 1 ход.' },
             wall: { id: 'wall', name: 'Стена', hp: 100, dmg: 0, dmgType: 'Нет', init: 5, move: 0, range: 0, icon: '🧱', size: 1, passive: 'Инициатива 5. Автоматически получает +5 к броне в свой ход.' }
         };
 
@@ -495,7 +496,9 @@
                                 armor: tpl.id === 'ent' ? 50 : 0,
                                 actionPoints: 0,
                                 isPrepared: false,
-                                cooldowns: {}
+                                cooldowns: {},
+                                vampireDebuffs: 0,
+                                isDragonAuraAffected: false
                             });
                         }
                     }
@@ -518,18 +521,23 @@
                 document.getElementById('info-team').style.color = unit.team === 'player' ? '#4da6ff' : '#ff4d4d';
                 document.getElementById('info-hp').innerText = `${unit.hp} / ${unit.maxHp}`;
                 document.getElementById('info-armor').innerText = `${unit.armor} / ${unit.maxArmor || unit.armor}`;
-                document.getElementById('info-dmg').innerText = unit.dmg;
+                
+                let actualDmg = this.getActualDmg(unit);
+                document.getElementById('info-dmg').innerText = (actualDmg !== unit.dmg) ? `${actualDmg} (баз. ${unit.dmg})` : unit.dmg;
                 document.getElementById('info-type').innerText = unit.dmgType;
-                document.getElementById('info-init').innerText = unit.init;
+                
+                document.getElementById('info-dmg-debuff').innerText = unit.isDragonAuraAffected ? "40% (Аура дракона)" : "0%";
+
+                let baseInit = UNIT_TYPES[unit.id].init;
+                document.getElementById('info-init').innerText = (unit.init !== baseInit) ? `${unit.init} (баз. ${baseInit})` : unit.init;
+                
                 document.getElementById('info-range').innerText = `${unit.range} / ${unit.move}`;
                 document.getElementById('info-passive').innerText = unit.passive || 'Нет пассивных способностей.';
                 
                 let buffs = [];
                 if (unit.isPrepared) buffs.push("Готов к выстрелу");
-                
-                let baseInit = UNIT_TYPES[unit.id].init;
-                let auraDebuff = baseInit - unit.init;
-                if (auraDebuff > 0) buffs.push(`Аура дракона: -${auraDebuff} инстр. инициативы`);
+                if (unit.isDragonAuraAffected) buffs.push("Аура дракона (-10 инст., -40% атаки)");
+                if (unit.vampireDebuffs > 0) buffs.push(`Укус вампира (-${unit.vampireDebuffs} инст.)`);
 
                 document.getElementById('info-buffs').innerText = buffs.join(', ');
 
@@ -541,11 +549,20 @@
                 document.getElementById('info-modal').classList.remove('hidden');
             }
 
+            getActualDmg(unit) {
+                let dmg = unit.dmg;
+                if (unit.isDragonAuraAffected) {
+                    dmg = Math.floor(dmg * 0.6);
+                }
+                return Math.max(1, dmg);
+            }
+
             startBattle() {
                 if (this.units.length === 0) return alert("Поставьте юнитов!");
                 
                 this.units.forEach(u => {
                     u.actionPoints = 0;
+                    u.vampireDebuffs = u.vampireDebuffs || 0;
                 });
 
                 this.state = 'BATTLE';
@@ -555,24 +572,36 @@
                 this.nextTurn();
             }
 
-            applyDragonAuras() {
-                this.units.forEach(u => {
+            applyDragonAuras(simUnitsList = null) {
+                let targetList = simUnitsList || this.units;
+                
+                targetList.forEach(u => {
                     u.init = UNIT_TYPES[u.id].init;
+                    u.isDragonAuraAffected = false;
                 });
 
-                const dragons = this.units.filter(u => u.id === 'dragon' && u.hp > 0);
+                const dragons = targetList.filter(u => u.id === 'dragon' && u.hp > 0);
 
                 dragons.forEach(dragon => {
-                    this.units.forEach(target => {
+                    targetList.forEach(target => {
                         if (target.hp <= 0) return;
                         if (target.team === dragon.team) return;
                         if (['dragon', 'ent', 'vampire'].includes(target.id)) return;
 
                         let dist = this.getDistance(dragon, target.x, target.y, target.size);
-                        if (dist <= 1) {
-                            target.init = Math.max(0, target.init - 5);
+                        if (dist <= 2) {
+                            target.init -= 10;
+                            target.isDragonAuraAffected = true;
                         }
                     });
+                });
+
+                targetList.forEach(u => {
+                    if (u.vampireDebuffs > 0) {
+                        u.init -= u.vampireDebuffs;
+                    }
+                    // Минимальная инициатива = 1
+                    u.init = Math.max(1, u.init);
                 });
             }
 
@@ -589,6 +618,12 @@
                         this.activeUnit = readyUnits[0];
                         this.activeUnit.actionPoints -= 100;
                         
+                        // Снимаем укус вампира в начале своего хода
+                        if (this.activeUnit.vampireDebuffs > 0) {
+                            this.activeUnit.vampireDebuffs = 0;
+                            this.applyDragonAuras();
+                        }
+
                         if (this.activeUnit.id === 'wall') {
                             this.activeUnit.armor = (this.activeUnit.armor || 0) + 5;
                             this.activeUnit.maxArmor = Math.max(this.activeUnit.maxArmor || 0, this.activeUnit.armor);
@@ -614,27 +649,7 @@
                 queueEl.innerHTML = '';
                 
                 let simUnits = this.units.map(u => ({...u}));
-                
-                const dragons = simUnits.filter(u => u.id === 'dragon' && u.hp > 0);
-                simUnits.forEach(u => u.init = UNIT_TYPES[u.id].init);
-                dragons.forEach(dragon => {
-                    simUnits.forEach(target => {
-                        if (target.hp <= 0 || target.team === dragon.team) return;
-                        if (['dragon', 'ent', 'vampire'].includes(target.id)) return;
-                        let minD = Infinity;
-                        for (let dy1 = 0; dy1 < dragon.size; dy1++) {
-                            for (let dx1 = 0; dx1 < dragon.size; dx1++) {
-                                for (let dy2 = 0; dy2 < target.size; dy2++) {
-                                    for (let dx2 = 0; dx2 < target.size; dx2++) {
-                                        let d = Math.max(Math.abs((dragon.x + dx1) - (target.x + dx2)), Math.abs((dragon.y + dy1) - (target.y + dy2)));
-                                        if (d < minD) minD = d;
-                                    }
-                                }
-                            }
-                        }
-                        if (minD <= 1) target.init = Math.max(0, target.init - 5);
-                    });
-                });
+                this.applyDragonAuras(simUnits);
 
                 let forecast = [];
                 for (let i = 0; i < 15; i++) {
@@ -673,7 +688,6 @@
                     this.renderActionButtons();
                 } else {
                     document.getElementById('actions').innerHTML = '<div style="color:#aaa; font-size:12px;">Думает...</div>';
-                    // Ускорили ход ИИ в 3 раза (110мс вместо 350мс)
                     setTimeout(() => this.executeAI(), 110);
                 }
             }
@@ -798,9 +812,9 @@
                             ...tpl, x, y, team: au.team, maxHp: tpl.hp, 
                             maxArmor: tpl.id === 'ent' ? 50 : 0, 
                             armor: tpl.id === 'ent' ? 50 : 0, 
-                            actionPoints: 0, isPrepared: false, cooldowns: {}
+                            actionPoints: 0, isPrepared: false, cooldowns: {},
+                            vampireDebuffs: 0, isDragonAuraAffected: false
                         });
-                        // Перезарядка призыва боевых юнитов — 20 ходов, стены — 2 хода
                         au.cooldowns['summon_' + this.summonType] = (this.summonType === 'wall') ? 2 : 20;
                         this.endTurn();
                     }
@@ -827,10 +841,12 @@
             }
 
             calculateDamage(attacker, defender) {
-                if (defender.id === 'wall') return attacker.dmg;
-                if (attacker.id === 'ent') return attacker.dmg + " (АОЕ)";
+                let baseDmg = this.getActualDmg(attacker);
 
-                let dmg = attacker.dmg;
+                if (defender.id === 'wall') return baseDmg;
+                if (attacker.id === 'ent') return baseDmg + " (АОЕ)";
+
+                let dmg = baseDmg;
                 if (defender.id === 'necromancer') return 1;
                 if (defender.id === 'knight' && attacker.dmgType === 'Стрела') dmg = Math.floor(dmg * 0.3);
                 if (defender.id === 'ent' && attacker.dmgType === 'Физ') dmg = Math.floor(dmg * 0.2);
@@ -866,7 +882,7 @@
                     this.units.forEach(u => {
                         if ((u.team !== attacker.team || u.id === 'wall') && this.getDistance(attacker, u.x, u.y, u.size) <= 1) {
                             let dmg = this.calculateDamage(attacker, u);
-                            if (typeof dmg !== 'number') dmg = attacker.dmg;
+                            if (typeof dmg !== 'number') dmg = this.getActualDmg(attacker);
                             this.applyDamageToUnit(attacker, u, dmg);
                         }
                     });
@@ -876,6 +892,7 @@
 
                     if (attacker.id === 'vampire') {
                         attacker.hp = Math.min(attacker.maxHp, attacker.hp + dmg);
+                        defender.vampireDebuffs = (defender.vampireDebuffs || 0) + 1;
                     }
                 }
             }
@@ -911,7 +928,8 @@
                                         ...tpl, x: me.x+dx, y: me.y+dy, team: 'enemy', maxHp: tpl.hp, 
                                         maxArmor: tpl.id === 'ent' ? 50 : 0, 
                                         armor: tpl.id === 'ent' ? 50 : 0, 
-                                        actionPoints: 0, isPrepared: false, cooldowns: {}
+                                        actionPoints: 0, isPrepared: false, cooldowns: {},
+                                        vampireDebuffs: 0, isDragonAuraAffected: false
                                     });
                                     me.cooldowns['summon_' + toSummon] = (toSummon === 'wall') ? 2 : 20;
                                     return this.endTurn();
@@ -1055,11 +1073,11 @@
                         uDiv.appendChild(armorBar);
                     }
 
-                    let hasBuff = u.isPrepared || (UNIT_TYPES[u.id].init > u.init);
+                    let hasBuff = u.isPrepared || u.isDragonAuraAffected || (u.vampireDebuffs > 0);
                     if (hasBuff) {
                         const icon = document.createElement('div');
                         icon.className = 'buff-icon';
-                        icon.innerText = u.isPrepared ? '🔥' : (UNIT_TYPES[u.id].init > u.init ? '❄️' : '🛡️');
+                        icon.innerText = u.isPrepared ? '🔥' : (u.isDragonAuraAffected ? '❄️' : '🦇');
                         uDiv.appendChild(icon);
                     }
 
