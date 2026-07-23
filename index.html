@@ -176,7 +176,7 @@
             color: black;
         }
 
-        /* Красивая желтая рамка активного юнита (поддерживает 2х2) */
+        /* Желтая рамка активного юнита (поддерживает 2х2) */
         .cell.active-tl { border-top: 3px solid #ffd700; border-left: 3px solid #ffd700; z-index: 15; }
         .cell.active-tr { border-top: 3px solid #ffd700; border-right: 3px solid #ffd700; z-index: 15; }
         .cell.active-bl { border-bottom: 3px solid #ffd700; border-left: 3px solid #ffd700; z-index: 15; }
@@ -307,8 +307,8 @@
             <div id="setup-ui">
                 <div id="setup-controls">
                     <select id="setup-team">
-                        <option value="player">Синие (Нижние 3 ряда)</option>
-                        <option value="enemy">Красные (Верхние 3 ряда)</option>
+                        <option value="player">Синие (Нижние 6 рядов)</option>
+                        <option value="enemy">Красные (Верхние 6 рядов)</option>
                     </select>
                     <select id="setup-type">
                         <option value="necromancer">🧙‍♂️ Некромант</option>
@@ -322,7 +322,7 @@
                     </select>
                 </div>
                 <div style="font-size: 10px; color: #aaa; text-align: center; margin-bottom: 4px;">
-                    Синие в ряды 9-11, Красные в 0-2. Клик по юниту — удалить/инфо.
+                    Синие в ряды 6-11, Красные в 0-5. Клик по юниту — удалить/инфо.
                 </div>
                 <button id="start-battle-btn" class="success" style="width: 100%; padding: 8px;">⚔️ НАЧАТЬ БОЙ ⚔️</button>
             </div>
@@ -367,8 +367,8 @@
                     for (let x = 0; x < COLS; x++) {
                         const cell = document.createElement('div');
                         cell.className = 'cell';
-                        if (y <= 2) cell.classList.add('setup-enemy');
-                        if (y >= 9) cell.classList.add('setup-player');
+                        if (y <= 5) cell.classList.add('setup-enemy');
+                        if (y >= 6) cell.classList.add('setup-player');
                         
                         cell.addEventListener('click', () => this.handleCellClick(x, y));
                         gridEl.appendChild(cell);
@@ -432,7 +432,7 @@
                     if (targetUnit) {
                         this.showUnitInfo(targetUnit);
                     } else {
-                        let validZone = (team === 'player' && y >= 9 - (tpl.size - 1)) || (team === 'enemy' && y <= 2 + (tpl.size === 2 ? 1 : 0));
+                        let validZone = (team === 'player' && y >= 6 - (tpl.size - 1)) || (team === 'enemy' && y <= 5 + (tpl.size === 2 ? 0 : 0));
                         if (validZone && this.isCellFree(x, y, tpl.size)) {
                             this.units.push({
                                 ...tpl, x, y, team,
