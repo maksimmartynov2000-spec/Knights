@@ -341,7 +341,7 @@
             crossbow: { id: 'crossbow', name: 'Арбалетчик', hp: 20, dmg: 15, dmgType: 'Стрела', init: 18, move: 3, range: 2, icon: '🏹', size: 1, passive: 'Умеет восстанавливать здоровье союзникам (лечение).' },
             ballista: { id: 'ballista', name: 'Балиста', hp: 80, dmg: 40, dmgType: 'Физ', init: 8, move: 1, range: 4, icon: '🏗️', size: 1, passive: 'Требует подготовки перед выстрелом. Наносит х3 по Энтам и х2 по Драконам.' },
             ent: { id: 'ent', name: 'Энт', hp: 250, dmg: 70, dmgType: 'Физ', init: 6, move: 1, range: 1, icon: '🌳', size: 1, passive: 'Ближняя атака наносит урон по площади (АОЕ вокруг себя). Сопротивление физ. урону (-80%).' },
-            dragon: { id: 'dragon', name: 'Дракон', hp: 120, dmg: 40, dmgType: 'Магия', init: 10, move: 2, range: 2, icon: '🐉', size: 2, passive: 'Огромный монстр размером 2х2 клетки. Способен перемещаться сквозь других юнитов и препятствия.' },
+            dragon: { id: 'dragon', name: 'Дракон', hp: 120, dmg: 40, dmgType: 'Магия', init: 10, move: 2, range: 2, icon: '🐉', size: 2, passive: 'Размер 2х2. Перемещается сквозь союзников и врагов. Аура: враги вокруг в зоне 4х4 получают -5 инициативы (не действует на драконов, энтов и вампиров).' },
             vampire: { id: 'vampire', name: 'Вампир', hp: 40, dmg: 30, dmgType: 'Физ', init: 24, move: 5, range: 1, icon: '🦇', size: 1, passive: 'Исцеляет себя на количество нанесенного противнику урона (Лайфстил).' },
             wall: { id: 'wall', name: 'Стена', hp: 100, dmg: 0, dmgType: 'Нет', init: 0, move: 0, range: 0, icon: '🧱', size: 1, passive: 'Неподвижное препятствие с запасом здоровья.' }
         };
@@ -406,16 +406,15 @@
                 return true;
             }
 
-            // Проверка возможности перемещения с учетом коллизий пути (обычные юниты не могут проходить сквозь других)
             canReachPosition(unit, targetX, targetY) {
                 if (!this.isCellFree(targetX, targetY, unit.size, unit)) return false;
 
-                // Дракон может игнорировать коллизии пути
+                // Дракон может перемещаться сквозь других юнитов и препятствия
                 if (unit.id === 'dragon') {
                     return this.getDistance(unit, targetX, targetY, unit.size) <= unit.move;
                 }
 
-                // Поиск пути по клеткам (BFS) для проверки, что юнит не проходит сквозь чужие клетки
+                // Обычный алгоритм поиска пути ( BFS ) для остальных юнитов
                 let queue = [{x: unit.x, y: unit.y, dist: 0}];
                 let visited = new Set([`${unit.x},${unit.y}`]);
 
@@ -510,6 +509,11 @@
                 let buffs = [];
                 if (unit.isPrepared) buffs.push("Готов к выстрелу");
                 if (unit.armor > 0) buffs.push(`Броня: ${unit.armor}`);
+                
+                let baseInit = UNIT_TYPES[unit.id].init;
+                let auraDebuff = baseInit - unit.init;
+                if (auraDebuff > 0) buffs.push(`Аура дракона: -${auraDebuff} инстр. инициативы`);
+
                 document.getElementById('info-buffs').innerText = buffs.join(', ');
 
                 let cds = [];
@@ -529,8 +533,35 @@
                 this.nextTurn();
             }
 
+            // Пересчет инициативы юнитов с учетом ауры Дракона
+            applyDragonAuras() {
+                // Сбрасываем инициативу к стандартной базе перед расчетом аур
+                this.units.forEach(u => {
+                    u.init = UNIT_TYPES[u.id].init;
+                });
+
+                // Находим всех живых драконов
+                const dragons = this.units.filter(u => u.id === 'dragon' && u.hp > 0);
+
+                dragons.forEach(dragon => {
+                    this.units.forEach(target => {
+                        if (target.hp <= 0) return;
+                        if (target.team === dragon.team) return; // только враги
+                        // Не работает на других драконов, энтов и вампиров
+                        if (['dragon', 'ent', 'vampire'].includes(target.id)) return;
+
+                        // Проверяем расстояние от дракона (размером 2х2) до цели (включая зону 4х4 вокруг)
+                        let dist = this.getDistance(dragon, target.x, target.y, target.size);
+                        if (dist <= 1) {
+                            target.init = Math.max(0, target.init - 5);
+                        }
+                    });
+                });
+            }
+
             nextTurn() {
                 this.units = this.units.filter(u => u.hp > 0);
+                this.applyDragonAuras(); // Применяем ауры перед тиком ходов
                 
                 let maxLoops = 2000;
                 while (maxLoops-- > 0) {
@@ -561,8 +592,30 @@
                 queueEl.innerHTML = '';
                 
                 let simUnits = this.units.map(u => ({...u}));
-                let forecast = [];
                 
+                // Симуляция аур для очереди
+                const dragons = simUnits.filter(u => u.id === 'dragon' && u.hp > 0);
+                simUnits.forEach(u => u.init = UNIT_TYPES[u.id].init);
+                dragons.forEach(dragon => {
+                    simUnits.forEach(target => {
+                        if (target.hp <= 0 || target.team === dragon.team) return;
+                        if (['dragon', 'ent', 'vampire'].includes(target.id)) return;
+                        let minD = Infinity;
+                        for (let dy1 = 0; dy1 < dragon.size; dy1++) {
+                            for (let dx1 = 0; dx1 < dragon.size; dx1++) {
+                                for (let dy2 = 0; dy2 < target.size; dy2++) {
+                                    for (let dx2 = 0; dx2 < target.size; dx2++) {
+                                        let d = Math.max(Math.abs((dragon.x + dx1) - (target.x + dx2)), Math.abs((dragon.y + dy1) - (target.y + dy2)));
+                                        if (d < minD) minD = d;
+                                    }
+                                }
+                            }
+                        }
+                        if (minD <= 1) target.init = Math.max(0, target.init - 5);
+                    });
+                });
+
+                let forecast = [];
                 for (let i = 0; i < 15; i++) {
                     let found = false;
                     while(!found) {
@@ -946,10 +999,11 @@
                     hpBar.appendChild(hpFill);
                     uDiv.appendChild(hpBar);
 
-                    if (u.armor > 0 || u.isPrepared) {
+                    let hasBuff = u.armor > 0 || u.isPrepared || (UNIT_TYPES[u.id].init > u.init);
+                    if (hasBuff) {
                         const icon = document.createElement('div');
                         icon.className = 'buff-icon';
-                        icon.innerText = u.isPrepared ? '🔥' : '🛡️';
+                        icon.innerText = u.isPrepared ? '🔥' : (UNIT_TYPES[u.id].init > u.init ? '❄️' : '🛡️');
                         uDiv.appendChild(icon);
                     }
 
