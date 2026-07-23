@@ -6,13 +6,14 @@
     <title>Средневековье</title>
     <style>
         :root {
-            --bg-color: #1a1a1a;
-            --cell-bg: #333;
-            --cell-border: #444;
-            --highlight-active: rgba(255, 255, 0, 0.4);
+            --bg-color: #121212;
+            --cell-bg: #2a2a2a;
+            --cell-border: #333;
+            --highlight-active: rgba(255, 255, 0, 0.5);
             --highlight-move: rgba(0, 255, 0, 0.4);
-            --highlight-attack: rgba(255, 0, 0, 0.4);
-            --highlight-summon: rgba(128, 0, 128, 0.4);
+            --highlight-attack: rgba(255, 0, 0, 0.5);
+            --highlight-summon: rgba(128, 0, 128, 0.5);
+            --highlight-heal: rgba(0, 255, 255, 0.5);
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
@@ -20,7 +21,7 @@
         body {
             background-color: var(--bg-color);
             color: white;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -30,57 +31,67 @@
 
         #game-ui {
             width: 100%;
-            max-width: 430px; /* Ширина iPhone 15 Pro Max */
+            max-width: 430px;
             height: 100%;
             display: flex;
             flex-direction: column;
             padding: env(safe-area-inset-top) 5px env(safe-area-inset-bottom) 5px;
         }
 
+        /* ИСПРАВЛЕННАЯ ЛЕНТА ИНИЦИАТИВЫ */
         #turn-queue-container {
-            height: 60px;
-            background: #222;
-            margin-bottom: 10px;
+            height: 65px;
+            background: #1e1e1e;
+            margin-bottom: 8px;
             border-radius: 8px;
             display: flex;
             align-items: center;
             overflow-x: auto;
-            padding: 5px;
+            padding: 0 10px;
+            white-space: nowrap;
+            border: 1px solid #333;
+            scrollbar-width: none; /* Firefox */
+        }
+        #turn-queue-container::-webkit-scrollbar { display: none; /* Chrome/Safari */ }
+        #turn-queue {
+            display: flex;
+            gap: 8px;
         }
 
         .queue-item {
-            width: 40px;
-            height: 40px;
+            width: 45px;
+            height: 45px;
             border-radius: 50%;
-            background: #555;
-            margin-right: 5px;
+            background: #333;
             flex-shrink: 0;
             display: flex;
             justify-content: center;
             align-items: center;
-            font-size: 18px;
-            border: 2px solid transparent;
+            font-size: 22px;
+            border: 3px solid transparent;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.5);
         }
-
-        .queue-item.player { border-color: #4da6ff; }
-        .queue-item.enemy { border-color: #ff4d4d; }
+        .queue-item.player { border-color: #4da6ff; background: #003366; }
+        .queue-item.enemy { border-color: #ff4d4d; background: #660000; }
 
         #grid-container {
             flex-grow: 1;
             display: flex;
             justify-content: center;
             align-items: center;
+            position: relative;
         }
 
         #grid {
             display: grid;
             grid-template-columns: repeat(8, 1fr);
             grid-template-rows: repeat(12, 1fr);
-            gap: 2px;
+            gap: 1px;
             width: 100%;
             aspect-ratio: 8 / 12;
             background: var(--cell-border);
             border: 2px solid #555;
+            position: relative;
         }
 
         .cell {
@@ -89,131 +100,208 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            font-size: 20px;
         }
 
-        .cell.setup-zone { background-color: #2a404a; }
         .cell.highlight-active { background-color: var(--highlight-active); }
         .cell.highlight-move { background-color: var(--highlight-move); cursor: pointer; }
         .cell.highlight-attack { background-color: var(--highlight-attack); cursor: pointer; }
         .cell.highlight-summon { background-color: var(--highlight-summon); cursor: pointer; }
+        .cell.highlight-heal { background-color: var(--highlight-heal); cursor: pointer; }
 
         .unit {
-            width: 80%;
-            height: 80%;
+            position: absolute;
+            width: 85%;
+            height: 85%;
             border-radius: 50%;
             display: flex;
             justify-content: center;
             align-items: center;
-            font-weight: bold;
-            font-size: 18px;
+            font-size: 22px;
             z-index: 10;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.5);
-            position: relative;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.8);
+            transition: transform 0.2s;
+        }
+        .unit.dragon {
+            width: 190%; /* Занимает 2х2 */
+            height: 190%;
+            z-index: 11;
+            transform: translate(50%, 50%); /* Центрирование между 4 клетками */
+            border-radius: 20%;
         }
 
-        .unit.player { background: linear-gradient(135deg, #4da6ff, #0066cc); color: white; }
-        .unit.enemy { background: linear-gradient(135deg, #ff4d4d, #cc0000); color: white; }
+        .unit.player { background: linear-gradient(135deg, #1a75ff, #004080); color: white; border: 2px solid #4da6ff; }
+        .unit.enemy { background: linear-gradient(135deg, #e60000, #800000); color: white; border: 2px solid #ff4d4d; }
+        .unit.wall { background: linear-gradient(135deg, #666, #444); border-radius: 10%; border: 2px solid #888; }
 
         .hp-bar {
             position: absolute;
-            bottom: -6px;
+            bottom: -8px;
             left: 0;
             width: 100%;
-            height: 5px;
-            background: red;
-            border-radius: 2px;
+            height: 6px;
+            background: #555;
+            border-radius: 3px;
             overflow: hidden;
+            border: 1px solid black;
         }
-        .hp-fill {
-            height: 100%;
-            background: #00ff00;
+        .hp-fill { height: 100%; background: #00ff00; }
+        
+        .buff-icon {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            font-size: 12px;
+            background: #fff;
+            border-radius: 50%;
+            width: 16px; height: 16px;
+            display: flex; justify-content: center; align-items: center;
         }
 
         #action-panel {
-            height: 120px;
-            background: #222;
-            border-radius: 8px 8px 0 0;
+            min-height: 140px;
+            background: #1e1e1e;
+            border-radius: 12px 12px 0 0;
             padding: 10px;
             display: flex;
             flex-direction: column;
+            border-top: 2px solid #444;
         }
         
-        #unit-info {
-            font-size: 14px;
-            margin-bottom: 5px;
-            text-align: center;
-            font-weight: bold;
-        }
+        #unit-info-header { font-size: 15px; margin-bottom: 8px; text-align: center; font-weight: bold; color: #ffd700; }
 
         #actions {
             display: flex;
             flex-wrap: wrap;
             justify-content: center;
-            gap: 5px;
+            gap: 6px;
+            overflow-y: auto;
+            max-height: 100px;
         }
 
         button {
-            padding: 10px 15px;
-            background: #4da6ff;
-            border: none;
-            border-radius: 5px;
+            padding: 8px 12px;
+            background: #333;
+            border: 1px solid #555;
+            border-radius: 6px;
             color: white;
             font-weight: bold;
             cursor: pointer;
-            font-size: 14px;
+            font-size: 13px;
             flex-grow: 1;
+            transition: 0.1s;
         }
-        
-        button:active { background: #0066cc; }
+        button:active { background: #555; }
+        button.primary { background: #0059b3; border-color: #4da6ff; }
+        button.danger { background: #b30000; border-color: #ff4d4d; }
+        button.success { background: #008000; border-color: #00ff00; }
+        button:disabled { background: #222; color: #666; border-color: #333; cursor: not-allowed; }
 
-        #end-setup-btn {
-            background: #28a745;
-            margin-top: auto;
-            width: 100%;
-            padding: 12px;
+        /* Setup controls */
+        #setup-controls {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 10px;
         }
+        select {
+            flex: 1;
+            padding: 8px;
+            background: #333;
+            color: white;
+            border: 1px solid #555;
+            border-radius: 5px;
+        }
+
+        /* Информационное окно (Модалка) */
+        #info-modal {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(20, 20, 20, 0.95);
+            padding: 20px;
+            border-radius: 12px;
+            border: 2px solid #4da6ff;
+            z-index: 1000;
+            min-width: 250px;
+            color: white;
+            box-shadow: 0 0 20px rgba(0,0,0,0.8);
+        }
+        #info-modal h3 { margin-bottom: 10px; color: #ffd700; text-align: center; }
+        #info-modal p { margin: 5px 0; font-size: 14px; }
+        #close-info { width: 100%; margin-top: 15px; }
 
         #damage-preview {
             position: absolute;
-            top: 50%;
-            left: 50%;
+            top: 40%; left: 50%;
             transform: translate(-50%, -50%);
             background: rgba(0,0,0,0.9);
-            padding: 15px 25px;
+            padding: 15px;
             border-radius: 10px;
-            font-size: 20px;
+            font-size: 18px;
             color: #ff4d4d;
             z-index: 100;
             pointer-events: none;
             border: 2px solid #ff4d4d;
+            text-align: center;
         }
+        
         .hidden { display: none !important; }
     </style>
 </head>
 <body>
     <div id="game-ui">
-        <!-- Полоса инициативы -->
-        <div id="turn-queue-container">
-            <div id="turn-queue"></div>
-        </div>
-
-        <!-- Игровое поле -->
+        <div id="turn-queue-container"><div id="turn-queue"></div></div>
+        
         <div id="grid-container">
             <div id="grid"></div>
+            <!-- Модалка инфы -->
+            <div id="info-modal" class="hidden">
+                <h3 id="info-title">Имя</h3>
+                <p>Команда: <span id="info-team"></span></p>
+                <p>ХП: <span id="info-hp"></span></p>
+                <p>Урон: <span id="info-dmg"></span> (<span id="info-type"></span>)</p>
+                <p>Броня: <span id="info-armor"></span></p>
+                <p>Инициатива: <span id="info-init"></span></p>
+                <p>Дальность/Ход: <span id="info-range"></span> / <span id="info-move"></span></p>
+                <p id="info-buffs" style="color: #00ff00;"></p>
+                <p id="info-cds" style="color: #ff99cc;"></p>
+                <button id="close-info">Закрыть</button>
+            </div>
+            
+            <div id="damage-preview" class="hidden">
+                Урон: <span id="preview-dmg" style="font-size: 24px; font-weight: bold;">0</span><br>
+                <span style="font-size: 12px; color: #ccc;">Нажми еще раз для атаки</span>
+            </div>
         </div>
 
-        <!-- Панель управления -->
         <div id="action-panel">
-            <div id="unit-info">Выбери юнита для расстановки</div>
-            <div id="actions"></div>
-            <button id="end-setup-btn">Начать бой</button>
-        </div>
-        
-        <!-- Превью урона -->
-        <div id="damage-preview" class="hidden">
-            Урон: <span id="preview-dmg">0</span><br>
-            <span style="font-size: 12px; color: white;">Нажми еще раз для атаки</span>
+            <div id="unit-info-header">Режим расстановки</div>
+            
+            <!-- Панель расстановки -->
+            <div id="setup-ui">
+                <div id="setup-controls">
+                    <select id="setup-team">
+                        <option value="player">Синие (Игрок)</option>
+                        <option value="enemy">Красные (Враг)</option>
+                    </select>
+                    <select id="setup-type">
+                        <option value="necromancer">🧙‍♂️ Некромант</option>
+                        <option value="knight">⚔️ Рыцарь</option>
+                        <option value="crossbow">🏹 Арбалетчик</option>
+                        <option value="ballista">🏗️ Балиста</option>
+                        <option value="ent">🌳 Энт</option>
+                        <option value="dragon">🐉 Дракон (2x2)</option>
+                        <option value="vampire">🦇 Вампир</option>
+                        <option value="wall">🧱 Стена</option>
+                    </select>
+                </div>
+                <div style="font-size: 12px; color: #aaa; text-align: center; margin-bottom: 5px;">
+                    Клик по пустой клетке — поставить.<br>Клик по юниту — удалить.
+                </div>
+                <button id="start-battle-btn" class="success" style="width: 100%; padding: 12px;">⚔️ НАЧАТЬ БОЙ ⚔️</button>
+            </div>
+
+            <!-- Боевая панель -->
+            <div id="actions" class="hidden"></div>
         </div>
     </div>
 
@@ -222,98 +310,189 @@
         const ROWS = 12;
 
         const UNIT_TYPES = {
-            necromancer: { id: 'necromancer', name: 'Некромант', hp: 10, dmg: 5, dmgType: 'magic', init: 10, move: 1, range: 2, icon: '🧙‍♂️' },
-            knight: { id: 'knight', name: 'Рыцарь', hp: 50, dmg: 10, dmgType: 'phys', init: 12, move: 2, range: 1, icon: '⚔️' },
-            crossbow: { id: 'crossbow', name: 'Арбалетчик', hp: 20, dmg: 15, dmgType: 'arrow', init: 18, move: 3, range: 2, icon: '🏹' },
-            ballista: { id: 'ballista', name: 'Балиста', hp: 80, dmg: 40, dmgType: 'phys', init: 8, move: 1, range: 4, icon: '🏗️' },
-            ent: { id: 'ent', name: 'Энт', hp: 250, dmg: 70, dmgType: 'phys', init: 6, move: 1, range: 1, icon: '🌳' },
-            dragon: { id: 'dragon', name: 'Дракон', hp: 120, dmg: 40, dmgType: 'magic', init: 10, move: 2, range: 2, icon: '🐉' },
-            vampire: { id: 'vampire', name: 'Вампир', hp: 40, dmg: 30, dmgType: 'phys', init: 24, move: 5, range: 1, icon: '🦇' },
-            wall: { id: 'wall', name: 'Стена', hp: 100, dmg: 0, dmgType: 'none', init: 0, move: 0, range: 0, icon: '🧱' }
+            necromancer: { id: 'necromancer', name: 'Некромант', hp: 10, dmg: 5, dmgType: 'Магия', init: 10, move: 1, range: 2, icon: '🧙‍♂️', size: 1 },
+            knight: { id: 'knight', name: 'Рыцарь', hp: 50, dmg: 10, dmgType: 'Физ', init: 12, move: 2, range: 1, icon: '⚔️', size: 1 },
+            crossbow: { id: 'crossbow', name: 'Арбалетчик', hp: 20, dmg: 15, dmgType: 'Стрела', init: 18, move: 3, range: 2, icon: '🏹', size: 1 },
+            ballista: { id: 'ballista', name: 'Балиста', hp: 80, dmg: 40, dmgType: 'Физ', init: 8, move: 1, range: 4, icon: '🏗️', size: 1 },
+            ent: { id: 'ent', name: 'Энт', hp: 250, dmg: 70, dmgType: 'Физ', init: 6, move: 1, range: 1, icon: '🌳', size: 1 },
+            dragon: { id: 'dragon', name: 'Дракон', hp: 120, dmg: 40, dmgType: 'Магия', init: 10, move: 2, range: 2, icon: '🐉', size: 2 },
+            vampire: { id: 'vampire', name: 'Вампир', hp: 40, dmg: 30, dmgType: 'Физ', init: 24, move: 5, range: 1, icon: '🦇', size: 1 },
+            wall: { id: 'wall', name: 'Стена', hp: 100, dmg: 0, dmgType: 'Нет', init: 0, move: 0, range: 0, icon: '🧱', size: 1 }
         };
 
         class GameEngine {
             constructor() {
-                this.grid = [];
                 this.units = [];
-                this.state = 'SETUP';
+                this.state = 'SETUP'; // SETUP, BATTLE
                 this.activeUnit = null;
-                this.selectedAction = null;
-                this.actionTarget = null;
-                this.setupPlayerUnits = ['necromancer', 'knight', 'crossbow', 'ent', 'vampire'];
+                this.selectedAction = null; 
+                this.actionTarget = null; 
+                this.summonType = null;
+                this.actionParams = {}; // Для хранения доп. данных действия
+                
                 this.initDOM();
             }
 
             initDOM() {
                 const gridEl = document.getElementById('grid');
+                this.cells = [];
+                
                 for (let y = 0; y < ROWS; y++) {
-                    this.grid[y] = [];
+                    this.cells[y] = [];
                     for (let x = 0; x < COLS; x++) {
                         const cell = document.createElement('div');
                         cell.className = 'cell';
-                        cell.dataset.x = x;
-                        cell.dataset.y = y;
-                        
-                        if (y >= ROWS - 3) cell.classList.add('setup-zone');
-                        
                         cell.addEventListener('click', () => this.handleCellClick(x, y));
                         gridEl.appendChild(cell);
-                        this.grid[y][x] = { element: cell, unit: null };
+                        this.cells[y][x] = cell;
                     }
                 }
 
-                document.getElementById('end-setup-btn').addEventListener('click', () => {
-                    if(this.state === 'SETUP') this.startBattle();
+                document.getElementById('start-battle-btn').addEventListener('click', () => this.startBattle());
+                document.getElementById('close-info').addEventListener('click', () => {
+                    document.getElementById('info-modal').classList.add('hidden');
                 });
             }
 
-            spawnUnit(typeId, x, y, team) {
-                const template = UNIT_TYPES[typeId];
-                const unit = {
-                    ...template,
-                    x, y, team,
-                    maxHp: template.hp,
-                    actionPoints: 0,
-                    armor: 0
-                };
-                
-                this.units.push(unit);
-                this.grid[y][x].unit = unit;
-                this.renderGrid();
+            // --- БАЗОВЫЕ УТИЛИТЫ ---
+            
+            getUnitAt(x, y) {
+                return this.units.find(u => {
+                    if (u.size === 1) return u.x === x && u.y === y && u.hp > 0;
+                    if (u.size === 2) return (x === u.x || x === u.x + 1) && (y === u.y || y === u.y + 1) && u.hp > 0;
+                });
             }
+
+            isCellFree(x, y, size = 1) {
+                if (x < 0 || y < 0 || x + size - 1 >= COLS || y + size - 1 >= ROWS) return false;
+                for (let dy = 0; dy < size; dy++) {
+                    for (let dx = 0; dx < size; dx++) {
+                        if (this.getUnitAt(x + dx, y + dy)) return false;
+                    }
+                }
+                return true;
+            }
+
+            getDistance(u1, x2, y2, size2 = 1) {
+                // Ищем минимальное расстояние между любыми занимаемыми клетками двух сущностей
+                let minD = Infinity;
+                for (let dy1 = 0; dy1 < u1.size; dy1++) {
+                    for (let dx1 = 0; dx1 < u1.size; dx1++) {
+                        for (let dy2 = 0; dy2 < size2; dy2++) {
+                            for (let dx2 = 0; dx2 < size2; dx2++) {
+                                let d = Math.max(Math.abs((u1.x + dx1) - (x2 + dx2)), Math.abs((u1.y + dy1) - (y2 + dy2)));
+                                if (d < minD) minD = d;
+                            }
+                        }
+                    }
+                }
+                return minD;
+            }
+
+            // --- РАССТАНОВКА ---
 
             handleCellClick(x, y) {
                 if (this.state === 'SETUP') {
-                    if (y >= ROWS - 3 && !this.grid[y][x].unit && this.setupPlayerUnits.length > 0) {
-                        const typeToSpawn = this.setupPlayerUnits.shift();
-                        this.spawnUnit(typeToSpawn, x, y, 'player');
-                        document.getElementById('unit-info').innerText = 
-                            this.setupPlayerUnits.length > 0 ? `Осталось расставить: ${this.setupPlayerUnits.length}` : 'Расстановка завершена. Нажмите "Начать бой"';
+                    const existingUnit = this.getUnitAt(x, y);
+                    if (existingUnit) {
+                        // Удаляем юнита
+                        this.units = this.units.filter(u => u !== existingUnit);
+                    } else {
+                        // Ставим юнита
+                        const team = document.getElementById('setup-team').value;
+                        const type = document.getElementById('setup-type').value;
+                        const tpl = UNIT_TYPES[type];
+                        if (this.isCellFree(x, y, tpl.size)) {
+                            this.units.push({
+                                ...tpl, x, y, team,
+                                maxHp: tpl.hp,
+                                actionPoints: 0,
+                                armor: 0,
+                                isPrepared: false,
+                                cooldowns: {}
+                            });
+                        }
                     }
-                } else if (this.state === 'BATTLE' && this.activeUnit && this.activeUnit.team === 'player') {
-                    this.processBattleClick(x, y);
+                    this.renderGrid();
+                } 
+                else if (this.state === 'BATTLE') {
+                    // Если не выбрано действие, клик по юниту открывает инфу
+                    const targetUnit = this.getUnitAt(x, y);
+                    
+                    if (this.selectedAction === null) {
+                        if (targetUnit) this.showUnitInfo(targetUnit);
+                        return;
+                    }
+
+                    // Если ходит не игрок - блокируем клики
+                    if (this.activeUnit.team !== 'player') return;
+
+                    this.processActionClick(x, y, targetUnit);
                 }
             }
 
-            startBattle() {
-                this.state = 'BATTLE';
-                document.getElementById('end-setup-btn').style.display = 'none';
+            // --- ИНФО ПАНЕЛЬ ---
+            showUnitInfo(unit) {
+                document.getElementById('info-title').innerText = `${unit.name} ${unit.icon}`;
+                document.getElementById('info-team').innerText = unit.team === 'player' ? 'Игрок' : 'Противник';
+                document.getElementById('info-team').style.color = unit.team === 'player' ? '#4da6ff' : '#ff4d4d';
+                document.getElementById('info-hp').innerText = `${unit.hp} / ${unit.maxHp}`;
+                document.getElementById('info-dmg').innerText = unit.dmg;
+                document.getElementById('info-type').innerText = unit.dmgType;
+                document.getElementById('info-armor').innerText = unit.armor;
+                document.getElementById('info-init').innerText = unit.init;
+                document.getElementById('info-range').innerText = `${unit.range} / ${unit.move}`;
                 
-                // Вражеский ИИ
-                this.spawnUnit('necromancer', 4, 0, 'enemy');
-                this.spawnUnit('knight', 3, 1, 'enemy');
-                this.spawnUnit('crossbow', 5, 1, 'enemy');
-                this.spawnUnit('wall', 3, 2, 'enemy');
-                this.spawnUnit('wall', 4, 2, 'enemy');
+                let buffs = [];
+                if (unit.isPrepared) buffs.push("Подготовлен к выстрелу");
+                if (unit.armor > 0) buffs.push(`Броня: ${unit.armor}`);
+                document.getElementById('info-buffs').innerText = buffs.join(', ');
 
+                let cds = [];
+                for (let k in unit.cooldowns) {
+                    if (unit.cooldowns[k] > 0) cds.push(`${k}: ${unit.cooldowns[k]} ход.`);
+                }
+                document.getElementById('info-cds').innerText = cds.length > 0 ? "КД: " + cds.join(', ') : "";
+
+                document.getElementById('info-modal').classList.remove('hidden');
+            }
+
+            // --- БОЕВОЙ ЦИКЛ ---
+
+            startBattle() {
+                if (this.units.length === 0) return alert("Поставьте хотя бы одного юнита!");
+                this.state = 'BATTLE';
+                document.getElementById('setup-ui').classList.add('hidden');
+                document.getElementById('actions').classList.remove('hidden');
                 this.clearHighlights();
                 this.nextTurn();
+            }
+
+            applyDragonAura(unitList) {
+                // Временный расчет инициативы с учетом ауры дракона
+                let auraMap = new Map();
+                unitList.forEach(u => auraMap.set(u, u.init));
+
+                const dragons = unitList.filter(u => u.id === 'dragon' && u.hp > 0);
+                
+                unitList.forEach(u => {
+                    if (u.hp <= 0 || u.init === 0 || ['dragon', 'ent', 'vampire'].includes(u.id)) return;
+                    
+                    for (let d of dragons) {
+                        if (u.team !== d.team && this.getDistance(d, u.x, u.y, u.size) <= 1) {
+                            let current = auraMap.get(u);
+                            auraMap.set(u, Math.max(1, current - 5)); // Инициатива не падает ниже 1 (чтобы не зависло)
+                            break; // Хватит одной ауры
+                        }
+                    }
+                });
+                return auraMap;
             }
 
             nextTurn() {
                 this.units = this.units.filter(u => u.hp > 0);
                 
-                let maxLoops = 1000;
+                let maxLoops = 2000;
                 while (maxLoops-- > 0) {
                     let readyUnits = this.units.filter(u => u.actionPoints >= 100 && u.init > 0);
                     
@@ -322,31 +501,20 @@
                         this.activeUnit = readyUnits[0];
                         this.activeUnit.actionPoints -= 100;
                         
+                        // Кулдауны
+                        for (let k in this.activeUnit.cooldowns) {
+                            if (this.activeUnit.cooldowns[k] > 0) this.activeUnit.cooldowns[k]--;
+                        }
+                        
                         this.startUnitTurn();
                         this.updateTurnQueueUI();
                         return;
                     }
 
+                    let effectiveInit = this.applyDragonAura(this.units);
                     this.units.forEach(u => {
-                        if (u.init > 0) u.actionPoints += u.init;
+                        if (u.init > 0) u.actionPoints += effectiveInit.get(u);
                     });
-                }
-            }
-
-            startUnitTurn() {
-                this.selectedAction = null;
-                this.actionTarget = null;
-                this.renderGrid();
-                
-                document.getElementById('unit-info').innerText = `Ходит: ${this.activeUnit.name} (${this.activeUnit.team === 'player' ? 'Игрок' : 'Противник'})`;
-                
-                if (this.activeUnit.team === 'player') {
-                    this.showActions();
-                    this.selectedAction = 'move';
-                    this.highlightMoveZone();
-                } else {
-                    document.getElementById('actions').innerHTML = '<i>Думает...</i>';
-                    setTimeout(() => this.executeAI(), 800);
                 }
             }
 
@@ -354,10 +522,11 @@
                 const queueEl = document.getElementById('turn-queue');
                 queueEl.innerHTML = '';
                 
+                // Простая симуляция (без ауры для скорости)
                 let simUnits = this.units.map(u => ({...u}));
                 let forecast = [];
                 
-                for (let i = 0; i < 12; i++) {
+                for (let i = 0; i < 15; i++) {
                     let found = false;
                     while(!found) {
                         let ready = simUnits.filter(u => u.actionPoints >= 100 && u.init > 0);
@@ -381,50 +550,172 @@
                 });
             }
 
-            processBattleClick(x, y) {
-                const targetCell = this.grid[y][x];
-                const dist = Math.max(Math.abs(this.activeUnit.x - x), Math.abs(this.activeUnit.y - y));
+            startUnitTurn() {
+                this.selectedAction = null;
+                this.actionTarget = null;
+                this.renderGrid();
+                
+                document.getElementById('unit-info-header').innerText = `Ходит: ${this.activeUnit.name} (${this.activeUnit.team === 'player' ? 'Игрок' : 'Враг'})`;
+                
+                if (this.activeUnit.team === 'player') {
+                    this.renderActionButtons();
+                } else {
+                    document.getElementById('actions').innerHTML = '<div style="color:#aaa;">Думает...</div>';
+                    setTimeout(() => this.executeAI(), 800);
+                }
+            }
 
-                if (this.selectedAction === 'attack') {
-                    if (dist <= this.activeUnit.range && targetCell.unit && targetCell.unit.team !== this.activeUnit.team) {
-                        if (this.actionTarget && this.actionTarget.x === x && this.actionTarget.y === y) {
-                            this.executeAttack(this.activeUnit, targetCell.unit);
-                            document.getElementById('damage-preview').classList.add('hidden');
-                            this.endTurn();
-                        } else {
-                            this.actionTarget = {x, y};
-                            const dmg = this.calculateDamage(this.activeUnit, targetCell.unit);
-                            document.getElementById('preview-dmg').innerText = dmg;
-                            document.getElementById('damage-preview').classList.remove('hidden');
-                        }
-                    } else {
-                        // Клик мимо цели сбрасывает фокус
-                        this.actionTarget = null;
-                        document.getElementById('damage-preview').classList.add('hidden');
+            // --- КНОПКИ И СПОСОБНОСТИ ---
+
+            renderActionButtons() {
+                const panel = document.getElementById('actions');
+                panel.innerHTML = '';
+                const u = this.activeUnit;
+
+                // Движение
+                this.createBtn(panel, 'Движение', 'primary', () => { 
+                    this.selectedAction = 'move'; this.resetTarget(); this.highlightMove(); 
+                });
+
+                // Атака
+                let canAttack = true;
+                if (u.id === 'ballista' && !u.isPrepared) canAttack = false;
+                
+                let atkBtn = this.createBtn(panel, 'Атака', 'danger', () => { 
+                    this.selectedAction = 'attack'; this.resetTarget(); this.highlightAttack(); 
+                });
+                if (!canAttack) atkBtn.disabled = true;
+
+                // Уникальные навыки
+                if (u.id === 'necromancer') {
+                    let cd = u.cooldowns['Summon'] || 0;
+                    ['knight','crossbow','ballista','ent','dragon','vampire'].forEach(type => {
+                        let btn = this.createBtn(panel, `Призыв ${UNIT_TYPES[type].icon}`, 'success', () => {
+                            this.selectedAction = 'summon';
+                            this.summonType = type;
+                            this.resetTarget();
+                            this.highlightSummon();
+                        });
+                        if (cd > 0) { btn.disabled = true; btn.innerText += ` (${cd})`; }
+                    });
+                }
+                
+                if (u.id === 'knight') {
+                    let cd = u.cooldowns['Armor'] || 0;
+                    let btn = this.createBtn(panel, 'Щит (+10 Брони)', 'success', () => {
+                        u.armor += 10;
+                        u.cooldowns['Armor'] = 2;
+                        this.endTurn();
+                    });
+                    if (cd > 0) { btn.disabled = true; btn.innerText += ` (${cd})`; }
+                }
+
+                if (u.id === 'crossbow') {
+                    let btn = this.createBtn(panel, 'Лечение', 'success', () => {
+                        this.selectedAction = 'heal'; this.resetTarget(); this.highlightHeal();
+                    });
+                }
+
+                if (u.id === 'ballista') {
+                    let btn = this.createBtn(panel, 'Подготовка', 'success', () => {
+                        u.isPrepared = true;
+                        this.endTurn();
+                    });
+                    if (u.isPrepared) btn.disabled = true;
+                }
+
+                if (u.id === 'ent') {
+                    let cd = u.cooldowns['Petrify'] || 0;
+                    let btn = this.createBtn(panel, 'Окаменение (+20)', 'success', () => {
+                        u.armor += 20;
+                        u.cooldowns['Petrify'] = 3;
+                        this.endTurn();
+                    });
+                    if (cd > 0) { btn.disabled = true; btn.innerText += ` (${cd})`; }
+                }
+            }
+
+            createBtn(parent, text, className, onClick) {
+                const btn = document.createElement('button');
+                btn.className = className;
+                btn.innerText = text;
+                btn.onclick = onClick;
+                parent.appendChild(btn);
+                return btn;
+            }
+
+            resetTarget() {
+                this.actionTarget = null;
+                document.getElementById('damage-preview').classList.add('hidden');
+            }
+
+            // --- ОБРАБОТКА ДЕЙСТВИЙ (КЛИКИ ПО КАРТЕ) ---
+
+            processActionClick(x, y, targetUnit) {
+                const au = this.activeUnit;
+                const dist = this.getDistance(au, x, y, targetUnit ? targetUnit.size : 1);
+
+                if (this.selectedAction === 'move') {
+                    // Дракон может летать через юнитов, остальные - нет.
+                    // Для простоты, пока проверяем только конечную клетку (как телепорт в пределах move)
+                    // (Полноценный A* поиск пути занял бы слишком много места)
+                    if (dist <= au.move && this.isCellFree(x, y, au.size)) {
+                        au.x = x; au.y = y;
+                        this.endTurn();
                     }
-                } else if (this.selectedAction === 'move') {
-                    if (!targetCell.unit && dist <= this.activeUnit.move) {
-                        this.grid[this.activeUnit.y][this.activeUnit.x].unit = null;
-                        this.activeUnit.x = x;
-                        this.activeUnit.y = y;
-                        this.grid[y][x].unit = this.activeUnit;
+                } 
+                else if (this.selectedAction === 'attack') {
+                    if (dist <= au.range && targetUnit && targetUnit.team !== au.team && targetUnit.id !== 'wall' /* Стены атакуем, но тут у нас стена не имеет тимы, сделаем ей команду null или враг */) {
+                        // Разрешаем бить стены и врагов
+                        this.handleCombatLogic(targetUnit, x, y);
+                    } else if (targetUnit && targetUnit.id === 'wall') {
+                        this.handleCombatLogic(targetUnit, x, y);
+                    } else {
+                        this.resetTarget();
+                    }
+                }
+                else if (this.selectedAction === 'summon') {
+                    if (dist <= au.range && this.isCellFree(x, y, UNIT_TYPES[this.summonType].size)) {
+                        const tpl = UNIT_TYPES[this.summonType];
+                        this.units.push({
+                            ...tpl, x, y, team: au.team, maxHp: tpl.hp, actionPoints: 0, armor: 0, isPrepared: false, cooldowns: {}
+                        });
+                        au.cooldowns['Summon'] = 5;
+                        this.endTurn();
+                    }
+                }
+                else if (this.selectedAction === 'heal') {
+                    if (targetUnit && targetUnit.team === au.team && dist <= au.range && targetUnit.id !== 'wall') {
+                        targetUnit.hp = Math.min(targetUnit.maxHp, targetUnit.hp + 20);
                         this.endTurn();
                     }
                 }
             }
 
+            handleCombatLogic(defender, clickX, clickY) {
+                if (this.actionTarget && this.actionTarget.x === clickX && this.actionTarget.y === clickY) {
+                    // Второе нажатие
+                    this.executeAttack(this.activeUnit, defender);
+                    this.resetTarget();
+                    this.endTurn();
+                } else {
+                    // Первое нажатие
+                    this.actionTarget = {x: clickX, y: clickY};
+                    let dmgInfo = this.calculateDamage(this.activeUnit, defender);
+                    document.getElementById('preview-dmg').innerText = dmgInfo;
+                    document.getElementById('damage-preview').classList.remove('hidden');
+                }
+            }
+
             calculateDamage(attacker, defender) {
+                if (attacker.id === 'ent') return attacker.dmg + " (АОЕ)"; // У энта АОЕ
+
                 let dmg = attacker.dmg;
                 
                 if (defender.id === 'necromancer') return 1;
 
-                if (defender.id === 'knight' && attacker.dmgType === 'arrow') {
-                    dmg = Math.floor(dmg * 0.1);
-                }
-
-                if (defender.id === 'ent' && attacker.dmgType === 'phys') {
-                    dmg = Math.floor(dmg * 0.2);
-                }
+                if (defender.id === 'knight' && attacker.dmgType === 'Стрела') dmg = Math.floor(dmg * 0.1);
+                if (defender.id === 'ent' && attacker.dmgType === 'Физ') dmg = Math.floor(dmg * 0.2);
 
                 if (attacker.id === 'ballista') {
                     if (defender.id === 'ent') dmg *= 3;
@@ -435,137 +726,198 @@
                     let block = Math.min(defender.armor, dmg);
                     dmg -= block;
                 }
-
                 return Math.max(1, dmg);
             }
 
             executeAttack(attacker, defender) {
-                const dmg = this.calculateDamage(attacker, defender);
-                defender.hp -= dmg;
-                
-                if (attacker.id === 'vampire') {
-                    attacker.hp = Math.min(attacker.maxHp, attacker.hp + dmg);
-                }
+                if (attacker.id === 'ballista') attacker.isPrepared = false;
 
-                if (defender.hp <= 0) {
-                    this.grid[defender.y][defender.x].unit = null;
+                if (attacker.id === 'ent') {
+                    // АОЕ атака вокруг Энта (радиус 1)
+                    this.units.forEach(u => {
+                        if (u.team !== attacker.team && this.getDistance(attacker, u.x, u.y, u.size) <= 1) {
+                            let dmg = this.calculateDamage(attacker, u);
+                            if (typeof dmg !== 'number') dmg = attacker.dmg; // Fallback
+                            u.hp -= dmg;
+                        }
+                    });
+                } else {
+                    // Обычная атака
+                    let dmg = this.calculateDamage(attacker, defender);
+                    defender.hp -= dmg;
+
+                    if (attacker.id === 'vampire') {
+                        attacker.hp = Math.min(attacker.maxHp, attacker.hp + dmg);
+                    }
                 }
             }
 
             endTurn() {
                 this.clearHighlights();
-                document.getElementById('damage-preview').classList.add('hidden');
+                this.resetTarget();
                 document.getElementById('actions').innerHTML = '';
                 this.renderGrid();
                 this.nextTurn();
             }
 
+            // --- ИИ ---
             executeAI() {
                 const me = this.activeUnit;
                 const enemies = this.units.filter(u => u.team === 'player' && u.hp > 0);
-                if (enemies.length === 0) return;
+                if (enemies.length === 0) return this.endTurn();
 
-                let target = enemies.find(e => Math.max(Math.abs(me.x - e.x), Math.abs(me.y - e.y)) <= me.range);
-                
-                if (target) {
-                    this.executeAttack(me, target);
-                } else {
-                    let moveY = me.y < ROWS/2 ? me.y + me.move : me.y - me.move;
-                    if (moveY >= 0 && moveY < ROWS && !this.grid[moveY][me.x].unit) {
-                        this.grid[me.y][me.x].unit = null;
-                        me.y = moveY;
-                        this.grid[me.y][me.x].unit = me;
+                // 1. Баллиста: если не готова - готовиться
+                if (me.id === 'ballista' && !me.isPrepared) {
+                    me.isPrepared = true;
+                    return this.endTurn();
+                }
+
+                // 2. Некромант: призыв если есть место и КД 0
+                if (me.id === 'necromancer' && (!me.cooldowns['Summon'] || me.cooldowns['Summon'] <= 0)) {
+                    const toSummon = ['knight','crossbow','dragon'][Math.floor(Math.random()*3)];
+                    // Ищем клетку
+                    for(let dy=-2; dy<=2; dy++) {
+                        for(let dx=-2; dx<=2; dx++) {
+                            if(this.isCellFree(me.x+dx, me.y+dy, UNIT_TYPES[toSummon].size)) {
+                                const tpl = UNIT_TYPES[toSummon];
+                                this.units.push({...tpl, x: me.x+dx, y: me.y+dy, team: 'enemy', maxHp: tpl.hp, actionPoints: 0, armor: 0, isPrepared: false, cooldowns: {}});
+                                me.cooldowns['Summon'] = 5;
+                                return this.endTurn();
+                            }
+                        }
                     }
                 }
+
+                // 3. Атака
+                let targetsInRange = enemies.filter(e => this.getDistance(me, e.x, e.y, e.size) <= me.range);
+                if (targetsInRange.length > 0) {
+                    // Бьем самого слабого
+                    targetsInRange.sort((a,b) => a.hp - b.hp);
+                    this.executeAttack(me, targetsInRange[0]);
+                    return this.endTurn();
+                }
+
+                // 4. Движение к ближайшему врагу (очень простой алгоритм, без обхода препятствий)
+                let closest = enemies.sort((a,b) => this.getDistance(me, a.x, a.y, a.size) - this.getDistance(me, b.x, b.y, b.size))[0];
+                if (closest) {
+                    let bestDist = Infinity;
+                    let bestPos = null;
+                    for (let dy = -me.move; dy <= me.move; dy++) {
+                        for (let dx = -me.move; dx <= me.move; dx++) {
+                            let nx = me.x + dx, ny = me.y + dy;
+                            if (this.getDistance(me, nx, ny, me.size) <= me.move && this.isCellFree(nx, ny, me.size)) {
+                                let dToEnemy = this.getDistance(closest, nx, ny, me.size);
+                                if (dToEnemy < bestDist) {
+                                    bestDist = dToEnemy;
+                                    bestPos = {x: nx, y: ny};
+                                }
+                            }
+                        }
+                    }
+                    if (bestPos) {
+                        me.x = bestPos.x; me.y = bestPos.y;
+                    }
+                }
+                
                 this.endTurn();
             }
 
-            showActions() {
-                const panel = document.getElementById('actions');
-                panel.innerHTML = '';
+            // --- ОТРИСОВКА И ПОДСВЕТКА ---
 
-                const btnMove = document.createElement('button');
-                btnMove.innerText = 'Движение';
-                btnMove.onclick = () => { 
-                    this.selectedAction = 'move'; 
-                    this.actionTarget = null;
-                    document.getElementById('damage-preview').classList.add('hidden');
-                    this.highlightMoveZone(); 
-                };
-                panel.appendChild(btnMove);
-
-                const btnAttack = document.createElement('button');
-                btnAttack.innerText = 'Атака';
-                btnAttack.onclick = () => { 
-                    this.selectedAction = 'attack'; 
-                    this.actionTarget = null;
-                    this.highlightAttackZone(); 
-                };
-                panel.appendChild(btnAttack);
-            }
-
-            highlightMoveZone() {
-                this.clearHighlights();
-                const {x, y, move} = this.activeUnit;
-                for (let dy = -move; dy <= move; dy++) {
-                    for (let dx = -move; dx <= move; dx++) {
-                        const nx = x + dx, ny = y + dy;
-                        if (nx >= 0 && nx < COLS && ny >= 0 && ny < ROWS) {
-                            if (!this.grid[ny][nx].unit) {
-                                this.grid[ny][nx].element.classList.add('highlight-move');
-                            }
+            highlightMove() {
+                const au = this.activeUnit;
+                for (let y = 0; y < ROWS; y++) {
+                    for (let x = 0; x < COLS; x++) {
+                        if (this.getDistance(au, x, y, au.size) <= au.move && this.isCellFree(x, y, au.size)) {
+                            this.cells[y][x].classList.add('highlight-move');
                         }
                     }
                 }
-                this.grid[y][x].element.classList.add('highlight-active');
             }
 
-            highlightAttackZone() {
-                this.clearHighlights();
-                const {x, y, range} = this.activeUnit;
-                for (let dy = -range; dy <= range; dy++) {
-                    for (let dx = -range; dx <= range; dx++) {
-                        const nx = x + dx, ny = y + dy;
-                        if (nx >= 0 && nx < COLS && ny >= 0 && ny < ROWS) {
-                            if (this.grid[ny][nx].unit && this.grid[ny][nx].unit.team !== this.activeUnit.team) {
-                                this.grid[ny][nx].element.classList.add('highlight-attack');
-                            }
+            highlightAttack() {
+                const au = this.activeUnit;
+                for (let y = 0; y < ROWS; y++) {
+                    for (let x = 0; x < COLS; x++) {
+                        if (this.getDistance(au, x, y, 1) <= au.range) {
+                            this.cells[y][x].classList.add('highlight-attack');
                         }
                     }
                 }
-                this.grid[y][x].element.classList.add('highlight-active');
+            }
+
+            highlightSummon() {
+                const au = this.activeUnit;
+                for (let y = 0; y < ROWS; y++) {
+                    for (let x = 0; x < COLS; x++) {
+                        if (this.getDistance(au, x, y, 1) <= au.range && this.isCellFree(x, y, UNIT_TYPES[this.summonType].size)) {
+                            this.cells[y][x].classList.add('highlight-summon');
+                        }
+                    }
+                }
+            }
+
+            highlightHeal() {
+                const au = this.activeUnit;
+                for (let y = 0; y < ROWS; y++) {
+                    for (let x = 0; x < COLS; x++) {
+                        if (this.getDistance(au, x, y, 1) <= au.range) {
+                            this.cells[y][x].classList.add('highlight-heal');
+                        }
+                    }
+                }
             }
 
             clearHighlights() {
-                document.querySelectorAll('.cell').forEach(c => {
-                    c.classList.remove('highlight-move', 'highlight-attack', 'highlight-summon', 'highlight-active');
-                });
+                for (let y = 0; y < ROWS; y++) {
+                    for (let x = 0; x < COLS; x++) {
+                        this.cells[y][x].className = 'cell';
+                    }
+                }
+                if (this.state === 'BATTLE' && this.activeUnit) {
+                    // Подсвечиваем активного юнита (его главную клетку)
+                    this.cells[this.activeUnit.y][this.activeUnit.x].classList.add('highlight-active');
+                }
             }
 
             renderGrid() {
+                // Очистка клеток
                 for (let y = 0; y < ROWS; y++) {
                     for (let x = 0; x < COLS; x++) {
-                        const cellObj = this.grid[y][x];
-                        cellObj.element.innerHTML = '';
-                        
-                        if (cellObj.unit) {
-                            const u = cellObj.unit;
-                            const uDiv = document.createElement('div');
-                            uDiv.className = `unit ${u.team}`;
-                            uDiv.innerText = u.icon;
-                            
-                            const hpBar = document.createElement('div');
-                            hpBar.className = 'hp-bar';
-                            const hpFill = document.createElement('div');
-                            hpFill.className = 'hp-fill';
-                            hpFill.style.width = `${(u.hp / u.maxHp) * 100}%`;
-                            hpBar.appendChild(hpFill);
-                            
-                            uDiv.appendChild(hpBar);
-                            cellObj.element.appendChild(uDiv);
-                        }
+                        this.cells[y][x].innerHTML = '';
                     }
                 }
+                
+                // Отрисовка
+                this.units.forEach(u => {
+                    if (u.hp <= 0) return;
+                    
+                    const uDiv = document.createElement('div');
+                    uDiv.className = `unit ${u.team} ${u.id}`;
+                    uDiv.innerText = u.icon;
+                    
+                    // ХП Бар
+                    const hpBar = document.createElement('div');
+                    hpBar.className = 'hp-bar';
+                    const hpFill = document.createElement('div');
+                    hpFill.className = 'hp-fill';
+                    hpFill.style.width = `${Math.max(0, (u.hp / u.maxHp) * 100)}%`;
+                    hpBar.appendChild(hpFill);
+                    uDiv.appendChild(hpBar);
+
+                    // Значок брони/статуса
+                    if (u.armor > 0 || u.isPrepared) {
+                        const icon = document.createElement('div');
+                        icon.className = 'buff-icon';
+                        icon.innerText = u.isPrepared ? '🔥' : '🛡️';
+                        uDiv.appendChild(icon);
+                    }
+
+                    // Помещаем в верхнюю левую клетку (даже для дракона)
+                    if (this.cells[u.y] && this.cells[u.y][u.x]) {
+                        this.cells[u.y][u.x].appendChild(uDiv);
+                    }
+                });
             }
         }
 
