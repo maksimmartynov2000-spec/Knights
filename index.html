@@ -341,7 +341,7 @@
             crossbow: { id: 'crossbow', name: 'Арбалетчик', hp: 20, dmg: 15, dmgType: 'Стрела', init: 18, move: 3, range: 2, icon: '🏹', size: 1, passive: 'Умеет восстанавливать здоровье союзникам (лечение).' },
             ballista: { id: 'ballista', name: 'Балиста', hp: 80, dmg: 40, dmgType: 'Физ', init: 8, move: 1, range: 4, icon: '🏗️', size: 1, passive: 'Требует подготовки перед выстрелом. Наносит х3 по Энтам и х2 по Драконам.' },
             ent: { id: 'ent', name: 'Энт', hp: 250, dmg: 70, dmgType: 'Физ', init: 6, move: 1, range: 1, icon: '🌳', size: 1, passive: 'Ближняя атака наносит урон по площади (АОЕ вокруг себя). Сопротивление физ. урону (-80%).' },
-            dragon: { id: 'dragon', name: 'Дракон', hp: 120, dmg: 40, dmgType: 'Магия', init: 10, move: 2, range: 2, icon: '🐉', size: 2, passive: 'Огромный монстр размером 2х2 клетки. Неуязвим для стен при движении.' },
+            dragon: { id: 'dragon', name: 'Дракон', hp: 120, dmg: 40, dmgType: 'Магия', init: 10, move: 2, range: 2, icon: '🐉', size: 2, passive: 'Огромный монстр размером 2х2 клетки. Способен перемещаться сквозь других юнитов и препятствия.' },
             vampire: { id: 'vampire', name: 'Вампир', hp: 40, dmg: 30, dmgType: 'Физ', init: 24, move: 5, range: 1, icon: '🦇', size: 1, passive: 'Исцеляет себя на количество нанесенного противнику урона (Лайфстил).' },
             wall: { id: 'wall', name: 'Стена', hp: 100, dmg: 0, dmgType: 'Нет', init: 0, move: 0, range: 0, icon: '🧱', size: 1, passive: 'Неподвижное препятствие с запасом здоровья.' }
         };
@@ -404,6 +404,44 @@
                     }
                 }
                 return true;
+            }
+
+            // Проверка возможности перемещения с учетом коллизий пути (обычные юниты не могут проходить сквозь других)
+            canReachPosition(unit, targetX, targetY) {
+                if (!this.isCellFree(targetX, targetY, unit.size, unit)) return false;
+
+                // Дракон может игнорировать коллизии пути
+                if (unit.id === 'dragon') {
+                    return this.getDistance(unit, targetX, targetY, unit.size) <= unit.move;
+                }
+
+                // Поиск пути по клеткам (BFS) для проверки, что юнит не проходит сквозь чужие клетки
+                let queue = [{x: unit.x, y: unit.y, dist: 0}];
+                let visited = new Set([`${unit.x},${unit.y}`]);
+
+                while(queue.length > 0) {
+                    let curr = queue.shift();
+                    if (curr.x === targetX && curr.y === targetY) return true;
+                    if (curr.dist >= unit.move) continue;
+
+                    let neighbors = [
+                        {x: curr.x + 1, y: curr.y},
+                        {x: curr.x - 1, y: curr.y},
+                        {x: curr.x, y: curr.y + 1},
+                        {x: curr.x, y: curr.y - 1}
+                    ];
+
+                    for (let n of neighbors) {
+                        let key = `${n.x},${n.y}`;
+                        if (!visited.has(key)) {
+                            if (this.isCellFree(n.x, n.y, unit.size, unit)) {
+                                visited.add(key);
+                                queue.push({x: n.x, y: n.y, dist: curr.dist + 1});
+                            }
+                        }
+                    }
+                }
+                return false;
             }
 
             getDistance(u1, x2, y2, size2 = 1) {
@@ -663,7 +701,7 @@
                 const dist = this.getDistance(au, x, y, targetUnit ? targetUnit.size : 1);
 
                 if (this.selectedAction === 'move') {
-                    if (dist <= au.move && this.isCellFree(x, y, au.size, au)) {
+                    if (this.canReachPosition(au, x, y)) {
                         au.x = x; au.y = y;
                         this.endTurn();
                     }
@@ -798,7 +836,7 @@
                     for (let dy = -me.move; dy <= me.move; dy++) {
                         for (let dx = -me.move; dx <= me.move; dx++) {
                             let nx = me.x + dx, ny = me.y + dy;
-                            if (this.getDistance(me, nx, ny, me.size) <= me.move && this.isCellFree(nx, ny, me.size, me)) {
+                            if (this.canReachPosition(me, nx, ny)) {
                                 let dToEnemy = this.getDistance(closest, nx, ny, me.size);
                                 if (dToEnemy < bestDist) {
                                     bestDist = dToEnemy;
@@ -819,7 +857,7 @@
                 const au = this.activeUnit;
                 for (let y = 0; y < ROWS; y++) {
                     for (let x = 0; x < COLS; x++) {
-                        if (this.getDistance(au, x, y, au.size) <= au.move && this.isCellFree(x, y, au.size, au)) {
+                        if (this.canReachPosition(au, x, y)) {
                             this.cells[y][x].classList.add('highlight-move');
                         }
                     }
