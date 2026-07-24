@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Medieval Tactics - Updated Balance</title>
+    <title>Medieval Tactics - Smart Aggressive AI</title>
     <style>
         :root {
             --bg-color: #121212;
@@ -684,7 +684,7 @@
                 if (this.activeUnit.team === 'player') {
                     this.renderActionButtons();
                 } else {
-                    document.getElementById('actions').innerHTML = '<div style="color:#aaa; font-size:12px;">Думает...</div>';
+                    document.getElementById('actions').innerHTML = '<div style="color:#aaa; font-size:12px;">Атакует...</div>';
                     setTimeout(() => this.executeAI(), 200);
                 }
             }
@@ -817,7 +817,6 @@
                     }
                 }
                 else if (this.selectedAction === 'heal') {
-                    // Разрешено лечить ВСЕХ союзников, включая Стену
                     if (targetUnit && targetUnit.team === au.team && dist <= au.range) {
                         targetUnit.hp = Math.min(targetUnit.maxHp, targetUnit.hp + 20);
                         this.endTurn();
@@ -903,63 +902,86 @@
                 this.nextTurn();
             }
 
-            /* ================= ИИ ИГРОКА / ВРАГА ================= */
+            /* ================= УЛУЧШЕННЫЙ АГРЕССИВНЫЙ ИИ ================= */
             executeAI() {
                 const me = this.activeUnit;
-                const enemies = this.units.filter(u => (u.team === 'player' || u.id === 'wall') && u.hp > 0);
+                const enemies = this.units.filter(u => u.team !== me.team && u.hp > 0);
                 const allies = this.units.filter(u => u.team === me.team && u.hp > 0);
 
                 if (enemies.length === 0) return this.endTurn();
 
-                // 1. УМНЫЙ АРБАЛЕТЧИК (Лечение ЛЮБЫХ союзников, включая стену)
-                if (me.id === 'crossbow') {
-                    let injuredAllies = allies.filter(a => a.hp < a.maxHp && this.getDistance(me, a.x, a.y, a.size) <= me.range);
-                    if (injuredAllies.length > 0) {
-                        injuredAllies.sort((a, b) => (a.hp / a.maxHp) - (b.hp / b.maxHp));
-                        let targetToHeal = injuredAllies[0];
-                        targetToHeal.hp = Math.min(targetToHeal.maxHp, targetToHeal.hp + 20);
-                        return this.endTurn();
-                    }
-                }
+                // 1. ПРОВЕРКА ВОЗМОЖНОСТИ ПРЯМОЙ АТАКИ (Приоритет №1)
+                let targetsInRange = enemies.filter(e => this.getDistance(me, e.x, e.y, e.size) <= me.range);
 
-                // 2. УМНЫЙ РЫЦАРЬ (Бафф +20 брони каждый ход при близости врага)
-                if (me.id === 'knight') {
-                    let cd = me.cooldowns['Armor'] || 0;
-                    let nearbyEnemies = enemies.filter(e => this.getDistance(me, e.x, e.y, e.size) <= 2);
-                    if (cd === 0 && nearbyEnemies.length > 0) {
-                        me.armor = (me.armor || 0) + 20;
-                        me.maxArmor = Math.max(me.maxArmor || 0, me.armor);
-                        me.cooldowns['Armor'] = 1;
-                        return this.endTurn();
-                    }
-                }
-
-                // 3. УМНЫЙ ЭНТ (Окаменение)
-                if (me.id === 'ent') {
-                    let cd = me.cooldowns['Petrify'] || 0;
-                    let nearbyEnemies = enemies.filter(e => this.getDistance(me, e.x, e.y, e.size) <= 1);
-                    if (cd === 0 && (me.armor === 0 || nearbyEnemies.length >= 2)) {
-                        me.armor = (me.armor || 0) + 20;
-                        me.maxArmor = Math.max(me.maxArmor || 0, me.armor);
-                        me.cooldowns['Petrify'] = 3;
-                        return this.endTurn();
-                    }
-                }
-
-                // 4. УМНАЯ БАЛЛИСТА (Подготовка)
+                // Если баллиста не готова к выстрелу — она готовится
                 if (me.id === 'ballista' && !me.isPrepared) {
                     me.isPrepared = true;
                     return this.endTurn();
                 }
 
-                // 5. УМНЫЙ НЕКРОМАНТ (Тактический призыв)
+                // Враг в зоне доступа и мы готовы бить!
+                if (targetsInRange.length > 0 && me.id !== 'necromancer') {
+                    // Особый случай: Рыцарь может сначала дать щит, ТОЛЬКО ЕСЛИ у него 0 брони И его не убьют прямо сейчас
+                    if (me.id === 'knight' && (me.armor || 0) === 0 && (me.cooldowns['Armor'] || 0) === 0 && Math.random() < 0.3) {
+                        me.armor = (me.armor || 0) + 20;
+                        me.maxArmor = Math.max(me.maxArmor || 0, me.armor);
+                        me.cooldowns['Armor'] = 1;
+                        return this.endTurn();
+                    }
+
+                    // Приоритетная сортировка целей (добить самых слабых)
+                    targetsInRange.sort((a, b) => {
+                        let dmga = this.calculateDamage(me, a);
+                        let dmgb = this.calculateDamage(me, b);
+                        if (typeof dmga !== 'number') dmga = this.getActualDmg(me);
+                        if (typeof dmgb !== 'number') dmgb = this.getActualDmg(me);
+                        
+                        let killA = (dmga >= (a.hp + (a.armor || 0))) ? 1 : 0;
+                        let killB = (dmgb >= (b.hp + (b.armor || 0))) ? 1 : 0;
+                        
+                        if (killA !== killB) return killB - killA;
+                        return a.hp - b.hp;
+                    });
+
+                    this.executeAttack(me, targetsInRange[0]);
+                    return this.endTurn();
+                }
+
+                // 2. ИСПОЛЬЗОВАНИЕ СПОСОБНОСТЕЙ (когда враг вне зоны или нужен спелл)
+                
+                // Арбалетчик лечит только тяжело раненых союзников (< 70% ХП)
+                if (me.id === 'crossbow') {
+                    let injured = allies.filter(a => (a.hp / a.maxHp) < 0.7 && this.getDistance(me, a.x, a.y, a.size) <= me.range);
+                    if (injured.length > 0) {
+                        injured.sort((a, b) => (a.hp / a.maxHp) - (b.hp / b.maxHp));
+                        injured[0].hp = Math.min(injured[0].maxHp, injured[0].hp + 20);
+                        return this.endTurn();
+                    }
+                }
+
+                // Рыцарь кастует броню, пока идет к врагу
+                if (me.id === 'knight' && (me.cooldowns['Armor'] || 0) === 0) {
+                    me.armor = (me.armor || 0) + 20;
+                    me.maxArmor = Math.max(me.maxArmor || 0, me.armor);
+                    me.cooldowns['Armor'] = 1;
+                    return this.endTurn();
+                }
+
+                // Энт дает окаменение, если нет брони
+                if (me.id === 'ent' && (me.armor || 0) === 0 && (me.cooldowns['Petrify'] || 0) === 0) {
+                    me.armor = (me.armor || 0) + 20;
+                    me.maxArmor = Math.max(me.maxArmor || 0, me.armor);
+                    me.cooldowns['Petrify'] = 3;
+                    return this.endTurn();
+                }
+
+                // Некромант пытается призвать бойца
                 if (me.id === 'necromancer') {
                     const types = ['dragon', 'ent', 'vampire', 'ballista', 'knight', 'crossbow', 'wall'];
                     let availableTypes = types.filter(t => !me.cooldowns['summon_' + t] || me.cooldowns['summon_' + t] <= 0);
 
                     if (availableTypes.length > 0) {
                         let toSummon = availableTypes[0];
-                        
                         for (let dy = -me.range; dy <= me.range; dy++) {
                             for (let dx = -me.range; dx <= me.range; dx++) {
                                 let sx = me.x + dx, sy = me.y + dy;
@@ -978,40 +1000,25 @@
                             }
                         }
                     }
+
+                    // Если призывать нельзя — атаковать если достает
+                    if (targetsInRange.length > 0) {
+                        this.executeAttack(me, targetsInRange[0]);
+                        return this.endTurn();
+                    }
                 }
 
-                // 6. УМНАЯ АТАКА (Приоритетная цель)
-                let targetsInRange = enemies.filter(e => this.getDistance(me, e.x, e.y, e.size) <= me.range);
-                
-                if (me.id === 'ballista') {
-                    let priorityTargets = targetsInRange.filter(e => e.id === 'ent' || e.id === 'dragon');
-                    if (priorityTargets.length > 0) targetsInRange = priorityTargets;
-                }
-
-                if (targetsInRange.length > 0) {
-                    targetsInRange.sort((a, b) => {
-                        let dmga = this.calculateDamage(me, a);
-                        let dmgb = this.calculateDamage(me, b);
-                        let killA = (typeof dmga === 'number' && dmga >= (a.hp + a.armor)) ? 1 : 0;
-                        let killB = (typeof dmgb === 'number' && dmgb >= (b.hp + b.armor)) ? 1 : 0;
-                        if (killA !== killB) return killB - killA;
-                        return a.hp - b.hp;
-                    });
-
-                    this.executeAttack(me, targetsInRange[0]);
-                    return this.endTurn();
-                }
-
-                // 7. ПЕРЕМЕЩЕНИЕ К БЛИЖАЙШЕМУ ВРАГУ
-                let closest = enemies.sort((a,b) => this.getDistance(me, a.x, a.y, a.size) - this.getDistance(me, b.x, b.y, b.size))[0];
-                if (closest) {
+                // 3. АГРЕССИВНОЕ СБЛИЖЕНИЕ (Движение в сторону ближайшего врага)
+                let closestEnemy = enemies.sort((a,b) => this.getDistance(me, a.x, a.y, a.size) - this.getDistance(me, b.x, b.y, b.size))[0];
+                if (closestEnemy) {
                     let bestDist = Infinity;
                     let bestPos = null;
+
                     for (let dy = -me.move; dy <= me.move; dy++) {
                         for (let dx = -me.move; dx <= me.move; dx++) {
                             let nx = me.x + dx, ny = me.y + dy;
                             if (this.canReachPosition(me, nx, ny)) {
-                                let dToEnemy = this.getDistance(closest, nx, ny, me.size);
+                                let dToEnemy = this.getDistance(closestEnemy, nx, ny, me.size);
                                 if (dToEnemy < bestDist) {
                                     bestDist = dToEnemy;
                                     bestPos = {x: nx, y: ny};
@@ -1019,8 +1026,18 @@
                             }
                         }
                     }
+
                     if (bestPos) {
-                        me.x = bestPos.x; me.y = bestPos.y;
+                        me.x = bestPos.x; 
+                        me.y = bestPos.y;
+
+                        // Если после шага враг оказался в зоне поражения — атаковать сразу!
+                        let newTargets = enemies.filter(e => this.getDistance(me, e.x, e.y, e.size) <= me.range);
+                        if (newTargets.length > 0 && me.id !== 'necromancer') {
+                            if (me.id !== 'ballista' || me.isPrepared) {
+                                this.executeAttack(me, newTargets[0]);
+                            }
+                        }
                     }
                 }
                 
