@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Medieval Tactics - Smart AI</title>
+    <title>Medieval Tactics - Updated Balance</title>
     <style>
         :root {
             --bg-color: #121212;
@@ -195,7 +195,6 @@
             color: black;
         }
 
-        /* Желтая рамка активного юнита */
         .cell.active-tl { border-top: 3px solid #ffd700; border-left: 3px solid #ffd700; z-index: 15; }
         .cell.active-tr { border-top: 3px solid #ffd700; border-right: 3px solid #ffd700; z-index: 15; }
         .cell.active-bl { border-bottom: 3px solid #ffd700; border-left: 3px solid #ffd700; z-index: 15; }
@@ -357,9 +356,9 @@
 
         const UNIT_TYPES = {
             necromancer: { id: 'necromancer', name: 'Некромант', hp: 10, dmg: 5, dmgType: 'Магия', init: 10, move: 1, range: 2, icon: '🧙‍♂️', size: 1, passive: 'Призывает боевых юнитов и стены.' },
-            knight: { id: 'knight', name: 'Рыцарь', hp: 50, dmg: 10, dmgType: 'Физ', init: 12, move: 2, range: 1, icon: '⚔️', size: 1, passive: 'Сопротивление стрелам (-70% урона от стрел).' },
-            crossbow: { id: 'crossbow', name: 'Арбалетчик', hp: 20, dmg: 15, dmgType: 'Стрела', init: 18, move: 3, range: 2, icon: '🏹', size: 1, passive: 'Умеет восстанавливать здоровье союзникам (лечение).' },
-            ballista: { id: 'ballista', name: 'Балиста', hp: 80, dmg: 80, dmgType: 'Физ', init: 8, move: 1, range: 4, icon: '🏗️', size: 1, passive: 'Требует подготовки перед выстрелом. Наносит х3 по Энтам и х2 по Драконам.' },
+            knight: { id: 'knight', name: 'Рыцарь', hp: 100, dmg: 10, dmgType: 'Физ', init: 12, move: 2, range: 1, icon: '⚔️', size: 1, passive: 'Сопротивление стрелам (-50% урона от стрел).' },
+            crossbow: { id: 'crossbow', name: 'Арбалетчик', hp: 20, dmg: 15, dmgType: 'Стрела', init: 18, move: 3, range: 2, icon: '🏹', size: 1, passive: 'Умеет восстанавливать здоровье любым союзникам (включая стены).' },
+            ballista: { id: 'ballista', name: 'Балиста', hp: 80, dmg: 80, dmgType: 'Физ', init: 10, move: 1, range: 4, icon: '🏗️', size: 1, passive: 'Требует подготовки перед выстрелом. Наносит х3 по Энтам и х2 по Драконам.' },
             ent: { id: 'ent', name: 'Энт', hp: 250, dmg: 70, dmgType: 'Физ', init: 6, move: 1, range: 1, icon: '🌳', size: 1, passive: 'Ближняя атака наносит урон по площади (АОЕ вокруг себя). Броня работает как сверх-ХП.' },
             dragon: { id: 'dragon', name: 'Дракон', hp: 120, dmg: 40, dmgType: 'Магия', init: 10, move: 6, range: 2, icon: '🐉', size: 2, passive: 'Размер 2х2. Аура: враги в радиусе 2 теряют 10 инициативы и 40% урона (не действует на драконов, энтов и вампиров).' },
             vampire: { id: 'vampire', name: 'Вампир', hp: 40, dmg: 30, dmgType: 'Физ', init: 24, move: 5, range: 1, icon: '🦇', size: 1, passive: 'Лайфстил. Атакой снижает инициативу жертвы на 1 на 1 ход.' },
@@ -730,10 +729,10 @@
                 
                 if (u.id === 'knight') {
                     let cd = u.cooldowns['Armor'] || 0;
-                    let btn = this.createBtn(panel, 'Щит (+10)', 'success', () => {
-                        u.armor = (u.armor || 0) + 10;
+                    let btn = this.createBtn(panel, 'Щит (+20)', 'success', () => {
+                        u.armor = (u.armor || 0) + 20;
                         u.maxArmor = Math.max(u.maxArmor || 0, u.armor);
-                        u.cooldowns['Armor'] = 2;
+                        u.cooldowns['Armor'] = 1;
                         this.endTurn();
                     });
                     if (cd > 0) { btn.disabled = true; btn.innerText += ` (${cd})`; }
@@ -818,7 +817,8 @@
                     }
                 }
                 else if (this.selectedAction === 'heal') {
-                    if (targetUnit && targetUnit.team === au.team && dist <= au.range && targetUnit.id !== 'wall') {
+                    // Разрешено лечить ВСЕХ союзников, включая Стену
+                    if (targetUnit && targetUnit.team === au.team && dist <= au.range) {
                         targetUnit.hp = Math.min(targetUnit.maxHp, targetUnit.hp + 20);
                         this.endTurn();
                     }
@@ -846,7 +846,7 @@
 
                 let dmg = baseDmg;
                 if (defender.id === 'necromancer') return 1;
-                if (defender.id === 'knight' && attacker.dmgType === 'Стрела') dmg = Math.floor(dmg * 0.3);
+                if (defender.id === 'knight' && attacker.dmgType === 'Стрела') dmg = Math.floor(dmg * 0.5);
                 if (defender.id === 'ent' && attacker.dmgType === 'Физ') dmg = Math.floor(dmg * 0.2);
 
                 if (attacker.id === 'ballista') {
@@ -903,7 +903,7 @@
                 this.nextTurn();
             }
 
-            /* ================= УМНЫЙ ИИ ================= */
+            /* ================= ИИ ИГРОКА / ВРАГА ================= */
             executeAI() {
                 const me = this.activeUnit;
                 const enemies = this.units.filter(u => (u.team === 'player' || u.id === 'wall') && u.hp > 0);
@@ -911,11 +911,10 @@
 
                 if (enemies.length === 0) return this.endTurn();
 
-                // 1. УМНЫЙ АРБАЛЕТЧИК (Лечение союзников)
+                // 1. УМНЫЙ АРБАЛЕТЧИК (Лечение ЛЮБЫХ союзников, включая стену)
                 if (me.id === 'crossbow') {
-                    let injuredAllies = allies.filter(a => a.hp < a.maxHp && a.id !== 'wall' && this.getDistance(me, a.x, a.y, a.size) <= me.range);
+                    let injuredAllies = allies.filter(a => a.hp < a.maxHp && this.getDistance(me, a.x, a.y, a.size) <= me.range);
                     if (injuredAllies.length > 0) {
-                        // Сортируем по проценту потерянного здоровья
                         injuredAllies.sort((a, b) => (a.hp / a.maxHp) - (b.hp / b.maxHp));
                         let targetToHeal = injuredAllies[0];
                         targetToHeal.hp = Math.min(targetToHeal.maxHp, targetToHeal.hp + 20);
@@ -923,14 +922,14 @@
                     }
                 }
 
-                // 2. УМНЫЙ РЫЦАРЬ (Бафф брони)
+                // 2. УМНЫЙ РЫЦАРЬ (Бафф +20 брони каждый ход при близости врага)
                 if (me.id === 'knight') {
                     let cd = me.cooldowns['Armor'] || 0;
                     let nearbyEnemies = enemies.filter(e => this.getDistance(me, e.x, e.y, e.size) <= 2);
                     if (cd === 0 && nearbyEnemies.length > 0) {
-                        me.armor = (me.armor || 0) + 10;
+                        me.armor = (me.armor || 0) + 20;
                         me.maxArmor = Math.max(me.maxArmor || 0, me.armor);
-                        me.cooldowns['Armor'] = 2;
+                        me.cooldowns['Armor'] = 1;
                         return this.endTurn();
                     }
                 }
@@ -959,9 +958,8 @@
                     let availableTypes = types.filter(t => !me.cooldowns['summon_' + t] || me.cooldowns['summon_' + t] <= 0);
 
                     if (availableTypes.length > 0) {
-                        let toSummon = availableTypes[0]; // Выбирает наивысший доступный приоритет
+                        let toSummon = availableTypes[0];
                         
-                        // Ищем пустую клетку рядом
                         for (let dy = -me.range; dy <= me.range; dy++) {
                             for (let dx = -me.range; dx <= me.range; dx++) {
                                 let sx = me.x + dx, sy = me.y + dy;
@@ -985,14 +983,12 @@
                 // 6. УМНАЯ АТАКА (Приоритетная цель)
                 let targetsInRange = enemies.filter(e => this.getDistance(me, e.x, e.y, e.size) <= me.range);
                 
-                // Баллиста отдаёт приоритет Энтам и Драконам
                 if (me.id === 'ballista') {
                     let priorityTargets = targetsInRange.filter(e => e.id === 'ent' || e.id === 'dragon');
                     if (priorityTargets.length > 0) targetsInRange = priorityTargets;
                 }
 
                 if (targetsInRange.length > 0) {
-                    // ИИ ищет цель, которую гарантированно убивает, либо выбирает юнита с минимальным ХП
                     targetsInRange.sort((a, b) => {
                         let dmga = this.calculateDamage(me, a);
                         let dmgb = this.calculateDamage(me, b);
