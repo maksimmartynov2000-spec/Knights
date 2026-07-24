@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Medieval Tactics</title>
+    <title>Medieval Tactics - Smart AI</title>
     <style>
         :root {
             --bg-color: #121212;
@@ -600,7 +600,6 @@
                     if (u.vampireDebuffs > 0) {
                         u.init -= u.vampireDebuffs;
                     }
-                    // Минимальная инициатива = 1
                     u.init = Math.max(1, u.init);
                 });
             }
@@ -618,7 +617,6 @@
                         this.activeUnit = readyUnits[0];
                         this.activeUnit.actionPoints -= 100;
                         
-                        // Снимаем укус вампира в начале своего хода
                         if (this.activeUnit.vampireDebuffs > 0) {
                             this.activeUnit.vampireDebuffs = 0;
                             this.applyDragonAuras();
@@ -688,7 +686,7 @@
                     this.renderActionButtons();
                 } else {
                     document.getElementById('actions').innerHTML = '<div style="color:#aaa; font-size:12px;">Думает...</div>';
-                    setTimeout(() => this.executeAI(), 110);
+                    setTimeout(() => this.executeAI(), 200);
                 }
             }
 
@@ -905,27 +903,72 @@
                 this.nextTurn();
             }
 
+            /* ================= УМНЫЙ ИИ ================= */
             executeAI() {
                 const me = this.activeUnit;
                 const enemies = this.units.filter(u => (u.team === 'player' || u.id === 'wall') && u.hp > 0);
+                const allies = this.units.filter(u => u.team === me.team && u.hp > 0);
+
                 if (enemies.length === 0) return this.endTurn();
 
+                // 1. УМНЫЙ АРБАЛЕТЧИК (Лечение союзников)
+                if (me.id === 'crossbow') {
+                    let injuredAllies = allies.filter(a => a.hp < a.maxHp && a.id !== 'wall' && this.getDistance(me, a.x, a.y, a.size) <= me.range);
+                    if (injuredAllies.length > 0) {
+                        // Сортируем по проценту потерянного здоровья
+                        injuredAllies.sort((a, b) => (a.hp / a.maxHp) - (b.hp / b.maxHp));
+                        let targetToHeal = injuredAllies[0];
+                        targetToHeal.hp = Math.min(targetToHeal.maxHp, targetToHeal.hp + 20);
+                        return this.endTurn();
+                    }
+                }
+
+                // 2. УМНЫЙ РЫЦАРЬ (Бафф брони)
+                if (me.id === 'knight') {
+                    let cd = me.cooldowns['Armor'] || 0;
+                    let nearbyEnemies = enemies.filter(e => this.getDistance(me, e.x, e.y, e.size) <= 2);
+                    if (cd === 0 && nearbyEnemies.length > 0) {
+                        me.armor = (me.armor || 0) + 10;
+                        me.maxArmor = Math.max(me.maxArmor || 0, me.armor);
+                        me.cooldowns['Armor'] = 2;
+                        return this.endTurn();
+                    }
+                }
+
+                // 3. УМНЫЙ ЭНТ (Окаменение)
+                if (me.id === 'ent') {
+                    let cd = me.cooldowns['Petrify'] || 0;
+                    let nearbyEnemies = enemies.filter(e => this.getDistance(me, e.x, e.y, e.size) <= 1);
+                    if (cd === 0 && (me.armor === 0 || nearbyEnemies.length >= 2)) {
+                        me.armor = (me.armor || 0) + 20;
+                        me.maxArmor = Math.max(me.maxArmor || 0, me.armor);
+                        me.cooldowns['Petrify'] = 3;
+                        return this.endTurn();
+                    }
+                }
+
+                // 4. УМНАЯ БАЛЛИСТА (Подготовка)
                 if (me.id === 'ballista' && !me.isPrepared) {
                     me.isPrepared = true;
                     return this.endTurn();
                 }
 
+                // 5. УМНЫЙ НЕКРОМАНТ (Тактический призыв)
                 if (me.id === 'necromancer') {
-                    const types = ['knight','crossbow','ballista','ent','dragon','vampire','wall'];
+                    const types = ['dragon', 'ent', 'vampire', 'ballista', 'knight', 'crossbow', 'wall'];
                     let availableTypes = types.filter(t => !me.cooldowns['summon_' + t] || me.cooldowns['summon_' + t] <= 0);
+
                     if (availableTypes.length > 0) {
-                        let toSummon = availableTypes[Math.floor(Math.random() * availableTypes.length)];
-                        for(let dy=-2; dy<=2; dy++) {
-                            for(let dx=-2; dx<=2; dx++) {
-                                if(this.isCellFree(me.x+dx, me.y+dy, UNIT_TYPES[toSummon].size)) {
+                        let toSummon = availableTypes[0]; // Выбирает наивысший доступный приоритет
+                        
+                        // Ищем пустую клетку рядом
+                        for (let dy = -me.range; dy <= me.range; dy++) {
+                            for (let dx = -me.range; dx <= me.range; dx++) {
+                                let sx = me.x + dx, sy = me.y + dy;
+                                if (this.isCellFree(sx, sy, UNIT_TYPES[toSummon].size)) {
                                     const tpl = UNIT_TYPES[toSummon];
                                     this.units.push({
-                                        ...tpl, x: me.x+dx, y: me.y+dy, team: 'enemy', maxHp: tpl.hp, 
+                                        ...tpl, x: sx, y: sy, team: me.team, maxHp: tpl.hp, 
                                         maxArmor: tpl.id === 'ent' ? 50 : 0, 
                                         armor: tpl.id === 'ent' ? 50 : 0, 
                                         actionPoints: 0, isPrepared: false, cooldowns: {},
@@ -939,13 +982,31 @@
                     }
                 }
 
+                // 6. УМНАЯ АТАКА (Приоритетная цель)
                 let targetsInRange = enemies.filter(e => this.getDistance(me, e.x, e.y, e.size) <= me.range);
+                
+                // Баллиста отдаёт приоритет Энтам и Драконам
+                if (me.id === 'ballista') {
+                    let priorityTargets = targetsInRange.filter(e => e.id === 'ent' || e.id === 'dragon');
+                    if (priorityTargets.length > 0) targetsInRange = priorityTargets;
+                }
+
                 if (targetsInRange.length > 0) {
-                    targetsInRange.sort((a,b) => a.hp - b.hp);
+                    // ИИ ищет цель, которую гарантированно убивает, либо выбирает юнита с минимальным ХП
+                    targetsInRange.sort((a, b) => {
+                        let dmga = this.calculateDamage(me, a);
+                        let dmgb = this.calculateDamage(me, b);
+                        let killA = (typeof dmga === 'number' && dmga >= (a.hp + a.armor)) ? 1 : 0;
+                        let killB = (typeof dmgb === 'number' && dmgb >= (b.hp + b.armor)) ? 1 : 0;
+                        if (killA !== killB) return killB - killA;
+                        return a.hp - b.hp;
+                    });
+
                     this.executeAttack(me, targetsInRange[0]);
                     return this.endTurn();
                 }
 
+                // 7. ПЕРЕМЕЩЕНИЕ К БЛИЖАЙШЕМУ ВРАГУ
                 let closest = enemies.sort((a,b) => this.getDistance(me, a.x, a.y, a.size) - this.getDistance(me, b.x, b.y, b.size))[0];
                 if (closest) {
                     let bestDist = Infinity;
