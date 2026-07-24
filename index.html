@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Medieval Tactics - Turn Limit & Necro Shield</title>
+    <title>Medieval Tactics - Balanced Version</title>
     <style>
         :root {
             --bg-color: #121212;
@@ -120,6 +120,7 @@
             font-size: 18px;
             z-index: 10;
             box-shadow: 0 2px 4px rgba(0,0,0,0.8);
+            transition: all 0.15s ease-in-out;
         }
         
         .unit.size-2 {
@@ -356,12 +357,12 @@
         const UNIT_TYPES = {
             necromancer: { id: 'necromancer', name: 'Некромант', hp: 10, dmg: 5, dmgType: 'Магия', init: 10, move: 1, range: 2, icon: '🧙‍♂️', size: 1, passive: 'Призывает союзников. При получении ЛЮБОГО урона теряет строго 1 HP.' },
             knight: { id: 'knight', name: 'Рыцарь', hp: 100, dmg: 10, dmgType: 'Физ', init: 12, move: 2, range: 1, icon: '⚔️', size: 1, passive: 'Сопротивление стрелам (-50% урона от стрел).' },
-            crossbow: { id: 'crossbow', name: 'Арбалетчик', hp: 20, dmg: 15, dmgType: 'Стрела', init: 18, move: 3, range: 2, icon: '🏹', size: 1, passive: 'Умеет восстанавливать здоровье любым союзникам.' },
+            crossbow: { id: 'crossbow', name: 'Арбалетчик', hp: 20, dmg: 25, dmgType: 'Стрела', init: 18, move: 3, range: 2, icon: '🏹', size: 1, passive: 'Умеет восстанавливать здоровье любым союзникам.' },
             ballista: { id: 'ballista', name: 'Балиста', hp: 80, dmg: 80, dmgType: 'Физ', init: 10, move: 1, range: 4, icon: '🏗️', size: 1, passive: 'Требует подготовки перед выстрелом. Наносит х3 по Энтам и х2 по Драконам.' },
             ent: { id: 'ent', name: 'Энт', hp: 250, dmg: 70, dmgType: 'Физ', init: 6, move: 1, range: 1, icon: '🌳', size: 1, passive: 'Ближняя атака наносит урон по площади (АОЕ вокруг себя).' },
-            dragon: { id: 'dragon', name: 'Дракон', hp: 120, dmg: 40, dmgType: 'Магия', init: 10, move: 6, range: 2, icon: '🐉', size: 2, passive: 'Размер 2х2. Аура: враги в радиусе 2 теряют 10 инициативы и 40% урона.' },
+            dragon: { id: 'dragon', name: 'Дракон', hp: 120, dmg: 50, dmgType: 'Магия', init: 10, move: 6, range: 2, icon: '🐉', size: 2, passive: 'Размер 2х2. Аура: враги в радиусе 2 теряют 10 инициативы и 40% урона.' },
             vampire: { id: 'vampire', name: 'Вампир', hp: 40, dmg: 30, dmgType: 'Физ', init: 24, move: 5, range: 1, icon: '🦇', size: 1, passive: 'Лайфстил. Атакой снижает инициативу жертвы на 1 на 1 ход.' },
-            wall: { id: 'wall', name: 'Стена', hp: 100, dmg: 0, dmgType: 'Нет', init: 5, move: 0, range: 0, icon: '🧱', size: 1, passive: 'Инициатива 5. Автоматически получает +5 к броне в свой ход.' }
+            wall: { id: 'wall', name: 'Стена', hp: 100, dmg: 0, dmgType: 'Нет', init: 5, move: 0, range: 0, icon: '🧱', size: 1, passive: 'Инициатива 5. Автоматически получает +50 к броне в свой ход.' }
         };
 
         class GameEngine {
@@ -620,8 +621,9 @@
                             this.applyDragonAuras();
                         }
 
+                        // Изменение: Стена получает 50 брони вместо 5
                         if (this.activeUnit.id === 'wall') {
-                            this.activeUnit.armor = (this.activeUnit.armor || 0) + 5;
+                            this.activeUnit.armor = (this.activeUnit.armor || 0) + 50;
                             this.activeUnit.maxArmor = Math.max(this.activeUnit.maxArmor || 0, this.activeUnit.armor);
                         }
 
@@ -684,7 +686,8 @@
                     this.renderActionButtons();
                 } else {
                     document.getElementById('actions').innerHTML = '<div style="color:#aaa; font-size:12px;">Атакует...</div>';
-                    setTimeout(() => this.executeAI(), 200);
+                    // Изменение: Скорость хода ИИ ускорена в 2 раза (100 мс вместо 200 мс)
+                    setTimeout(() => this.executeAI(), 100);
                 }
             }
 
@@ -726,12 +729,13 @@
                     });
                 }
                 
+                // Изменение: Рыцарь получает 60 брони (+в 3 раза больше), перезарядка 3 хода
                 if (u.id === 'knight') {
                     let cd = u.cooldowns['Armor'] || 0;
-                    let btn = this.createBtn(panel, 'Щит (+20)', 'success', () => {
-                        u.armor = (u.armor || 0) + 20;
+                    let btn = this.createBtn(panel, 'Щит (+60)', 'success', () => {
+                        u.armor = (u.armor || 0) + 60;
                         u.maxArmor = Math.max(u.maxArmor || 0, u.armor);
-                        u.cooldowns['Armor'] = 1;
+                        u.cooldowns['Armor'] = 3;
                         this.endTurn();
                     });
                     if (cd > 0) { btn.disabled = true; btn.innerText += ` (${cd})`; }
@@ -754,10 +758,11 @@
                     if (u.isPrepared) btn.disabled = true;
                 }
 
+                // Изменение: Энт получает 150 брони
                 if (u.id === 'ent') {
                     let cd = u.cooldowns['Petrify'] || 0;
-                    let btn = this.createBtn(panel, 'Окаменение (+20)', 'success', () => {
-                        u.armor = (u.armor || 0) + 20;
+                    let btn = this.createBtn(panel, 'Окаменение (+150)', 'success', () => {
+                        u.armor = (u.armor || 0) + 150;
                         u.maxArmor = Math.max(u.maxArmor || 0, u.armor);
                         u.cooldowns['Petrify'] = 3;
                         this.endTurn();
@@ -791,7 +796,6 @@
                 if (this.selectedAction === 'move') {
                     if (this.canReachPosition(au, x, y)) {
                         au.x = x; au.y = y;
-                        // ПОСЛЕ ДВИЖЕНИЯ ХОД СРАЗУ ЗАВЕРШАЕТСЯ
                         this.endTurn();
                     }
                 } 
@@ -838,7 +842,7 @@
             }
 
             calculateDamage(attacker, defender) {
-                if (defender.id === 'necromancer') return 1; // Некромант получает всегда 1 урон
+                if (defender.id === 'necromancer') return 1;
                 if (defender.id === 'wall') return this.getActualDmg(attacker);
                 if (attacker.id === 'ent') return this.getActualDmg(attacker) + " (АОЕ)";
 
@@ -855,7 +859,6 @@
             }
 
             applyDamageToUnit(attacker, defender, rawDmg) {
-                // ПАССИВКА НЕКРОМАНТА: ровно 1 единицу урона от любого источника
                 if (defender.id === 'necromancer') {
                     defender.hp -= 1;
                     return;
@@ -905,7 +908,6 @@
                 this.nextTurn();
             }
 
-            /* ================= УЛУЧШЕННЫЙ ИИ (СО СТРОГИМ ОГРАНИЧЕНИЕМ) ================= */
             executeAI() {
                 const me = this.activeUnit;
                 const enemies = this.units.filter(u => u.team !== me.team && u.hp > 0);
@@ -913,7 +915,6 @@
 
                 if (enemies.length === 0) return this.endTurn();
 
-                // 1. АТАКА (если враг уже в зоне поражения без движения)
                 let targetsInRange = enemies.filter(e => this.getDistance(me, e.x, e.y, e.size) <= me.range);
 
                 if (me.id === 'ballista' && !me.isPrepared) {
@@ -923,9 +924,9 @@
 
                 if (targetsInRange.length > 0 && me.id !== 'necromancer') {
                     if (me.id === 'knight' && (me.armor || 0) === 0 && (me.cooldowns['Armor'] || 0) === 0 && Math.random() < 0.3) {
-                        me.armor = (me.armor || 0) + 20;
+                        me.armor = (me.armor || 0) + 60;
                         me.maxArmor = Math.max(me.maxArmor || 0, me.armor);
-                        me.cooldowns['Armor'] = 1;
+                        me.cooldowns['Armor'] = 3;
                         return this.endTurn();
                     }
 
@@ -944,7 +945,6 @@
                     return this.endTurn();
                 }
 
-                // 2. ИСПОЛЬЗОВАНИЕ СПОСОБНОСТЕЙ
                 if (me.id === 'crossbow') {
                     let injured = allies.filter(a => (a.hp / a.maxHp) < 0.7 && this.getDistance(me, a.x, a.y, a.size) <= me.range);
                     if (injured.length > 0) {
@@ -955,14 +955,14 @@
                 }
 
                 if (me.id === 'knight' && (me.cooldowns['Armor'] || 0) === 0) {
-                    me.armor = (me.armor || 0) + 20;
+                    me.armor = (me.armor || 0) + 60;
                     me.maxArmor = Math.max(me.maxArmor || 0, me.armor);
-                    me.cooldowns['Armor'] = 1;
+                    me.cooldowns['Armor'] = 3;
                     return this.endTurn();
                 }
 
                 if (me.id === 'ent' && (me.armor || 0) === 0 && (me.cooldowns['Petrify'] || 0) === 0) {
-                    me.armor = (me.armor || 0) + 20;
+                    me.armor = (me.armor || 0) + 150;
                     me.maxArmor = Math.max(me.maxArmor || 0, me.armor);
                     me.cooldowns['Petrify'] = 3;
                     return this.endTurn();
@@ -999,7 +999,6 @@
                     }
                 }
 
-                // 3. ДВИЖЕНИЕ (После шага ИИ НЕ АТАКУЕТ, а завершает ход)
                 let closestEnemy = enemies.sort((a,b) => this.getDistance(me, a.x, a.y, a.size) - this.getDistance(me, b.x, b.y, b.size))[0];
                 if (closestEnemy) {
                     let bestDist = Infinity;
@@ -1021,7 +1020,6 @@
                     if (bestPos) {
                         me.x = bestPos.x; 
                         me.y = bestPos.y;
-                        // Движение совершено -> ход завершен
                         return this.endTurn();
                     }
                 }
