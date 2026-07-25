@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Medieval Tactics - 2x2 Big Units Update</title>
+    <title>Medieval Tactics - Fixed AI Necromancer & Descriptions</title>
     <style>
         :root {
             --bg-color: #121212;
@@ -309,8 +309,8 @@
                 <p>Модификаторы: <span id="info-dmg-debuff" style="color: #ff6666;"></span></p>
                 <p>Инициатива: <span id="info-init"></span></p>
                 <p>Дальность/Ход: <span id="info-range"></span> / <span id="info-move"></span></p>
-                <p style="margin-top: 6px; color: #ffcc00; font-size: 12px;">📌 Пассивка: <span id="info-passive" style="color: #fff;"></span></p>
-                <p id="info-buffs" style="color: #00ff00;"></p>
+                <p style="margin-top: 6px; color: #ffcc00; font-size: 12px;">📌 Описание / Пассивка: <br><span id="info-passive" style="color: #fff; font-size: 11px;"></span></p>
+                <p id="info-buffs" style="color: #00ff00; margin-top: 4px;"></p>
                 <p id="info-cds" style="color: #ff99cc;"></p>
                 <button id="close-info">Закрыть</button>
             </div>
@@ -366,25 +366,25 @@
         const ROWS = 12;
 
         const UNIT_TYPES = {
-            soul_eater: { id: 'soul_eater', name: 'Пожиратель Душ', hp: 180, armor: 30, dmg: 30, dmgType: 'Магия', init: 10, move: 3, range: 2, icon: '💀', size: 2, passive: 'Жатва: При смерти ЛЮБОГО юнита на карте получает +10 maxHP/+10 HP и +5 к Урону.' },
-            storm_titan: { id: 'storm_titan', name: 'Грозовой Титан', hp: 210, armor: 30, dmg: 35, dmgType: 'Магия', init: 12, move: 3, range: 2, icon: '⚡', size: 2, passive: 'Статический Заряд: При получении урона в ближнем бою наносит 10 магии в ответ и срезает -2 Инициативы.' },
-            ice_behemoth: { id: 'ice_behemoth', name: 'Ледяной Исполин', hp: 280, armor: 50, dmg: 40, dmgType: 'Физ', init: 5, move: 2, range: 1, icon: '❄️', size: 2, passive: 'Пещера Инея: Враги на смежных клетках с Исполином теряют -1 к Перемещению (Move).' },
-            royal_gryphon: { id: 'royal_gryphon', name: 'Королевский Грифон', hp: 170, armor: 20, dmg: 35, dmgType: 'Физ', init: 16, move: 5, range: 1, icon: '🦅', size: 2, passive: 'Безжалостный Ответ: Бесконечное число контратак в ближнем бою.' },
-            necromancer: { id: 'necromancer', name: 'Некромант', hp: 10, armor: 0, dmg: 5, dmgType: 'Магия', init: 10, move: 1, range: 2, icon: '🧙‍♂️', size: 1, passive: 'Призывает союзников. При получении ЛЮБОГО урона теряет строго 1 HP.' },
-            knight: { id: 'knight', name: 'Рыцарь', hp: 100, armor: 0, dmg: 10, dmgType: 'Физ', init: 12, move: 2, range: 1, icon: '⚔️', size: 1, passive: 'Сопротивление стрелам (-50% урона). Возвращает 80% физ. урона в ближнем бою.' },
-            crossbow: { id: 'crossbow', name: 'Арбалетчик', hp: 20, armor: 0, dmg: 25, dmgType: 'Стрела', init: 18, move: 3, range: 2, icon: '🏹', size: 1, passive: 'Умеет восстанавливать здоровье союзникам.' },
-            ballista: { id: 'ballista', name: 'Балиста', hp: 80, armor: 0, dmg: 80, dmgType: 'Физ', init: 10, move: 1, range: 4, icon: '🏗️', size: 1, passive: 'Требует подготовки перед выстрелом. Наносит х3 по Энтам и х2 по Драконам.' },
-            ent: { id: 'ent', name: 'Энт', hp: 250, armor: 50, dmg: 70, dmgType: 'Физ', init: 6, move: 1, range: 1, icon: '🌳', size: 1, passive: 'Защита (-80% к получаемому ФИЗ. урону). Атака наносит АОЕ урон.' },
-            dragon: { id: 'dragon', name: 'Дракон', hp: 120, armor: 0, dmg: 50, dmgType: 'Магия', init: 10, move: 6, range: 2, icon: '🐉', size: 2, passive: 'Размер 2х2. Летает через юнитов. Аура: -10 инициативы и -40% урона врагам в радиусе 2.' },
-            vampire: { id: 'vampire', name: 'Вампир', hp: 40, armor: 0, dmg: 30, dmgType: 'Физ', init: 24, move: 5, range: 1, icon: '🦇', size: 1, passive: 'Лайфстил. Атакой снижает инициативу жертвы на 1 на 1 ход.' },
-            stone_golem: { id: 'stone_golem', name: 'Каменный Голем', hp: 120, armor: 0, dmg: 20, dmgType: 'Физ', init: 5, move: 1, range: 1, icon: '🪨', size: 1, passive: 'После хождения автоматически получает +40 к Броне.' },
-            chronomancer: { id: 'chronomancer', name: 'Чародейка Времени', hp: 30, armor: 0, dmg: 10, dmgType: 'Магия', init: 14, move: 2, range: 3, icon: '🔮', size: 1, passive: 'Аура +3 к Инициативе союзникам в радиусе 2. Умеет передавать ход и замедлять.' },
-            berserker: { id: 'berserker', name: 'Берсерк', hp: 240, armor: 0, dmg: 20, dmgType: 'Физ', init: 10, move: 3, range: 1, icon: '🪓', size: 1, passive: 'За каждые потерянные 5% HP получает +3 к Инициативе и +5 к Урону.' },
-            sniper: { id: 'sniper', name: 'Снайпер', hp: 25, armor: 0, dmg: 50, dmgType: 'Стрела', init: 8, move: 1, range: 6, icon: '🎯', size: 1, passive: 'Не может атаковать цели ближе 3 клеток. Урон +10% за клетку дистанции.' },
-            frost_mage: { id: 'frost_mage', name: 'Маг Льда', hp: 35, armor: 0, dmg: 18, dmgType: 'Магия', init: 14, move: 2, range: 3, icon: '🧊', size: 1, passive: 'Замораживает цель (move=0, -50% Инициативы).' },
-            specter: { id: 'specter', name: 'Призрак', hp: 30, armor: 0, dmg: 20, dmgType: 'Магия', init: 15, move: 4, range: 1, icon: '👻', size: 1, passive: 'Игнорирует физ. урон/стрелы. Проходит сквозь любые юниты.' },
-            phoenix: { id: 'phoenix', name: 'Феникс', hp: 50, armor: 0, dmg: 25, dmgType: 'Магия', init: 17, move: 4, range: 2, icon: '🌟', size: 1, passive: 'Проходит сквозь юниты. Перерождается из яйца.' },
-            phoenix_egg: { id: 'phoenix_egg', name: 'Яйцо Феникса', hp: 20, armor: 0, dmg: 0, dmgType: 'Нет', init: 0, move: 0, range: 0, icon: '🥚', size: 1, passive: 'Не может ходить. Перерождается на свой ход.' }
+            soul_eater: { id: 'soul_eater', name: 'Пожиратель Душ', hp: 180, armor: 30, dmg: 30, dmgType: 'Магия', init: 10, move: 3, range: 2, icon: '💀', size: 2, passive: 'Пассивка "Жатва": При смерти ЛЮБОГО юнита получает +10 maxHP/+10 HP и +5 к Урону.\nАктивка: "Пожирание Тени" — наносит 40 урона и лечится на нанесенный объем (КД: 3х).' },
+            storm_titan: { id: 'storm_titan', name: 'Грозовой Титан', hp: 210, armor: 30, dmg: 35, dmgType: 'Магия', init: 12, move: 3, range: 2, icon: '⚡', size: 2, passive: 'Пассивка "Статический Заряд": При получении урона в ближнем бою наносит 10 магии в ответ и срезает -2 Инициативы.\nАктивка: "Грозовой Шаг" — телепорт и отброс врагов с уроном (КД: 3х).' },
+            ice_behemoth: { id: 'ice_behemoth', name: 'Ледяной Исполин', hp: 280, armor: 50, dmg: 40, dmgType: 'Физ', init: 5, move: 2, range: 1, icon: '❄️', size: 2, passive: 'Пассивка "Пещера Инея": Враги на смежных клетках теряют -1 к Перемещению (Move).\nАктивка: "Замораживающая Аура" — наносит 20 урона всем врагам в радиусе 2 и замораживает их (КД: 3х).' },
+            royal_gryphon: { id: 'royal_gryphon', name: 'Королевский Грифон', hp: 170, armor: 20, dmg: 35, dmgType: 'Физ', init: 16, move: 5, range: 1, icon: '🦅', size: 2, passive: 'Пассивка "Безжалостный Ответ": Совершает бесконечное число контратак в ближнем бою при получении урона.\nАктивка: "Взмах Крыльев" — наносит 20 урона и отбрасывает всех врагов размера 1х1 вокруг на 2 клетки (КД: 2х).' },
+            necromancer: { id: 'necromancer', name: 'Некромант', hp: 10, armor: 0, dmg: 5, dmgType: 'Магия', init: 10, move: 1, range: 2, icon: '🧙‍♂️', size: 1, passive: 'Пассивка "Призрачный Щит": Получает строго 1 ед. урона от ЛЮБОЙ атаки.\nАктивка: Умеет призывать союзников любого типа в радиусе 2.' },
+            knight: { id: 'knight', name: 'Рыцарь', hp: 100, armor: 0, dmg: 10, dmgType: 'Физ', init: 12, move: 2, range: 1, icon: '⚔️', size: 1, passive: 'Пассивка "Латы": Получает на -50% меньше урона от стрел. Возвращает 80% физ. урона в ближнем бою обратно атакующему.\nАктивка: "Щит" — моментально добавляет +60 к Броне (КД: 3х).' },
+            crossbow: { id: 'crossbow', name: 'Арбалетчик', hp: 20, armor: 0, dmg: 25, dmgType: 'Стрела', init: 18, move: 3, range: 2, icon: '🏹', size: 1, passive: 'Пассивка: Высокая инициатива для быстрых дальних атак.\nАктивка: "Лечение" — восстанавливает +20 HP союзнику в радиусе 2.' },
+            ballista: { id: 'ballista', name: 'Балиста', hp: 80, armor: 0, dmg: 80, dmgType: 'Физ', init: 10, move: 1, range: 4, icon: '🏗️', size: 1, passive: 'Пассивка "Осада": Наносит х3 урон по Энтам и х2 по Драконам.\nАктивка: "Подготовка" — необходимо активировать перед выстрелом.' },
+            ent: { id: 'ent', name: 'Энт', hp: 250, armor: 50, dmg: 70, dmgType: 'Физ', init: 6, move: 1, range: 1, icon: '🌳', size: 1, passive: 'Пассивка "Кора Древа": Снижает входящий ФИЗИЧЕСКИЙ урон и стрелы на 80%. Атака наносит АОЕ урон всем вокруг.\nАктивка: "Окаменение" — дарует +150 Брони (КД: 3х).' },
+            dragon: { id: 'dragon', name: 'Дракон', hp: 120, armor: 0, dmg: 50, dmgType: 'Магия', init: 10, move: 6, range: 2, icon: '🐉', size: 2, passive: 'Пассивка "Ужасающая Аура": Враги в радиусе 2 теряют -10 Инициативы и наносят на -40% меньше урона. Полет через любые юниты.' },
+            vampire: { id: 'vampire', name: 'Вампир', hp: 40, armor: 0, dmg: 30, dmgType: 'Физ', init: 24, move: 5, range: 1, icon: '🦇', size: 1, passive: 'Пассивка "Вампиризм": Излечивается на 100% от нанесенного урона. Каждая атака снижает инициативу цели на 1.' },
+            stone_golem: { id: 'stone_golem', name: 'Каменный Голем', hp: 120, armor: 0, dmg: 20, dmgType: 'Физ', init: 5, move: 1, range: 1, icon: '🪨', size: 1, passive: 'Пассивка "Каменная Стенка": В конце каждого своего хода автоматически восстанавливает +40 Брони.' },
+            chronomancer: { id: 'chronomancer', name: 'Чародейка Времени', hp: 30, armor: 0, dmg: 10, dmgType: 'Магия', init: 14, move: 2, range: 3, icon: '🔮', size: 1, passive: 'Пассивка "Аура Времени": +3 к Инициативе союзникам в радиусе 2.\nАктивка 1: "Замедление" — -30 шкалы хода и -8 Инициативы цели на 2 хода.\nАктивка 2: "Скачок" — моментально дарует ход союзнику.' },
+            berserker: { id: 'berserker', name: 'Берсерк', hp: 240, armor: 0, dmg: 20, dmgType: 'Физ', init: 10, move: 3, range: 1, icon: '🪓', size: 1, passive: 'Пассивка "Квадро-Ярость": За каждые потерянные 5% HP получает +3 к Инициативе и +5 к Урону.' },
+            sniper: { id: 'sniper', name: 'Снайпер', hp: 25, armor: 0, dmg: 50, dmgType: 'Стрела', init: 8, move: 1, range: 6, icon: '🎯', size: 1, passive: 'Пассивка "Дальний Выстрел": Не может атаковать цели ближе 3 клеток. Получает +10% к урону за каждую клетку дистанции до цели.' },
+            frost_mage: { id: 'frost_mage', name: 'Маг Льда', hp: 35, armor: 0, dmg: 18, dmgType: 'Магия', init: 14, move: 2, range: 3, icon: '🧊', size: 1, passive: 'Пассивка "Глубокая Заморозка": Каждая атака замораживает цель (блокирует Move на 0, снижает Инициативу на 50%).' },
+            specter: { id: 'specter', name: 'Призрак', hp: 30, armor: 0, dmg: 20, dmgType: 'Магия', init: 15, move: 4, range: 1, icon: '👻', size: 1, passive: 'Пассивка "Бестелесность": Полный иммунитет к физ. урону и стрелам. Получает х2 урон от Магии. Проходит сквозь юнитов.' },
+            phoenix: { id: 'phoenix', name: 'Феникс', hp: 50, armor: 0, dmg: 25, dmgType: 'Магия', init: 17, move: 4, range: 2, icon: '🌟', size: 1, passive: 'Пассивка "Возрождение": Летает сквозь юниты. При смерти превращается в Яйцо Феникса и перерождается на свой ход.' },
+            phoenix_egg: { id: 'phoenix_egg', name: 'Яйцо Феникса', hp: 20, armor: 0, dmg: 0, dmgType: 'Нет', init: 0, move: 0, range: 0, icon: '🥚', size: 1, passive: 'Пассивка: Не может совершать действия. Автоматически перерождается в полноценного Феникса при наступлении хода.' }
         };
 
         class GameEngine {
@@ -599,7 +599,7 @@
                 if (unit.vampireDebuffs > 0) buffs.push(`Укус вампира (-${unit.vampireDebuffs} инст.)`);
                 if (this.isNearIceBehemoth(unit)) buffs.push("❄️ Пещера Инея (-1 ходьба)");
 
-                document.getElementById('info-buffs').innerText = buffs.join(', ');
+                document.getElementById('info-buffs').innerText = buffs.length > 0 ? "Статусы: " + buffs.join(', ') : "";
 
                 let cds = [];
                 for (let k in unit.cooldowns) {
@@ -809,7 +809,6 @@
                 });
                 if (!canAttack) atkBtn.disabled = true;
 
-                // Активка: Пожиратель Душ
                 if (u.id === 'soul_eater') {
                     let cd = u.cooldowns['Devour'] || 0;
                     let btn = this.createBtn(panel, '👻 Пожирание Тени', 'danger', () => {
@@ -821,7 +820,6 @@
                     if (cd > 0) { btn.disabled = true; btn.innerText += ` (${cd})`; }
                 }
 
-                // Активка: Грозовой Титан
                 if (u.id === 'storm_titan') {
                     let cd = u.cooldowns['StormStep'] || 0;
                     let btn = this.createBtn(panel, '⚡ Грозовой Шаг', 'primary', () => {
@@ -833,7 +831,6 @@
                     if (cd > 0) { btn.disabled = true; btn.innerText += ` (${cd})`; }
                 }
 
-                // Активка: Ледяной Исполин
                 if (u.id === 'ice_behemoth') {
                     let cd = u.cooldowns['IceAura'] || 0;
                     let btn = this.createBtn(panel, '❄️ Замораж. Аура', 'danger', () => {
@@ -842,7 +839,6 @@
                     if (cd > 0) { btn.disabled = true; btn.innerText += ` (${cd})`; }
                 }
 
-                // Активка: Королевский Грифон
                 if (u.id === 'royal_gryphon') {
                     let cd = u.cooldowns['WingFlap'] || 0;
                     let btn = this.createBtn(panel, '🦅 Взмах Крыльев', 'danger', () => {
@@ -977,7 +973,6 @@
                         au.x = x; au.y = y;
                         au.cooldowns['StormStep'] = 3;
 
-                        // Урон и отброс врагам на смежных клетках
                         const enemies = this.units.filter(u => u.team !== au.team && u.hp > 0);
                         enemies.forEach(e => {
                             if (this.getDistance(au, e.x, e.y, e.size) <= 1) {
@@ -1139,7 +1134,6 @@
                     }
                 }
 
-                // Реакция Пассивки "Статический Заряд" (Грозовой Титан)
                 if (defender.id === 'storm_titan' && defender.hp > 0 && attacker && attacker.hp > 0) {
                     if (this.getDistance(attacker, defender.x, defender.y, defender.size) <= 1) {
                         this.applyDamageToUnit(defender, attacker, 10);
@@ -1147,7 +1141,6 @@
                     }
                 }
 
-                // Логика смерти юнита
                 if (defender.hp <= 0) {
                     if (defender.id === 'phoenix') {
                         defender.id = 'phoenix_egg';
@@ -1161,7 +1154,6 @@
                         defender.range = 0;
                         defender.passive = UNIT_TYPES.phoenix_egg.passive;
                     } else {
-                        // Триггер Пассивки Жнеца "Жатва" на гибель любого юнита
                         this.triggerHarvestOnDeath();
                     }
                 }
@@ -1190,8 +1182,6 @@
                             if (u.id === 'specter') dmg = 0;
 
                             this.applyDamageToUnit(attacker, u, dmg);
-                            
-                            // Контратака Рыцаря и Грифона
                             this.checkCounterAttack(u, attacker, dmg, dist);
                         }
                     });
@@ -1220,7 +1210,6 @@
 
                 let isPhysDamage = attacker.dmgType === 'Физ' || attacker.dmgType === 'Стрела';
 
-                // Контратака Рыцаря (80% физ. урона)
                 if (defender.id === 'knight' && isPhysDamage) {
                     let reflectDmg = Math.floor(dmg * 0.8);
                     if (reflectDmg > 0) {
@@ -1230,7 +1219,6 @@
                     }
                 }
 
-                // Контратака Грифона (Бесконечная контратака)
                 if (defender.id === 'royal_gryphon') {
                     let gryphonDmg = this.calculateDamage(defender, attacker);
                     if (typeof gryphonDmg !== 'number') gryphonDmg = this.getActualDmg(defender, attacker);
@@ -1260,6 +1248,42 @@
 
                 if (enemies.length === 0) return this.endTurn();
 
+                // ИИ Некроманта: приоритет на призыв существ
+                if (me.id === 'necromancer') {
+                    const summonableTypes = Object.keys(UNIT_TYPES).filter(t => t !== 'phoenix_egg' && t !== 'necromancer');
+                    const availableSummons = summonableTypes.filter(type => (me.cooldowns['summon_' + type] || 0) === 0);
+
+                    if (availableSummons.length > 0) {
+                        let validCells = [];
+                        for (let dy = -me.range; dy <= me.range; dy++) {
+                            for (let dx = -me.range; dx <= me.range; dx++) {
+                                let cx = me.x + dx, cy = me.y + dy;
+                                if (this.getDistance(me, cx, cy, 1) <= me.range) {
+                                    validCells.push({x: cx, y: cy});
+                                }
+                            }
+                        }
+
+                        // Фильтруем типы, которые поместятся на свободные клетки
+                        for (let type of availableSummons) {
+                            let size = UNIT_TYPES[type].size;
+                            let freePos = validCells.find(pos => this.isCellFree(pos.x, pos.y, size));
+                            if (freePos) {
+                                const tpl = UNIT_TYPES[type];
+                                this.units.push({
+                                    ...tpl, x: freePos.x, y: freePos.y, team: me.team,
+                                    maxHp: tpl.hp, maxArmor: tpl.armor, armor: tpl.armor,
+                                    bonusDmg: 0, actionPoints: 0, isPrepared: false, cooldowns: {},
+                                    vampireDebuffs: 0, isDragonAuraAffected: false, isChronoAuraAffected: false,
+                                    isFrozen: false, chronoSlowTurns: 0
+                                });
+                                me.cooldowns['summon_' + type] = (type === 'stone_golem') ? 2 : 20;
+                                return this.endTurn();
+                            }
+                        }
+                    }
+                }
+
                 let targetsInRange = enemies.filter(e => {
                     let d = this.getDistance(me, e.x, e.y, e.size);
                     if (me.id === 'sniper' && d < 3) return false;
@@ -1271,7 +1295,6 @@
                     return this.endTurn();
                 }
 
-                // AI Способности новых юнитов
                 if (me.id === 'soul_eater' && (me.cooldowns['Devour'] || 0) === 0) {
                     let target = enemies.find(e => this.getDistance(me, e.x, e.y, e.size) <= 2);
                     if (target) {
