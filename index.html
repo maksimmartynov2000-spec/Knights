@@ -359,7 +359,7 @@
             knight: { id: 'knight', name: 'Рыцарь', hp: 100, dmg: 10, dmgType: 'Физ', init: 12, move: 2, range: 1, icon: '⚔️', size: 1, passive: 'Сопротивление стрелам (-50% урона). При получении ФИЗ. урона в БЛИЖНЕМ бою возвращает 80% урона атакующему.' },
             crossbow: { id: 'crossbow', name: 'Арбалетчик', hp: 20, dmg: 25, dmgType: 'Стрела', init: 18, move: 3, range: 2, icon: '🏹', size: 1, passive: 'Умеет восстанавливать здоровье любым союзникам.' },
             ballista: { id: 'ballista', name: 'Балиста', hp: 80, dmg: 80, dmgType: 'Физ', init: 10, move: 1, range: 4, icon: '🏗️', size: 1, passive: 'Требует подготовки перед выстрелом. Наносит х3 по Энтам и х2 по Драконам.' },
-            ent: { id: 'ent', name: 'Энт', hp: 250, dmg: 70, dmgType: 'Физ', init: 6, move: 1, range: 1, icon: '🌳', size: 1, passive: 'Защита от физ. урона (-80% к получаемому ФИЗ. урону). Атака наносит урон по площади (АОЕ).' },
+            ent: { id: 'ent', name: 'Энт', hp: 250, dmg: 70, dmgType: 'Физ', init: 6, move: 1, range: 1, icon: '🌳', size: 1, passive: 'Защита от ВСЕГО физ. урона (-80% к получаемому ФИЗ. урону, включая стрелы и контратаки). Атака наносит урон по площади (АОЕ).' },
             dragon: { id: 'dragon', name: 'Дракон', hp: 120, dmg: 50, dmgType: 'Магия', init: 10, move: 6, range: 2, icon: '🐉', size: 2, passive: 'Размер 2х2. Аура: враги в радиусе 2 теряют 10 инициативы и 40% урона.' },
             vampire: { id: 'vampire', name: 'Вампир', hp: 40, dmg: 30, dmgType: 'Физ', init: 24, move: 5, range: 1, icon: '🦇', size: 1, passive: 'Лайфстил. Атакой снижает инициативу жертвы на 1 на 1 ход.' },
             wall: { id: 'wall', name: 'Стена', hp: 100, dmg: 0, dmgType: 'Нет', init: 7, move: 0, range: 0, icon: '🧱', size: 1, passive: 'Инициатива 7. Автоматически получает +50 к броне в свой ход.' }
@@ -840,15 +840,16 @@
             calculateDamage(attacker, defender) {
                 if (defender.id === 'necromancer') return 1;
                 if (defender.id === 'wall') return this.getActualDmg(attacker);
-                if (attacker.id === 'ent') return this.getActualDmg(attacker) + " (АОЕ)";
+                if (attacker.id === 'ent') return Math.floor(this.getActualDmg(attacker) * 0.2) + " (АОЕ)";
 
                 let dmg = this.getActualDmg(attacker);
                 
                 // Модификаторы защиты
                 if (defender.id === 'knight' && attacker.dmgType === 'Стрела') dmg = Math.floor(dmg * 0.5);
                 
-                // Изменение: Энт получает -80% к получаемому ФИЗ. урону (остаётся 20%)
-                if (defender.id === 'ent' && attacker.dmgType === 'Физ') dmg = Math.floor(dmg * 0.2);
+                // Энт получает -80% к ЛЮБОМУ физическому урону (включая стрелы и физ)
+                let isPhysDamage = attacker.dmgType === 'Физ' || attacker.dmgType === 'Стрела';
+                if (defender.id === 'ent' && isPhysDamage) dmg = Math.floor(dmg * 0.2);
 
                 if (attacker.id === 'ballista') {
                     if (defender.id === 'ent') dmg *= 3;
@@ -884,28 +885,42 @@
                 if (attacker.id === 'ent') {
                     this.units.forEach(u => {
                         if ((u.team !== attacker.team || u.id === 'wall') && this.getDistance(attacker, u.x, u.y, u.size) <= 1) {
-                            let dmg = this.calculateDamage(attacker, u);
-                            if (typeof dmg !== 'number') dmg = this.getActualDmg(attacker);
-                            
+                            let dmg = this.getActualDmg(attacker);
                             let dist = this.getDistance(attacker, u.x, u.y, u.size);
+                            
+                            // Расчет урона по врагу в АОЕ зоне
+                            if (u.id === 'ent') dmg = Math.floor(dmg * 0.2); // Если враг тоже Энт
+                            if (u.id === 'knight' && attacker.dmgType === 'Стрела') dmg = Math.floor(dmg * 0.5);
+
                             this.applyDamageToUnit(attacker, u, dmg);
                             
-                            // Изменение: Контратака Рыцаря при физ. уроне в ближнем бою
+                            // Контратака Рыцаря при получении физ. урона в ближнем бою
                             if (u.id === 'knight' && u.hp > 0 && attacker.dmgType === 'Физ' && dist <= 1) {
                                 let reflectDmg = Math.floor(dmg * 0.8);
-                                if (reflectDmg > 0) this.applyDamageToUnit(u, attacker, reflectDmg);
+                                if (reflectDmg > 0) {
+                                    // Проводка контратаки (с учетом абсолютной защиты Энта от физ урона)
+                                    let finalReflectDmg = (attacker.id === 'ent') ? Math.floor(reflectDmg * 0.2) : reflectDmg;
+                                    this.applyDamageToUnit(u, attacker, Math.max(1, finalReflectDmg));
+                                }
                             }
                         }
                     });
                 } else {
                     let dist = this.getDistance(attacker, defender.x, defender.y, defender.size);
                     let dmg = this.calculateDamage(attacker, defender);
+                    
+                    if (typeof dmg !== 'number') dmg = this.getActualDmg(attacker);
                     this.applyDamageToUnit(attacker, defender, dmg);
 
-                    // Изменение: Контратака Рыцаря при физ. уроне в ближнем бою
-                    if (defender.id === 'knight' && defender.hp > 0 && attacker.dmgType === 'Физ' && dist <= 1) {
+                    // Контратака Рыцаря при получении физ. урона в ближнем бою
+                    let isPhysDamage = attacker.dmgType === 'Физ' || attacker.dmgType === 'Стрела';
+                    if (defender.id === 'knight' && defender.hp > 0 && isPhysDamage && dist <= 1) {
                         let reflectDmg = Math.floor(dmg * 0.8);
-                        if (reflectDmg > 0) this.applyDamageToUnit(defender, attacker, reflectDmg);
+                        if (reflectDmg > 0) {
+                            // Если атакующий был Энтом, урон от контратаки режется на 80%
+                            let finalReflectDmg = (attacker.id === 'ent') ? Math.floor(reflectDmg * 0.2) : reflectDmg;
+                            this.applyDamageToUnit(defender, attacker, Math.max(1, finalReflectDmg));
+                        }
                     }
 
                     if (attacker.id === 'vampire') {
