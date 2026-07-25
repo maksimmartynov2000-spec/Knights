@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Medieval Tactics - Balanced Version</title>
+    <title>Medieval Tactics - Expanded Version</title>
     <style>
         :root {
             --bg-color: #121212;
@@ -13,6 +13,7 @@
             --highlight-attack: rgba(255, 0, 0, 0.5);
             --highlight-summon: rgba(128, 0, 128, 0.5);
             --highlight-heal: rgba(0, 255, 255, 0.5);
+            --highlight-buff: rgba(255, 215, 0, 0.5);
             --zone-player: rgba(0, 100, 255, 0.15);
             --zone-enemy: rgba(255, 0, 0, 0.15);
         }
@@ -108,6 +109,7 @@
         .cell.highlight-attack { background-color: var(--highlight-attack) !important; cursor: pointer; }
         .cell.highlight-summon { background-color: var(--highlight-summon) !important; cursor: pointer; }
         .cell.highlight-heal { background-color: var(--highlight-heal) !important; cursor: pointer; }
+        .cell.highlight-buff { background-color: var(--highlight-buff) !important; cursor: pointer; }
 
         .unit {
             position: absolute;
@@ -133,16 +135,16 @@
             font-size: 28px;
         }
 
-        .unit.wall {
+        .unit.stone_golem {
             width: 90%;
             height: 90%;
-            border-radius: 4px;
+            border-radius: 8px;
             border: 2px solid #777;
         }
 
         .unit.player { background: linear-gradient(135deg, #1a75ff, #004080); color: white; border: 2px solid #4da6ff; }
         .unit.enemy { background: linear-gradient(135deg, #e60000, #800000); color: white; border: 2px solid #ff4d4d; }
-        .unit.wall { background: linear-gradient(135deg, #555, #333); }
+        .unit.stone_golem { background: linear-gradient(135deg, #555, #333); }
 
         .hp-bar {
             position: absolute;
@@ -184,8 +186,8 @@
         
         .buff-icon {
             position: absolute;
-            top: 4px;
-            right: 4px;
+            top: 2px;
+            right: 2px;
             font-size: 10px;
             background: #fff;
             border-radius: 50%;
@@ -219,7 +221,7 @@
             flex-wrap: wrap;
             justify-content: center;
             gap: 4px;
-            max-height: 110px;
+            max-height: 120px;
             overflow-y: auto;
         }
 
@@ -305,7 +307,7 @@
                 <p>ХП: <span id="info-hp"></span></p>
                 <p>Броня: <span id="info-armor"></span></p>
                 <p>Урон: <span id="info-dmg"></span> (<span id="info-type"></span>)</p>
-                <p>Снижение урона: <span id="info-dmg-debuff" style="color: #ff6666;"></span></p>
+                <p>Модификаторы: <span id="info-dmg-debuff" style="color: #ff6666;"></span></p>
                 <p>Инициатива: <span id="info-init"></span></p>
                 <p>Дальность/Ход: <span id="info-range"></span> / <span id="info-move"></span></p>
                 <p style="margin-top: 6px; color: #ffcc00; font-size: 12px;">📌 Пассивка: <span id="info-passive" style="color: #fff;"></span></p>
@@ -316,7 +318,7 @@
             
             <div id="damage-preview" class="hidden">
                 Урон: <span id="preview-dmg" style="font-size: 22px; font-weight: bold;">0</span><br>
-                <span style="font-size: 11px; color: #ccc;">Нажми еще раз для атаки</span>
+                <span style="font-size: 11px; color: #ccc;">Нажми еще раз для выполнения</span>
             </div>
         </div>
 
@@ -337,7 +339,13 @@
                         <option value="ent">🌳 Энт</option>
                         <option value="dragon">🐉 Дракон (2x2)</option>
                         <option value="vampire">🦇 Вампир</option>
-                        <option value="wall">🧱 Стена (100 ХП)</option>
+                        <option value="stone_golem">🪨 Каменный Голем</option>
+                        <option value="chronomancer">🔮 Чародейка Времени</option>
+                        <option value="berserker">🪓 Берсерк</option>
+                        <option value="sniper">🎯 Снайпер</option>
+                        <option value="frost_mage">🧊 Маг Льда</option>
+                        <option value="specter">👻 Призрак</option>
+                        <option value="phoenix">🌟 Феникс</option>
                     </select>
                 </div>
                 <div style="font-size: 10px; color: #aaa; text-align: center; margin-bottom: 4px;">
@@ -359,10 +367,17 @@
             knight: { id: 'knight', name: 'Рыцарь', hp: 100, dmg: 10, dmgType: 'Физ', init: 12, move: 2, range: 1, icon: '⚔️', size: 1, passive: 'Сопротивление стрелам (-50% урона). При получении ФИЗ. урона в БЛИЖНЕМ бою возвращает 80% урона атакующему.' },
             crossbow: { id: 'crossbow', name: 'Арбалетчик', hp: 20, dmg: 25, dmgType: 'Стрела', init: 18, move: 3, range: 2, icon: '🏹', size: 1, passive: 'Умеет восстанавливать здоровье любым союзникам.' },
             ballista: { id: 'ballista', name: 'Балиста', hp: 80, dmg: 80, dmgType: 'Физ', init: 10, move: 1, range: 4, icon: '🏗️', size: 1, passive: 'Требует подготовки перед выстрелом. Наносит х3 по Энтам и х2 по Драконам.' },
-            ent: { id: 'ent', name: 'Энт', hp: 250, dmg: 70, dmgType: 'Физ', init: 6, move: 1, range: 1, icon: '🌳', size: 1, passive: 'Защита от ВСЕГО физ. урона (-80% к получаемому ФИЗ. урону, включая стрелы и контратаки). Атака наносит урон по площади (АОЕ).' },
+            ent: { id: 'ent', name: 'Энт', hp: 250, dmg: 70, dmgType: 'Физ', init: 6, move: 1, range: 1, icon: '🌳', size: 1, passive: 'Защита от ВСЕГО физ. урона (-80% к получаемому ФИЗ. урону). Атака наносит урон по площади (АОЕ).' },
             dragon: { id: 'dragon', name: 'Дракон', hp: 120, dmg: 50, dmgType: 'Магия', init: 10, move: 6, range: 2, icon: '🐉', size: 2, passive: 'Размер 2х2. Аура: враги в радиусе 2 теряют 10 инициативы и 40% урона.' },
             vampire: { id: 'vampire', name: 'Вампир', hp: 40, dmg: 30, dmgType: 'Физ', init: 24, move: 5, range: 1, icon: '🦇', size: 1, passive: 'Лайфстил. Атакой снижает инициативу жертвы на 1 на 1 ход.' },
-            wall: { id: 'wall', name: 'Стена', hp: 100, dmg: 0, dmgType: 'Нет', init: 7, move: 0, range: 0, icon: '🧱', size: 1, passive: 'Инициатива 7. Автоматически получает +50 к броне в свой ход.' }
+            stone_golem: { id: 'stone_golem', name: 'Каменный Голем', hp: 120, dmg: 20, dmgType: 'Физ', init: 5, move: 1, range: 1, icon: '🪨', size: 1, passive: 'После совершения своего хода автоматически получает +40 к Броне.' },
+            chronomancer: { id: 'chronomancer', name: 'Чародейка Времени', hp: 30, dmg: 10, dmgType: 'Магия', init: 14, move: 2, range: 3, icon: '🔮', size: 1, passive: 'Аура +3 к Инициативе союзникам в радиусе 2 клеток. Умеет передавать ход и замедлять врагов.' },
+            berserker: { id: 'berserker', name: 'Берсерк', hp: 80, dmg: 20, dmgType: 'Физ', init: 10, move: 3, range: 1, icon: '🪓', size: 1, passive: 'За каждые потерянные 10% от своего maxHp получает +3 к Инициативе и +5 к Урону.' },
+            sniper: { id: 'sniper', name: 'Снайпер', hp: 25, dmg: 50, dmgType: 'Стрела', init: 8, move: 1, range: 6, icon: '🎯', size: 1, passive: 'Не может атаковать цели на расстоянии 1-2 клеток. Урон увеличивается на +10% за каждую клетку дистанции.' },
+            frost_mage: { id: 'frost_mage', name: 'Маг Льда', hp: 35, dmg: 18, dmgType: 'Магия', init: 14, move: 2, range: 3, icon: '🧊', size: 1, passive: 'Атака замораживает цель. На следующий свой ход замороженная цель не может передвигаться и теряет 50% Инициативы.' },
+            specter: { id: 'specter', name: 'Призрак', hp: 30, dmg: 20, dmgType: 'Магия', init: 15, move: 4, range: 1, icon: '👻', size: 1, passive: 'Игнорирует 100% Физ. урона и Стрел. Получает х2 урон от Магии. Проходит сквозь любые юниты.' },
+            phoenix: { id: 'phoenix', name: 'Феникс', hp: 50, dmg: 25, dmgType: 'Магия', init: 17, move: 4, range: 2, icon: '🌟', size: 1, passive: 'При смерти превращается в Яйцо (20 HP). Если Яйцо выживает до своего хода, Феникс перерождается.' },
+            phoenix_egg: { id: 'phoenix_egg', name: 'Яйцо Феникса', hp: 20, dmg: 0, dmgType: 'Нет', init: 0, move: 0, range: 0, icon: '🥚', size: 1, passive: 'Не может ходить. Перерождается в Феникса в момент наступления своего хода.' }
         };
 
         class GameEngine {
@@ -426,10 +441,13 @@
             }
 
             canReachPosition(unit, targetX, targetY) {
+                let actualMove = unit.isFrozen ? 0 : unit.move;
+                if (actualMove <= 0) return false;
                 if (!this.isCellFree(targetX, targetY, unit.size, unit)) return false;
 
-                if (unit.id === 'dragon') {
-                    return this.getDistance(unit, targetX, targetY, unit.size) <= unit.move;
+                // Дракон и Призрак летают/проходят насквозь
+                if (unit.id === 'dragon' || unit.id === 'specter') {
+                    return this.getDistance(unit, targetX, targetY, unit.size) <= actualMove;
                 }
 
                 let queue = [{x: unit.x, y: unit.y, dist: 0}];
@@ -438,7 +456,7 @@
                 while(queue.length > 0) {
                     let curr = queue.shift();
                     if (curr.x === targetX && curr.y === targetY) return true;
-                    if (curr.dist >= unit.move) continue;
+                    if (curr.dist >= actualMove) continue;
 
                     let neighbors = [
                         {x: curr.x + 1, y: curr.y},
@@ -497,7 +515,10 @@
                                 isPrepared: false,
                                 cooldowns: {},
                                 vampireDebuffs: 0,
-                                isDragonAuraAffected: false
+                                isDragonAuraAffected: false,
+                                isChronoAuraAffected: false,
+                                isFrozen: false,
+                                chronoSlowTurns: 0
                             });
                         }
                     }
@@ -525,17 +546,27 @@
                 document.getElementById('info-dmg').innerText = (actualDmg !== unit.dmg) ? `${actualDmg} (баз. ${unit.dmg})` : unit.dmg;
                 document.getElementById('info-type').innerText = unit.dmgType;
                 
-                document.getElementById('info-dmg-debuff').innerText = unit.isDragonAuraAffected ? "40% (Аура дракона)" : "0%";
+                let mods = [];
+                if (unit.isDragonAuraAffected) mods.push("Аура Дракона (-40% урона)");
+                if (unit.id === 'berserker') {
+                    let missingPct = Math.floor((1 - (unit.hp / unit.maxHp)) * 10);
+                    if (missingPct > 0) mods.push(`Ярость Берсерка (+${missingPct * 5} урона)`);
+                }
+                document.getElementById('info-dmg-debuff').innerText = mods.length > 0 ? mods.join(', ') : "Нет";
 
                 let baseInit = UNIT_TYPES[unit.id].init;
                 document.getElementById('info-init').innerText = (unit.init !== baseInit) ? `${unit.init} (баз. ${baseInit})` : unit.init;
                 
-                document.getElementById('info-range').innerText = `${unit.range} / ${unit.move}`;
+                let curMove = unit.isFrozen ? 0 : unit.move;
+                document.getElementById('info-range').innerText = `${unit.range} / ${curMove}`;
                 document.getElementById('info-passive').innerText = unit.passive || 'Нет пассивных способностей.';
                 
                 let buffs = [];
                 if (unit.isPrepared) buffs.push("Готов к выстрелу");
-                if (unit.isDragonAuraAffected) buffs.push("Аура дракона (-10 инст., -40% атаки)");
+                if (unit.isDragonAuraAffected) buffs.push("Аура дракона (-10 инст.)");
+                if (unit.isChronoAuraAffected) buffs.push("Аура времени (+3 инст.)");
+                if (unit.isFrozen) buffs.push("❄️ Заморожен (-50% инст., 0 хода)");
+                if (unit.chronoSlowTurns > 0) buffs.push(`⏳ Замедление (-8 инст., ${unit.chronoSlowTurns}х.)`);
                 if (unit.vampireDebuffs > 0) buffs.push(`Укус вампира (-${unit.vampireDebuffs} инст.)`);
 
                 document.getElementById('info-buffs').innerText = buffs.join(', ');
@@ -548,11 +579,26 @@
                 document.getElementById('info-modal').classList.remove('hidden');
             }
 
-            getActualDmg(unit) {
+            getActualDmg(unit, target = null) {
                 let dmg = unit.dmg;
+                
+                // Берсерк: +5 урона за каждые потерянные 10% HP
+                if (unit.id === 'berserker') {
+                    let missingPct = Math.floor((1 - (unit.hp / unit.maxHp)) * 10);
+                    dmg += missingPct * 5;
+                }
+
+                // Аура Дракона
                 if (unit.isDragonAuraAffected) {
                     dmg = Math.floor(dmg * 0.6);
                 }
+
+                // Снайпер: +10% урона за каждый шаг дистанции
+                if (unit.id === 'sniper' && target) {
+                    let dist = this.getDistance(unit, target.x, target.y, target.size);
+                    dmg = Math.floor(dmg * (1 + 0.10 * dist));
+                }
+
                 return Math.max(1, dmg);
             }
 
@@ -571,16 +617,37 @@
                 this.nextTurn();
             }
 
-            applyDragonAuras(simUnitsList = null) {
+            applyGlobalAuras(simUnitsList = null) {
                 let targetList = simUnitsList || this.units;
                 
                 targetList.forEach(u => {
                     u.init = UNIT_TYPES[u.id].init;
                     u.isDragonAuraAffected = false;
+                    u.isChronoAuraAffected = false;
+
+                    // Пассивка Берсерка (+3 init за 10% потерь HP)
+                    if (u.id === 'berserker') {
+                        let missingPct = Math.floor((1 - (u.hp / u.maxHp)) * 10);
+                        u.init += missingPct * 3;
+                    }
                 });
 
-                const dragons = targetList.filter(u => u.id === 'dragon' && u.hp > 0);
+                // 1. Аура Чародейки Времени (+3 init союзникам в радиусе 2)
+                const chronos = targetList.filter(u => u.id === 'chronomancer' && u.hp > 0);
+                chronos.forEach(chrono => {
+                    targetList.forEach(target => {
+                        if (target.hp <= 0) return;
+                        if (target.team !== chrono.team) return;
+                        let dist = this.getDistance(chrono, target.x, target.y, target.size);
+                        if (dist <= 2) {
+                            target.init += 3;
+                            target.isChronoAuraAffected = true;
+                        }
+                    });
+                });
 
+                // 2. Аура Дракона (-10 init, -40% dmg врагам в радиусе 2)
+                const dragons = targetList.filter(u => u.id === 'dragon' && u.hp > 0);
                 dragons.forEach(dragon => {
                     targetList.forEach(target => {
                         if (target.hp <= 0) return;
@@ -595,17 +662,19 @@
                     });
                 });
 
+                // 3. Дебаффы (Вампир, Замедление Чародейки, Заморозка Мага)
                 targetList.forEach(u => {
-                    if (u.vampireDebuffs > 0) {
-                        u.init -= u.vampireDebuffs;
-                    }
+                    if (u.vampireDebuffs > 0) u.init -= u.vampireDebuffs;
+                    if (u.chronoSlowTurns > 0) u.init -= 8;
+                    if (u.isFrozen) u.init = Math.floor(u.init * 0.5);
+
                     u.init = Math.max(1, u.init);
                 });
             }
 
             nextTurn() {
                 this.units = this.units.filter(u => u.hp > 0);
-                this.applyDragonAuras();
+                this.applyGlobalAuras();
                 
                 let maxLoops = 2000;
                 while (maxLoops-- > 0) {
@@ -616,15 +685,34 @@
                         this.activeUnit = readyUnits[0];
                         this.activeUnit.actionPoints -= 100;
                         
-                        if (this.activeUnit.vampireDebuffs > 0) {
-                            this.activeUnit.vampireDebuffs = 0;
-                            this.applyDragonAuras();
+                        // Обработка Перерождения Яйца Феникса
+                        if (this.activeUnit.id === 'phoenix_egg') {
+                            this.activeUnit.id = 'phoenix';
+                            this.activeUnit.name = UNIT_TYPES.phoenix.name;
+                            this.activeUnit.icon = UNIT_TYPES.phoenix.icon;
+                            this.activeUnit.hp = UNIT_TYPES.phoenix.hp;
+                            this.activeUnit.maxHp = UNIT_TYPES.phoenix.hp;
+                            this.activeUnit.dmg = UNIT_TYPES.phoenix.dmg;
+                            this.activeUnit.dmgType = UNIT_TYPES.phoenix.dmgType;
+                            this.activeUnit.move = UNIT_TYPES.phoenix.move;
+                            this.activeUnit.range = UNIT_TYPES.phoenix.range;
+                            this.activeUnit.passive = UNIT_TYPES.phoenix.passive;
                         }
 
-                        if (this.activeUnit.id === 'wall') {
-                            this.activeUnit.armor = (this.activeUnit.armor || 0) + 50;
-                            this.activeUnit.maxArmor = Math.max(this.activeUnit.maxArmor || 0, this.activeUnit.armor);
+                        // Снятие эффекта Заморозки Мага Льда в НАЧАЛЕ своего хода
+                        if (this.activeUnit.isFrozen) {
+                            this.activeUnit.isFrozen = false;
                         }
+
+                        if (this.activeUnit.chronoSlowTurns > 0) {
+                            this.activeUnit.chronoSlowTurns--;
+                        }
+
+                        if (this.activeUnit.vampireDebuffs > 0) {
+                            this.activeUnit.vampireDebuffs = 0;
+                        }
+                        
+                        this.applyGlobalAuras();
 
                         for (let k in this.activeUnit.cooldowns) {
                             if (this.activeUnit.cooldowns[k] > 0) this.activeUnit.cooldowns[k]--;
@@ -646,7 +734,7 @@
                 queueEl.innerHTML = '';
                 
                 let simUnits = this.units.map(u => ({...u}));
-                this.applyDragonAuras(simUnits);
+                this.applyGlobalAuras(simUnits);
 
                 let forecast = [];
                 for (let i = 0; i < 15; i++) {
@@ -694,12 +782,13 @@
                 panel.innerHTML = '';
                 const u = this.activeUnit;
 
-                this.createBtn(panel, 'Движение', 'primary', () => { 
+                let moveBtn = this.createBtn(panel, 'Движение', 'primary', () => { 
                     this.clearHighlights();
                     this.selectedAction = 'move'; 
                     this.resetTarget(); 
                     this.highlightMove(); 
                 });
+                if (u.isFrozen || u.move <= 0) moveBtn.disabled = true;
 
                 let canAttack = true;
                 if (u.id === 'ballista' && !u.isPrepared) canAttack = false;
@@ -713,7 +802,7 @@
                 if (!canAttack) atkBtn.disabled = true;
 
                 if (u.id === 'necromancer') {
-                    ['knight','crossbow','ballista','ent','dragon','vampire','wall'].forEach(type => {
+                    ['knight','crossbow','ballista','ent','dragon','vampire','stone_golem','chronomancer','berserker','sniper','frost_mage','specter','phoenix'].forEach(type => {
                         let cdKey = 'summon_' + type;
                         let cd = u.cooldowns[cdKey] || 0;
                         let btn = this.createBtn(panel, `Призыв ${UNIT_TYPES[type].icon}`, 'success', () => {
@@ -766,6 +855,26 @@
                     if (cd > 0) { btn.disabled = true; btn.innerText += ` (${cd})`; }
                 }
 
+                if (u.id === 'chronomancer') {
+                    let cdSlow = u.cooldowns['Slow'] || 0;
+                    let btnSlow = this.createBtn(panel, '⏳ Замедление', 'danger', () => {
+                        this.clearHighlights();
+                        this.selectedAction = 'chrono_slow';
+                        this.resetTarget();
+                        this.highlightChronoSlow();
+                    });
+                    if (cdSlow > 0) { btnSlow.disabled = true; btnSlow.innerText += ` (${cdSlow})`; }
+
+                    let cdBoost = u.cooldowns['Boost'] || 0;
+                    let btnBoost = this.createBtn(panel, '⚡ Скачок Времени', 'success', () => {
+                        this.clearHighlights();
+                        this.selectedAction = 'chrono_boost';
+                        this.resetTarget();
+                        this.highlightChronoBoost();
+                    });
+                    if (cdBoost > 0) { btnBoost.disabled = true; btnBoost.innerText += ` (${cdBoost})`; }
+                }
+
                 this.createBtn(panel, '⏭ Пропустить ход', 'secondary', () => {
                     this.endTurn();
                 });
@@ -796,7 +905,8 @@
                     }
                 } 
                 else if (this.selectedAction === 'attack') {
-                    if (dist <= au.range && targetUnit && (targetUnit.team !== au.team || targetUnit.id === 'wall')) {
+                    if (dist <= au.range && targetUnit && targetUnit.team !== au.team) {
+                        if (au.id === 'sniper' && dist < 3) return alert("Снайпер не может атаковать цели ближе 3 клеток!");
                         this.handleCombatLogic(targetUnit, x, y);
                     } else {
                         this.resetTarget();
@@ -810,15 +920,31 @@
                             maxArmor: tpl.id === 'ent' ? 50 : 0, 
                             armor: tpl.id === 'ent' ? 50 : 0, 
                             actionPoints: 0, isPrepared: false, cooldowns: {},
-                            vampireDebuffs: 0, isDragonAuraAffected: false
+                            vampireDebuffs: 0, isDragonAuraAffected: false, isChronoAuraAffected: false,
+                            isFrozen: false, chronoSlowTurns: 0
                         });
-                        au.cooldowns['summon_' + this.summonType] = (this.summonType === 'wall') ? 2 : 20;
+                        au.cooldowns['summon_' + this.summonType] = (this.summonType === 'stone_golem') ? 2 : 20;
                         this.endTurn();
                     }
                 }
                 else if (this.selectedAction === 'heal') {
                     if (targetUnit && targetUnit.team === au.team && dist <= au.range) {
                         targetUnit.hp = Math.min(targetUnit.maxHp, targetUnit.hp + 20);
+                        this.endTurn();
+                    }
+                }
+                else if (this.selectedAction === 'chrono_slow') {
+                    if (targetUnit && targetUnit.team !== au.team && dist <= 3) {
+                        targetUnit.actionPoints = Math.max(0, targetUnit.actionPoints - 30);
+                        targetUnit.chronoSlowTurns = 2;
+                        au.cooldowns['Slow'] = 3;
+                        this.endTurn();
+                    }
+                }
+                else if (this.selectedAction === 'chrono_boost') {
+                    if (targetUnit && targetUnit.team === au.team && dist <= 3) {
+                        targetUnit.actionPoints += 100;
+                        au.cooldowns['Boost'] = 4;
                         this.endTurn();
                     }
                 }
@@ -839,15 +965,21 @@
 
             calculateDamage(attacker, defender) {
                 if (defender.id === 'necromancer') return 1;
-                if (defender.id === 'wall') return this.getActualDmg(attacker);
-                if (attacker.id === 'ent') return Math.floor(this.getActualDmg(attacker) * 0.2) + " (АОЕ)";
-
-                let dmg = this.getActualDmg(attacker);
                 
-                // Модификаторы защиты
+                // Иммунитет и слабость Призрака
+                if (defender.id === 'specter') {
+                    if (attacker.dmgType === 'Физ' || attacker.dmgType === 'Стрела') return 0;
+                    if (attacker.dmgType === 'Магия') return this.getActualDmg(attacker, defender) * 2;
+                }
+
+                if (attacker.id === 'ent') return Math.floor(this.getActualDmg(attacker, defender) * 0.2) + " (АОЕ)";
+
+                let dmg = this.getActualDmg(attacker, defender);
+                
+                // Сопротивление Рыцаря стрелам
                 if (defender.id === 'knight' && attacker.dmgType === 'Стрела') dmg = Math.floor(dmg * 0.5);
                 
-                // Энт получает -80% к ЛЮБОМУ физическому урону (включая стрелы и физ)
+                // Защита Энта (-80% ко всему физ урону)
                 let isPhysDamage = attacker.dmgType === 'Физ' || attacker.dmgType === 'Стрела';
                 if (defender.id === 'ent' && isPhysDamage) dmg = Math.floor(dmg * 0.2);
 
@@ -860,6 +992,8 @@
             }
 
             applyDamageToUnit(attacker, defender, rawDmg) {
+                if (rawDmg <= 0) return;
+
                 if (defender.id === 'necromancer') {
                     defender.hp -= 1;
                     return;
@@ -877,6 +1011,22 @@
                 } else {
                     defender.hp -= rawDmg;
                 }
+
+                // Логика смерти / Превращения Феникса в Яйцо
+                if (defender.hp <= 0) {
+                    if (defender.id === 'phoenix') {
+                        defender.id = 'phoenix_egg';
+                        defender.name = UNIT_TYPES.phoenix_egg.name;
+                        defender.icon = UNIT_TYPES.phoenix_egg.icon;
+                        defender.hp = UNIT_TYPES.phoenix_egg.hp;
+                        defender.maxHp = UNIT_TYPES.phoenix_egg.hp;
+                        defender.dmg = 0;
+                        defender.armor = 0;
+                        defender.move = 0;
+                        defender.range = 0;
+                        defender.passive = UNIT_TYPES.phoenix_egg.passive;
+                    }
+                }
             }
 
             executeAttack(attacker, defender) {
@@ -884,22 +1034,22 @@
 
                 if (attacker.id === 'ent') {
                     this.units.forEach(u => {
-                        if ((u.team !== attacker.team || u.id === 'wall') && this.getDistance(attacker, u.x, u.y, u.size) <= 1) {
-                            let dmg = this.getActualDmg(attacker);
+                        if (u.team !== attacker.team && this.getDistance(attacker, u.x, u.y, u.size) <= 1) {
+                            let dmg = this.getActualDmg(attacker, u);
                             let dist = this.getDistance(attacker, u.x, u.y, u.size);
                             
-                            // Расчет урона по врагу в АОЕ зоне
-                            if (u.id === 'ent') dmg = Math.floor(dmg * 0.2); // Если враг тоже Энт
+                            if (u.id === 'ent') dmg = Math.floor(dmg * 0.2);
                             if (u.id === 'knight' && attacker.dmgType === 'Стрела') dmg = Math.floor(dmg * 0.5);
+                            if (u.id === 'specter') dmg = 0;
 
                             this.applyDamageToUnit(attacker, u, dmg);
                             
-                            // Контратака Рыцаря при получении физ. урона в ближнем бою
+                            // Контратака Рыцаря
                             if (u.id === 'knight' && u.hp > 0 && attacker.dmgType === 'Физ' && dist <= 1) {
                                 let reflectDmg = Math.floor(dmg * 0.8);
                                 if (reflectDmg > 0) {
-                                    // Проводка контратаки (с учетом абсолютной защиты Энта от физ урона)
                                     let finalReflectDmg = (attacker.id === 'ent') ? Math.floor(reflectDmg * 0.2) : reflectDmg;
+                                    if (attacker.id === 'specter') finalReflectDmg = 0;
                                     this.applyDamageToUnit(u, attacker, Math.max(1, finalReflectDmg));
                                 }
                             }
@@ -909,21 +1059,26 @@
                     let dist = this.getDistance(attacker, defender.x, defender.y, defender.size);
                     let dmg = this.calculateDamage(attacker, defender);
                     
-                    if (typeof dmg !== 'number') dmg = this.getActualDmg(attacker);
+                    if (typeof dmg !== 'number') dmg = this.getActualDmg(attacker, defender);
                     this.applyDamageToUnit(attacker, defender, dmg);
 
-                    // Контратака Рыцаря при получении физ. урона в ближнем бою
+                    // Заморозка Мага Льда
+                    if (attacker.id === 'frost_mage' && defender.hp > 0) {
+                        defender.isFrozen = true;
+                    }
+
+                    // Контратака Рыцаря
                     let isPhysDamage = attacker.dmgType === 'Физ' || attacker.dmgType === 'Стрела';
                     if (defender.id === 'knight' && defender.hp > 0 && isPhysDamage && dist <= 1) {
                         let reflectDmg = Math.floor(dmg * 0.8);
                         if (reflectDmg > 0) {
-                            // Если атакующий был Энтом, урон от контратаки режется на 80%
                             let finalReflectDmg = (attacker.id === 'ent') ? Math.floor(reflectDmg * 0.2) : reflectDmg;
+                            if (attacker.id === 'specter') finalReflectDmg = 0;
                             this.applyDamageToUnit(defender, attacker, Math.max(1, finalReflectDmg));
                         }
                     }
 
-                    if (attacker.id === 'vampire') {
+                    if (attacker.id === 'vampire' && defender.id !== 'specter') {
                         attacker.hp = Math.min(attacker.maxHp, attacker.hp + (typeof dmg === 'number' ? dmg : 1));
                         defender.vampireDebuffs = (defender.vampireDebuffs || 0) + 1;
                     }
@@ -931,6 +1086,12 @@
             }
 
             endTurn() {
+                // Пассивка Каменного Голема: +40 брони после окончания своего хода
+                if (this.activeUnit && this.activeUnit.id === 'stone_golem' && this.activeUnit.hp > 0) {
+                    this.activeUnit.armor = (this.activeUnit.armor || 0) + 40;
+                    this.activeUnit.maxArmor = Math.max(this.activeUnit.maxArmor || 0, this.activeUnit.armor);
+                }
+
                 this.clearHighlights();
                 this.resetTarget();
                 document.getElementById('actions').innerHTML = '';
@@ -940,16 +1101,43 @@
 
             executeAI() {
                 const me = this.activeUnit;
+                if (me.id === 'phoenix_egg') return this.endTurn();
+
                 const enemies = this.units.filter(u => u.team !== me.team && u.hp > 0);
                 const allies = this.units.filter(u => u.team === me.team && u.hp > 0);
 
                 if (enemies.length === 0) return this.endTurn();
 
-                let targetsInRange = enemies.filter(e => this.getDistance(me, e.x, e.y, e.size) <= me.range);
+                let targetsInRange = enemies.filter(e => {
+                    let d = this.getDistance(me, e.x, e.y, e.size);
+                    if (me.id === 'sniper' && d < 3) return false;
+                    return d <= me.range;
+                });
 
                 if (me.id === 'ballista' && !me.isPrepared) {
                     me.isPrepared = true;
                     return this.endTurn();
+                }
+
+                // AI Способности Чародейки
+                if (me.id === 'chronomancer') {
+                    if ((me.cooldowns['Slow'] || 0) === 0) {
+                        let slowTarget = enemies.find(e => this.getDistance(me, e.x, e.y, e.size) <= 3);
+                        if (slowTarget) {
+                            slowTarget.actionPoints = Math.max(0, slowTarget.actionPoints - 30);
+                            slowTarget.chronoSlowTurns = 2;
+                            me.cooldowns['Slow'] = 3;
+                            return this.endTurn();
+                        }
+                    }
+                    if ((me.cooldowns['Boost'] || 0) === 0) {
+                        let boostTarget = allies.find(a => a !== me && this.getDistance(me, a.x, a.y, a.size) <= 3);
+                        if (boostTarget) {
+                            boostTarget.actionPoints += 100;
+                            me.cooldowns['Boost'] = 4;
+                            return this.endTurn();
+                        }
+                    }
                 }
 
                 if (targetsInRange.length > 0 && me.id !== 'necromancer') {
@@ -961,8 +1149,8 @@
                     }
 
                     targetsInRange.sort((a, b) => {
-                        let dmga = (a.id === 'necromancer') ? 1 : this.getActualDmg(me);
-                        let dmgb = (b.id === 'necromancer') ? 1 : this.getActualDmg(me);
+                        let dmga = (a.id === 'necromancer') ? 1 : this.getActualDmg(me, a);
+                        let dmgb = (b.id === 'necromancer') ? 1 : this.getActualDmg(me, b);
                         
                         let killA = (dmga >= (a.hp + (a.armor || 0))) ? 1 : 0;
                         let killB = (dmgb >= (b.hp + (b.armor || 0))) ? 1 : 0;
@@ -999,7 +1187,7 @@
                 }
 
                 if (me.id === 'necromancer') {
-                    const types = ['dragon', 'ent', 'vampire', 'ballista', 'knight', 'crossbow', 'wall'];
+                    const types = ['phoenix', 'specter', 'dragon', 'ent', 'vampire', 'stone_golem', 'berserker', 'frost_mage', 'sniper', 'chronomancer', 'ballista', 'knight', 'crossbow'];
                     let availableTypes = types.filter(t => !me.cooldowns['summon_' + t] || me.cooldowns['summon_' + t] <= 0);
 
                     if (availableTypes.length > 0) {
@@ -1014,9 +1202,10 @@
                                         maxArmor: tpl.id === 'ent' ? 50 : 0, 
                                         armor: tpl.id === 'ent' ? 50 : 0, 
                                         actionPoints: 0, isPrepared: false, cooldowns: {},
-                                        vampireDebuffs: 0, isDragonAuraAffected: false
+                                        vampireDebuffs: 0, isDragonAuraAffected: false, isChronoAuraAffected: false,
+                                        isFrozen: false, chronoSlowTurns: 0
                                     });
-                                    me.cooldowns['summon_' + toSummon] = (toSummon === 'wall') ? 2 : 20;
+                                    me.cooldowns['summon_' + toSummon] = (toSummon === 'stone_golem') ? 2 : 20;
                                     return this.endTurn();
                                 }
                             }
@@ -1030,7 +1219,7 @@
                 }
 
                 let closestEnemy = enemies.sort((a,b) => this.getDistance(me, a.x, a.y, a.size) - this.getDistance(me, b.x, b.y, b.size))[0];
-                if (closestEnemy) {
+                if (closestEnemy && !me.isFrozen && me.move > 0) {
                     let bestDist = Infinity;
                     let bestPos = null;
 
@@ -1039,6 +1228,13 @@
                             let nx = me.x + dx, ny = me.y + dy;
                             if (this.canReachPosition(me, nx, ny)) {
                                 let dToEnemy = this.getDistance(closestEnemy, nx, ny, me.size);
+                                if (me.id === 'sniper') {
+                                    if (dToEnemy >= 3 && dToEnemy <= me.range) {
+                                        bestPos = {x: nx, y: ny};
+                                        bestDist = 0;
+                                        break;
+                                    }
+                                }
                                 if (dToEnemy < bestDist) {
                                     bestDist = dToEnemy;
                                     bestPos = {x: nx, y: ny};
@@ -1072,7 +1268,9 @@
                 const au = this.activeUnit;
                 for (let y = 0; y < ROWS; y++) {
                     for (let x = 0; x < COLS; x++) {
-                        if (this.getDistance(au, x, y, 1) <= au.range) {
+                        let dist = this.getDistance(au, x, y, 1);
+                        if (dist <= au.range) {
+                            if (au.id === 'sniper' && dist < 3) continue;
                             this.cells[y][x].classList.add('highlight-attack');
                         }
                     }
@@ -1101,11 +1299,33 @@
                 }
             }
 
+            highlightChronoSlow() {
+                const au = this.activeUnit;
+                for (let y = 0; y < ROWS; y++) {
+                    for (let x = 0; x < COLS; x++) {
+                        if (this.getDistance(au, x, y, 1) <= 3) {
+                            this.cells[y][x].classList.add('highlight-attack');
+                        }
+                    }
+                }
+            }
+
+            highlightChronoBoost() {
+                const au = this.activeUnit;
+                for (let y = 0; y < ROWS; y++) {
+                    for (let x = 0; x < COLS; x++) {
+                        if (this.getDistance(au, x, y, 1) <= 3) {
+                            this.cells[y][x].classList.add('highlight-buff');
+                        }
+                    }
+                }
+            }
+
             clearHighlights() {
                 for (let y = 0; y < ROWS; y++) {
                     for (let x = 0; x < COLS; x++) {
                         this.cells[y][x].classList.remove(
-                            'highlight-move', 'highlight-attack', 'highlight-summon', 'highlight-heal',
+                            'highlight-move', 'highlight-attack', 'highlight-summon', 'highlight-heal', 'highlight-buff',
                             'active-tl', 'active-tr', 'active-bl', 'active-br', 'active-single'
                         );
                     }
@@ -1160,11 +1380,11 @@
                         uDiv.appendChild(armorBar);
                     }
 
-                    let hasBuff = u.isPrepared || u.isDragonAuraAffected || (u.vampireDebuffs > 0);
+                    let hasBuff = u.isPrepared || u.isDragonAuraAffected || u.isChronoAuraAffected || u.isFrozen || (u.vampireDebuffs > 0) || (u.chronoSlowTurns > 0);
                     if (hasBuff) {
                         const icon = document.createElement('div');
                         icon.className = 'buff-icon';
-                        icon.innerText = u.isPrepared ? '🔥' : (u.isDragonAuraAffected ? '❄️' : '🦇');
+                        icon.innerText = u.isFrozen ? '🧊' : (u.isPrepared ? '🔥' : (u.isChronoAuraAffected ? '🔮' : (u.isDragonAuraAffected ? '❄️' : '⏳')));
                         uDiv.appendChild(icon);
                     }
 
