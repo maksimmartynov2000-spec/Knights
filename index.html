@@ -368,15 +368,15 @@
             crossbow: { id: 'crossbow', name: 'Арбалетчик', hp: 20, dmg: 25, dmgType: 'Стрела', init: 18, move: 3, range: 2, icon: '🏹', size: 1, passive: 'Умеет восстанавливать здоровье любым союзникам.' },
             ballista: { id: 'ballista', name: 'Балиста', hp: 80, dmg: 80, dmgType: 'Физ', init: 10, move: 1, range: 4, icon: '🏗️', size: 1, passive: 'Требует подготовки перед выстрелом. Наносит х3 по Энтам и х2 по Драконам.' },
             ent: { id: 'ent', name: 'Энт', hp: 250, dmg: 70, dmgType: 'Физ', init: 6, move: 1, range: 1, icon: '🌳', size: 1, passive: 'Защита от ВСЕГО физ. урона (-80% к получаемому ФИЗ. урону). Атака наносит урон по площади (АОЕ).' },
-            dragon: { id: 'dragon', name: 'Дракон', hp: 120, dmg: 50, dmgType: 'Магия', init: 10, move: 6, range: 2, icon: '🐉', size: 2, passive: 'Размер 2х2. Аура: враги в радиусе 2 теряют 10 инициативы и 40% урона.' },
+            dragon: { id: 'dragon', name: 'Дракон', hp: 120, dmg: 50, dmgType: 'Магия', init: 10, move: 6, range: 2, icon: '🐉', size: 2, passive: 'Размер 2х2. Летает через юнитов. Аура: враги в радиусе 2 теряют 10 инициативы и 40% урона.' },
             vampire: { id: 'vampire', name: 'Вампир', hp: 40, dmg: 30, dmgType: 'Физ', init: 24, move: 5, range: 1, icon: '🦇', size: 1, passive: 'Лайфстил. Атакой снижает инициативу жертвы на 1 на 1 ход.' },
             stone_golem: { id: 'stone_golem', name: 'Каменный Голем', hp: 120, dmg: 20, dmgType: 'Физ', init: 5, move: 1, range: 1, icon: '🪨', size: 1, passive: 'После совершения своего хода автоматически получает +40 к Броне.' },
             chronomancer: { id: 'chronomancer', name: 'Чародейка Времени', hp: 30, dmg: 10, dmgType: 'Магия', init: 14, move: 2, range: 3, icon: '🔮', size: 1, passive: 'Аура +3 к Инициативе союзникам в радиусе 2 клеток. Умеет передавать ход и замедлять врагов.' },
-            berserker: { id: 'berserker', name: 'Берсерк', hp: 80, dmg: 20, dmgType: 'Физ', init: 10, move: 3, range: 1, icon: '🪓', size: 1, passive: 'За каждые потерянные 10% от своего maxHp получает +3 к Инициативе и +5 к Урону.' },
+            berserker: { id: 'berserker', name: 'Берсерк', hp: 240, dmg: 20, dmgType: 'Физ', init: 10, move: 3, range: 1, icon: '🪓', size: 1, passive: 'За каждые потерянные 5% от своего maxHp получает +3 к Инициативе и +5 к Урону.' },
             sniper: { id: 'sniper', name: 'Снайпер', hp: 25, dmg: 50, dmgType: 'Стрела', init: 8, move: 1, range: 6, icon: '🎯', size: 1, passive: 'Не может атаковать цели на расстоянии 1-2 клеток. Урон увеличивается на +10% за каждую клетку дистанции.' },
-            frost_mage: { id: 'frost_mage', name: 'Маг Льда', hp: 35, dmg: 18, dmgType: 'Магия', init: 14, move: 2, range: 3, icon: '🧊', size: 1, passive: 'Атака замораживает цель. На следующий свой ход замороженная цель не может передвигаться и теряет 50% Инициативы.' },
+            frost_mage: { id: 'frost_mage', name: 'Маг Льда', hp: 35, dmg: 18, dmgType: 'Магия', init: 14, move: 2, range: 3, icon: '🧊', size: 1, passive: 'Атака замораживает цель. На следующий свой ход замороженная цель не может передвигаться (move=0) и теряет 50% Инициативы.' },
             specter: { id: 'specter', name: 'Призрак', hp: 30, dmg: 20, dmgType: 'Магия', init: 15, move: 4, range: 1, icon: '👻', size: 1, passive: 'Игнорирует 100% Физ. урона и Стрел. Получает х2 урон от Магии. Проходит сквозь любые юниты.' },
-            phoenix: { id: 'phoenix', name: 'Феникс', hp: 50, dmg: 25, dmgType: 'Магия', init: 17, move: 4, range: 2, icon: '🌟', size: 1, passive: 'При смерти превращается в Яйцо (20 HP). Если Яйцо выживает до своего хода, Феникс перерождается.' },
+            phoenix: { id: 'phoenix', name: 'Феникс', hp: 50, dmg: 25, dmgType: 'Магия', init: 17, move: 4, range: 2, icon: '🌟', size: 1, passive: 'Проходит сквозь другие юниты. При смерти превращается в Яйцо (20 HP). Если Яйцо выживает до своего хода, Феникс перерождается.' },
             phoenix_egg: { id: 'phoenix_egg', name: 'Яйцо Феникса', hp: 20, dmg: 0, dmgType: 'Нет', init: 0, move: 0, range: 0, icon: '🥚', size: 1, passive: 'Не может ходить. Перерождается в Феникса в момент наступления своего хода.' }
         };
 
@@ -441,12 +441,13 @@
             }
 
             canReachPosition(unit, targetX, targetY) {
+                // Если юнит заморожен, его скорость строго 0
                 let actualMove = unit.isFrozen ? 0 : unit.move;
                 if (actualMove <= 0) return false;
                 if (!this.isCellFree(targetX, targetY, unit.size, unit)) return false;
 
-                // Дракон и Призрак летают/проходят насквозь
-                if (unit.id === 'dragon' || unit.id === 'specter') {
+                // Дракон, Призрак и Феникс игнорируют коллизию других юнитов при движении
+                if (['dragon', 'specter', 'phoenix'].includes(unit.id)) {
                     return this.getDistance(unit, targetX, targetY, unit.size) <= actualMove;
                 }
 
@@ -549,7 +550,7 @@
                 let mods = [];
                 if (unit.isDragonAuraAffected) mods.push("Аура Дракона (-40% урона)");
                 if (unit.id === 'berserker') {
-                    let missingPct = Math.floor((1 - (unit.hp / unit.maxHp)) * 10);
+                    let missingPct = Math.floor((1 - (unit.hp / unit.maxHp)) * 20); // За каждые 5%
                     if (missingPct > 0) mods.push(`Ярость Берсерка (+${missingPct * 5} урона)`);
                 }
                 document.getElementById('info-dmg-debuff').innerText = mods.length > 0 ? mods.join(', ') : "Нет";
@@ -565,7 +566,7 @@
                 if (unit.isPrepared) buffs.push("Готов к выстрелу");
                 if (unit.isDragonAuraAffected) buffs.push("Аура дракона (-10 инст.)");
                 if (unit.isChronoAuraAffected) buffs.push("Аура времени (+3 инст.)");
-                if (unit.isFrozen) buffs.push("❄️ Заморожен (-50% инст., 0 хода)");
+                if (unit.isFrozen) buffs.push("🧊 Заморожен (-50% инст., 0 хода)");
                 if (unit.chronoSlowTurns > 0) buffs.push(`⏳ Замедление (-8 инст., ${unit.chronoSlowTurns}х.)`);
                 if (unit.vampireDebuffs > 0) buffs.push(`Укус вампира (-${unit.vampireDebuffs} инст.)`);
 
@@ -582,9 +583,9 @@
             getActualDmg(unit, target = null) {
                 let dmg = unit.dmg;
                 
-                // Берсерк: +5 урона за каждые потерянные 10% HP
+                // Берсерк: +5 урона за каждые потерянные 5% HP (20 шагов по 5%)
                 if (unit.id === 'berserker') {
-                    let missingPct = Math.floor((1 - (unit.hp / unit.maxHp)) * 10);
+                    let missingPct = Math.floor((1 - (unit.hp / unit.maxHp)) * 20);
                     dmg += missingPct * 5;
                 }
 
@@ -625,9 +626,9 @@
                     u.isDragonAuraAffected = false;
                     u.isChronoAuraAffected = false;
 
-                    // Пассивка Берсерка (+3 init за 10% потерь HP)
+                    // Пассивка Берсерка (+3 init за каждые потерянные 5% HP)
                     if (u.id === 'berserker') {
-                        let missingPct = Math.floor((1 - (u.hp / u.maxHp)) * 10);
+                        let missingPct = Math.floor((1 - (u.hp / u.maxHp)) * 20);
                         u.init += missingPct * 3;
                     }
                 });
@@ -1219,12 +1220,13 @@
                 }
 
                 let closestEnemy = enemies.sort((a,b) => this.getDistance(me, a.x, a.y, a.size) - this.getDistance(me, b.x, b.y, b.size))[0];
-                if (closestEnemy && !me.isFrozen && me.move > 0) {
+                let actualMove = me.isFrozen ? 0 : me.move;
+                if (closestEnemy && actualMove > 0) {
                     let bestDist = Infinity;
                     let bestPos = null;
 
-                    for (let dy = -me.move; dy <= me.move; dy++) {
-                        for (let dx = -me.move; dx <= me.move; dx++) {
+                    for (let dy = -actualMove; dy <= actualMove; dy++) {
+                        for (let dx = -actualMove; dx <= actualMove; dx++) {
                             let nx = me.x + dx, ny = me.y + dy;
                             if (this.canReachPosition(me, nx, ny)) {
                                 let dToEnemy = this.getDistance(closestEnemy, nx, ny, me.size);
