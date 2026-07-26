@@ -80,6 +80,7 @@
             position: relative;
             overflow: hidden;
             padding: 2px 0;
+            min-height: 0;
         }
 
         #grid {
@@ -87,7 +88,8 @@
             grid-template-columns: repeat(10, 1fr);
             grid-template-rows: repeat(14, 1fr);
             gap: 1px;
-            height: 100%;
+            max-width: 100%;
+            max-height: 100%;
             aspect-ratio: 10 / 14;
             background: var(--cell-border);
             border: 2px solid #555;
@@ -938,7 +940,7 @@
                     if (this.isCellFree(x, y, au.size, au)) {
                         au.x = x;
                         au.y = y;
-                        au.cooldowns['Teleport'] = 4; // КД 4 хода
+                        au.cooldowns['Teleport'] = 4;
                         this.endTurn();
                     }
                 }
@@ -1263,7 +1265,6 @@
 
                 let closestEnemy = enemies.sort((a,b) => this.getDistance(me, a.x, a.y, a.size) - this.getDistance(me, b.x, b.y, b.size))[0];
                 
-                // Использование телепортации Вампиром AI, если враг далеко
                 if (me.id === 'vampire' && (me.cooldowns['Teleport'] || 0) === 0 && closestEnemy) {
                     let closestDist = this.getDistance(me, closestEnemy.x, closestEnemy.y, closestEnemy.size);
                     if (closestDist > me.move) {
