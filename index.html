@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Medieval Tactics - Balance Update</title>
+    <title>Medieval Tactics - Freeze Fixed</title>
     <style>
         :root {
             --bg-color: #121212;
@@ -695,7 +695,6 @@
                             this.activeUnit.passive = UNIT_TYPES.phoenix.passive;
                         }
 
-                        if (this.activeUnit.isFrozen) this.activeUnit.isFrozen = false;
                         if (this.activeUnit.chronoSlowTurns > 0) this.activeUnit.chronoSlowTurns--;
                         if (this.activeUnit.vampireDebuffs > 0) this.activeUnit.vampireDebuffs = 0;
                         
@@ -1078,9 +1077,14 @@
             }
 
             endTurn() {
-                if (this.activeUnit && this.activeUnit.id === 'stone_golem' && this.activeUnit.hp > 0) {
-                    this.activeUnit.armor = (this.activeUnit.armor || 0) + 40;
-                    this.activeUnit.maxArmor = Math.max(this.activeUnit.maxArmor || 0, this.activeUnit.armor);
+                if (this.activeUnit && this.activeUnit.hp > 0) {
+                    if (this.activeUnit.id === 'stone_golem') {
+                        this.activeUnit.armor = (this.activeUnit.armor || 0) + 40;
+                        this.activeUnit.maxArmor = Math.max(this.activeUnit.maxArmor || 0, this.activeUnit.armor);
+                    }
+                    if (this.activeUnit.isFrozen) {
+                        this.activeUnit.isFrozen = false;
+                    }
                 }
 
                 this.clearHighlights();
