@@ -363,11 +363,11 @@
 
         const UNIT_TYPES = {
             necromancer: { id: 'necromancer', name: 'Некромант', hp: 10, armor: 0, dmg: 5, dmgType: 'Магия', init: 10, move: 1, range: 2, icon: '🧙‍♂️', size: 1, passive: 'Пассивка "Призрачный Щит": Получает строго 1 ед. урона от ЛЮБОЙ атаки.\nАктивка: Умеет призывать союзников любого типа в радиусе 2.' },
-            knight: { id: 'knight', name: 'Рыцарь', hp: 100, armor: 0, dmg: 10, dmgType: 'Физ', init: 12, move: 2, range: 1, icon: '⚔️', size: 1, passive: 'Пассивка "Латы": Получает на -50% меньше урона от стрел. Возвращает 80% физ. урона в ближнем бою обратно атакующему.\nАктивка: "Щит" — моментально добавляет +60 к Броне (КД: 2х).' },
+            knight: { id: 'knight', name: 'Рыцарь', hp: 100, armor: 0, dmg: 10, dmgType: 'Физ', init: 12, move: 2, range: 1, icon: '⚔️', size: 1, passive: 'Пассивка "Латы": Получает на -50% меньше урона от стрел. Возвращает 80% физ. урона в ближнем бою обратно атакующему.\nАктивка: "Щит" — моментально добавляет +120 к Броне (КД: 2х).' },
             crossbow: { id: 'crossbow', name: 'Арбалетчик', hp: 40, armor: 0, dmg: 50, dmgType: 'Стрела', init: 36, move: 3, range: 2, icon: '🏹', size: 1, passive: 'Пассивка: Высокая инициатива для быстрых дальних атак. Теряет дальность под угрозой врага в упор.\nАктивка: "Лечение" — восстанавливает +40 HP союзнику в радиусе 2.' },
             ballista: { id: 'ballista', name: 'Балиста', hp: 80, armor: 0, dmg: 80, dmgType: 'Физ', init: 10, move: 1, range: 4, icon: '🏗️', size: 1, passive: 'Пассивка "Осада": Наносит х5 урон по Энтам, х3 по Каменным Големам и х2 по Драконам. Теряет дальность под угрозой врага в упор.\nАктивка: "Подготовка" — необходимо активировать перед выстрелом.' },
             ent: { id: 'ent', name: 'Энт', hp: 250, armor: 50, dmg: 70, dmgType: 'Физ', init: 6, move: 1, range: 1, icon: '🌳', size: 1, passive: 'Пассивка "Кора Древа": Снижает входящий ФИЗИЧЕСКИЙ урон и стрелы на 80%. Атака наносит АОЕ урон всем вокруг.\nАктивка: "Окаменение" — дарует +150 Брони (КД: 3х).' },
-            dragon: { id: 'dragon', name: 'Дракон', hp: 120, armor: 0, dmg: 50, dmgType: 'Магия', init: 10, move: 6, range: 2, icon: '🐉', size: 2, passive: 'Пассивка "Ужасающая Аура": Враги в радиусе 2 теряют -10 Инициативы и наносят на -70% меньше урона. Полет через любые юниты.\nПассивка "Жатва": При смерти ЛЮБОГО юнита получает +50 maxHP/+50 HP и +5 к Урону.' },
+            dragon: { id: 'dragon', name: 'Дракон', hp: 120, armor: 0, dmg: 50, dmgType: 'Магия', init: 10, move: 6, range: 2, icon: '🐉', size: 2, passive: 'Пассивка "Ужасающая Аура": Враги в радиусе 2 теряют -10 Инициативы и наносят на -70% меньше урона. Полет через любые юниты.\nПассивка "Жатва": При смерти ЛЮБОГО юнита получает +50 maxHP/+50 HP, +5 к Урону и +1 к Инициативе.' },
             vampire: { id: 'vampire', name: 'Вампир', hp: 40, armor: 0, dmg: 30, dmgType: 'Физ', init: 24, move: 5, range: 1, icon: '🦇', size: 1, passive: 'Пассивка "Вампиризм": Излечивается на 100% от нанесенного урона. Каждая атака снижает инициативу цели на 1. Перемещение сквозь юнитов.' },
             stone_golem: { id: 'stone_golem', name: 'Каменный Голем', hp: 120, armor: 0, dmg: 20, dmgType: 'Физ', init: 5, move: 1, range: 1, icon: '🪨', size: 1, passive: 'Пассивка "Каменная Закалка": После получения любого урона получает +10% защиты (макс. +90%) от физ. урона в ближнем бою и стрел. В конце каждого своего хода автоматически восстанавливает +40 Брони.' },
             chronomancer: { id: 'chronomancer', name: 'Чародейка Времени', hp: 30, armor: 0, dmg: 10, dmgType: 'Магия', init: 14, move: 2, range: 3, icon: '🔮', size: 1, passive: 'Пассивка "Аура Времени": +3 к Инициативе союзникам в радиусе 2. Теряет дальность под угрозой врага в упор.\nАктивка 1: "Замедление" — -30 шкалы хода и -8 Инициативы цели на 2 хода.\nАктивка 2: "Скачок" — моментально дарует ход союзнику.' },
@@ -376,7 +376,7 @@
             frost_mage: { id: 'frost_mage', name: 'Маг Льда', hp: 35, armor: 0, dmg: 18, dmgType: 'Магия', init: 14, move: 2, range: 3, icon: '🧊', size: 1, passive: 'Пассивка "Глубокая Заморозка": Каждая атака замораживает цель (блокирует Move на 0, снижает Инициативу на 50%). Теряет дальность под угрозой врага в упор.' },
             specter: { id: 'specter', name: 'Призрак', hp: 30, armor: 0, dmg: 20, dmgType: 'Магия', init: 15, move: 4, range: 1, icon: '👻', size: 1, passive: 'Пассивка "Бестелесность": Полный иммунитет к физ. урону и стрелам. Получает х2 урон от Магии. Проходит сквозь юнитов.' },
             phoenix: { id: 'phoenix', name: 'Феникс', hp: 50, armor: 0, dmg: 25, dmgType: 'Магия', init: 17, move: 4, range: 2, icon: '🌟', size: 1, passive: 'Пассивка "Возрождение": Летает сквозь юниты. При смерти превращается в Яйцо Феникса и перерождается с удвоенными HP и Уроном!' },
-            phoenix_egg: { id: 'phoenix_egg', name: 'Яйцо Феникса', hp: 20, armor: 0, dmg: 0, dmgType: 'Нет', init: 0, move: 0, range: 0, icon: '🥚', size: 1, passive: 'Пассивка: Не может совершать действия. Автоматически перерождается в усовершенствованного Феникса при наступлении хода.' }
+            phoenix_egg: { id: 'phoenix_egg', name: 'Яйцо Феникса', hp: 20, armor: 0, dmg: 0, dmgType: 'Нет', init: 17, move: 0, range: 0, icon: '🥚', size: 1, passive: 'Пассивка: Не может совершать действия. Автоматически перерождается в усовершенствованного Феникса при наступлении хода.' }
         };
 
         class GameEngine {
@@ -534,6 +534,7 @@
                                 maxArmor: tpl.armor,
                                 armor: tpl.armor,
                                 bonusDmg: 0,
+                                bonusInit: 0,
                                 actionPoints: 0,
                                 isPrepared: false,
                                 cooldowns: {},
@@ -543,7 +544,9 @@
                                 isFrozen: false,
                                 chronoSlowTurns: 0,
                                 golemStacks: 0,
-                                isReborn: false
+                                isReborn: false,
+                                lastPhoenixHp: tpl.hp,
+                                lastPhoenixDmg: tpl.dmg
                             });
                         }
                     }
@@ -635,7 +638,10 @@
                     u.actionPoints = 0;
                     u.vampireDebuffs = u.vampireDebuffs || 0;
                     u.bonusDmg = u.bonusDmg || 0;
+                    u.bonusInit = u.bonusInit || 0;
                     u.golemStacks = u.golemStacks || 0;
+                    u.lastPhoenixHp = u.lastPhoenixHp || u.hp;
+                    u.lastPhoenixDmg = u.lastPhoenixDmg || u.dmg;
                 });
 
                 this.state = 'BATTLE';
@@ -649,7 +655,7 @@
                 let targetList = simUnitsList || this.units;
                 
                 targetList.forEach(u => {
-                    u.init = UNIT_TYPES[u.id].init;
+                    u.init = UNIT_TYPES[u.id].init + (u.bonusInit || 0);
                     u.isDragonAuraAffected = false;
                     u.isChronoAuraAffected = false;
 
@@ -707,9 +713,15 @@
                             this.activeUnit.id = 'phoenix';
                             this.activeUnit.name = UNIT_TYPES.phoenix.name;
                             this.activeUnit.icon = UNIT_TYPES.phoenix.icon;
-                            this.activeUnit.hp = UNIT_TYPES.phoenix.hp * 2; // Удвоение ХП при перерождении
-                            this.activeUnit.maxHp = UNIT_TYPES.phoenix.hp * 2;
-                            this.activeUnit.dmg = UNIT_TYPES.phoenix.dmg * 2; // Удвоение урона при перерождении
+                            let newHp = (this.activeUnit.lastPhoenixHp || UNIT_TYPES.phoenix.hp) * 2;
+                            let newDmg = (this.activeUnit.lastPhoenixDmg || UNIT_TYPES.phoenix.dmg) * 2;
+                            
+                            this.activeUnit.hp = newHp;
+                            this.activeUnit.maxHp = newHp;
+                            this.activeUnit.dmg = newDmg;
+                            this.activeUnit.lastPhoenixHp = newHp;
+                            this.activeUnit.lastPhoenixDmg = newDmg;
+                            
                             this.activeUnit.dmgType = UNIT_TYPES.phoenix.dmgType;
                             this.activeUnit.move = UNIT_TYPES.phoenix.move;
                             this.activeUnit.range = UNIT_TYPES.phoenix.range;
@@ -826,8 +838,8 @@
                 
                 if (u.id === 'knight') {
                     let cd = u.cooldowns['Armor'] || 0;
-                    let btn = this.createBtn(panel, 'Щит (+60)', 'success', () => {
-                        u.armor = (u.armor || 0) + 60;
+                    let btn = this.createBtn(panel, 'Щит (+120)', 'success', () => {
+                        u.armor = (u.armor || 0) + 120;
                         u.maxArmor = Math.max(u.maxArmor || 0, u.armor);
                         u.cooldowns['Armor'] = 2; // Перезарядка 2 хода
                         this.endTurn();
@@ -929,9 +941,11 @@
                             maxArmor: tpl.armor, 
                             armor: tpl.armor, 
                             bonusDmg: 0,
+                            bonusInit: 0,
                             actionPoints: 0, isPrepared: false, cooldowns: {},
                             vampireDebuffs: 0, isDragonAuraAffected: false, isChronoAuraAffected: false,
-                            isFrozen: false, chronoSlowTurns: 0, golemStacks: 0, isReborn: false
+                            isFrozen: false, chronoSlowTurns: 0, golemStacks: 0, isReborn: false,
+                            lastPhoenixHp: tpl.hp, lastPhoenixDmg: tpl.dmg
                         });
                         au.cooldowns['summon_' + this.summonType] = (this.summonType === 'stone_golem') ? 2 : 20;
                         this.endTurn();
@@ -1060,6 +1074,8 @@
                     d.maxHp += 50; // +50 maxHP
                     d.hp += 50;    // +50 HP
                     d.bonusDmg = (d.bonusDmg || 0) + 5;
+                    d.bonusInit = (d.bonusInit || 0) + 1; // +1 к Инициативе
+                    d.init += 1;
                 });
             }
 
@@ -1170,9 +1186,10 @@
                                 this.units.push({
                                     ...tpl, x: freePos.x, y: freePos.y, team: me.team,
                                     maxHp: tpl.hp, maxArmor: tpl.armor, armor: tpl.armor,
-                                    bonusDmg: 0, actionPoints: 0, isPrepared: false, cooldowns: {},
+                                    bonusDmg: 0, bonusInit: 0, actionPoints: 0, isPrepared: false, cooldowns: {},
                                     vampireDebuffs: 0, isDragonAuraAffected: false, isChronoAuraAffected: false,
-                                    isFrozen: false, chronoSlowTurns: 0, golemStacks: 0, isReborn: false
+                                    isFrozen: false, chronoSlowTurns: 0, golemStacks: 0, isReborn: false,
+                                    lastPhoenixHp: tpl.hp, lastPhoenixDmg: tpl.dmg
                                 });
                                 me.cooldowns['summon_' + type] = (type === 'stone_golem') ? 2 : 20;
                                 return this.endTurn();
