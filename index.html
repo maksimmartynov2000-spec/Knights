@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Medieval Tactics - Fixed AI Necromancer & Descriptions</title>
+    <title>Medieval Tactics - Balance Update</title>
     <style>
         :root {
             --bg-color: #121212;
@@ -331,16 +331,12 @@
                         <option value="enemy">Красные (Верхние 6 рядов)</option>
                     </select>
                     <select id="setup-type">
-                        <option value="soul_eater">💀 Пожиратель Душ (2x2)</option>
-                        <option value="storm_titan">⚡ Грозовой Титан (2x2)</option>
-                        <option value="ice_behemoth">❄️ Ледяной Исполин (2x2)</option>
-                        <option value="royal_gryphon">🦅 Королевский Грифон (2x2)</option>
+                        <option value="dragon">🐉 Дракон (2x2)</option>
                         <option value="necromancer">🧙‍♂️ Некромант</option>
                         <option value="knight">⚔️ Рыцарь</option>
                         <option value="crossbow">🏹 Арбалетчик</option>
                         <option value="ballista">🏗️ Балиста</option>
                         <option value="ent">🌳 Энт</option>
-                        <option value="dragon">🐉 Дракон (2x2)</option>
                         <option value="vampire">🦇 Вампир</option>
                         <option value="stone_golem">🪨 Каменный Голем</option>
                         <option value="chronomancer">🔮 Чародейка Времени</option>
@@ -366,18 +362,14 @@
         const ROWS = 12;
 
         const UNIT_TYPES = {
-            soul_eater: { id: 'soul_eater', name: 'Пожиратель Душ', hp: 180, armor: 30, dmg: 30, dmgType: 'Магия', init: 10, move: 3, range: 2, icon: '💀', size: 2, passive: 'Пассивка "Жатва": При смерти ЛЮБОГО юнита получает +10 maxHP/+10 HP и +5 к Урону.\nАктивка: "Пожирание Тени" — наносит 40 урона и лечится на нанесенный объем (КД: 3х).' },
-            storm_titan: { id: 'storm_titan', name: 'Грозовой Титан', hp: 210, armor: 30, dmg: 35, dmgType: 'Магия', init: 12, move: 3, range: 2, icon: '⚡', size: 2, passive: 'Пассивка "Статический Заряд": При получении урона в ближнем бою наносит 10 магии в ответ и срезает -2 Инициативы.\nАктивка: "Грозовой Шаг" — телепорт и отброс врагов с уроном (КД: 3х).' },
-            ice_behemoth: { id: 'ice_behemoth', name: 'Ледяной Исполин', hp: 280, armor: 50, dmg: 40, dmgType: 'Физ', init: 5, move: 2, range: 1, icon: '❄️', size: 2, passive: 'Пассивка "Пещера Инея": Враги на смежных клетках теряют -1 к Перемещению (Move).\nАктивка: "Замораживающая Аура" — наносит 20 урона всем врагам в радиусе 2 и замораживает их (КД: 3х).' },
-            royal_gryphon: { id: 'royal_gryphon', name: 'Королевский Грифон', hp: 170, armor: 20, dmg: 35, dmgType: 'Физ', init: 16, move: 5, range: 1, icon: '🦅', size: 2, passive: 'Пассивка "Безжалостный Ответ": Совершает бесконечное число контратак в ближнем бою при получении урона.\nАктивка: "Взмах Крыльев" — наносит 20 урона и отбрасывает всех врагов размера 1х1 вокруг на 2 клетки (КД: 2х).' },
             necromancer: { id: 'necromancer', name: 'Некромант', hp: 10, armor: 0, dmg: 5, dmgType: 'Магия', init: 10, move: 1, range: 2, icon: '🧙‍♂️', size: 1, passive: 'Пассивка "Призрачный Щит": Получает строго 1 ед. урона от ЛЮБОЙ атаки.\nАктивка: Умеет призывать союзников любого типа в радиусе 2.' },
             knight: { id: 'knight', name: 'Рыцарь', hp: 100, armor: 0, dmg: 10, dmgType: 'Физ', init: 12, move: 2, range: 1, icon: '⚔️', size: 1, passive: 'Пассивка "Латы": Получает на -50% меньше урона от стрел. Возвращает 80% физ. урона в ближнем бою обратно атакующему.\nАктивка: "Щит" — моментально добавляет +60 к Броне (КД: 3х).' },
-            crossbow: { id: 'crossbow', name: 'Арбалетчик', hp: 20, armor: 0, dmg: 25, dmgType: 'Стрела', init: 18, move: 3, range: 2, icon: '🏹', size: 1, passive: 'Пассивка: Высокая инициатива для быстрых дальних атак.\nАктивка: "Лечение" — восстанавливает +20 HP союзнику в радиусе 2.' },
-            ballista: { id: 'ballista', name: 'Балиста', hp: 80, armor: 0, dmg: 80, dmgType: 'Физ', init: 10, move: 1, range: 4, icon: '🏗️', size: 1, passive: 'Пассивка "Осада": Наносит х3 урон по Энтам и х2 по Драконам.\nАктивка: "Подготовка" — необходимо активировать перед выстрелом.' },
+            crossbow: { id: 'crossbow', name: 'Арбалетчик', hp: 40, armor: 0, dmg: 50, dmgType: 'Стрела', init: 36, move: 3, range: 2, icon: '🏹', size: 1, passive: 'Пассивка: Высокая инициатива для быстрых дальних атак.\nАктивка: "Лечение" — восстанавливает +40 HP союзнику в радиусе 2.' },
+            ballista: { id: 'ballista', name: 'Балиста', hp: 80, armor: 0, dmg: 80, dmgType: 'Физ', init: 10, move: 1, range: 4, icon: '🏗️', size: 1, passive: 'Пассивка "Осада": Наносит х5 урон по Энтам и х2 по Драконам.\nАктивка: "Подготовка" — необходимо активировать перед выстрелом.' },
             ent: { id: 'ent', name: 'Энт', hp: 250, armor: 50, dmg: 70, dmgType: 'Физ', init: 6, move: 1, range: 1, icon: '🌳', size: 1, passive: 'Пассивка "Кора Древа": Снижает входящий ФИЗИЧЕСКИЙ урон и стрелы на 80%. Атака наносит АОЕ урон всем вокруг.\nАктивка: "Окаменение" — дарует +150 Брони (КД: 3х).' },
-            dragon: { id: 'dragon', name: 'Дракон', hp: 120, armor: 0, dmg: 50, dmgType: 'Магия', init: 10, move: 6, range: 2, icon: '🐉', size: 2, passive: 'Пассивка "Ужасающая Аура": Враги в радиусе 2 теряют -10 Инициативы и наносят на -40% меньше урона. Полет через любые юниты.' },
-            vampire: { id: 'vampire', name: 'Вампир', hp: 40, armor: 0, dmg: 30, dmgType: 'Физ', init: 24, move: 5, range: 1, icon: '🦇', size: 1, passive: 'Пассивка "Вампиризм": Излечивается на 100% от нанесенного урона. Каждая атака снижает инициативу цели на 1.' },
-            stone_golem: { id: 'stone_golem', name: 'Каменный Голем', hp: 120, armor: 0, dmg: 20, dmgType: 'Физ', init: 5, move: 1, range: 1, icon: '🪨', size: 1, passive: 'Пассивка "Каменная Стенка": В конце каждого своего хода автоматически восстанавливает +40 Брони.' },
+            dragon: { id: 'dragon', name: 'Дракон', hp: 120, armor: 0, dmg: 50, dmgType: 'Магия', init: 10, move: 6, range: 2, icon: '🐉', size: 2, passive: 'Пассивка "Ужасающая Аура": Враги в радиусе 2 теряют -10 Инициативы и наносят на -40% меньше урона. Полет через любые юниты.\nПассивка "Жатва": При смерти ЛЮБОГО юнита получает +10 maxHP/+10 HP и +5 к Урону.' },
+            vampire: { id: 'vampire', name: 'Вампир', hp: 40, armor: 0, dmg: 30, dmgType: 'Физ', init: 24, move: 5, range: 1, icon: '🦇', size: 1, passive: 'Пассивка "Вампиризм": Излечивается на 100% от нанесенного урона. Каждая атака снижает инициативу цели на 1. Перемещение сквозь юнитов.' },
+            stone_golem: { id: 'stone_golem', name: 'Каменный Голем', hp: 120, armor: 0, dmg: 20, dmgType: 'Физ', init: 5, move: 1, range: 1, icon: '🪨', size: 1, passive: 'Пассивка "Каменная Стенка": Получает на -50% меньше урона от стрел. В конце каждого своего хода автоматически восстанавливает +40 Брони.' },
             chronomancer: { id: 'chronomancer', name: 'Чародейка Времени', hp: 30, armor: 0, dmg: 10, dmgType: 'Магия', init: 14, move: 2, range: 3, icon: '🔮', size: 1, passive: 'Пассивка "Аура Времени": +3 к Инициативе союзникам в радиусе 2.\nАктивка 1: "Замедление" — -30 шкалы хода и -8 Инициативы цели на 2 хода.\nАктивка 2: "Скачок" — моментально дарует ход союзнику.' },
             berserker: { id: 'berserker', name: 'Берсерк', hp: 240, armor: 0, dmg: 20, dmgType: 'Физ', init: 10, move: 3, range: 1, icon: '🪓', size: 1, passive: 'Пассивка "Квадро-Ярость": За каждые потерянные 5% HP получает +3 к Инициативе и +5 к Урону.' },
             sniper: { id: 'sniper', name: 'Снайпер', hp: 25, armor: 0, dmg: 50, dmgType: 'Стрела', init: 8, move: 1, range: 6, icon: '🎯', size: 1, passive: 'Пассивка "Дальний Выстрел": Не может атаковать цели ближе 3 клеток. Получает +10% к урону за каждую клетку дистанции до цели.' },
@@ -452,7 +444,7 @@
                 if (effectiveMove <= 0) return false;
                 if (!this.isCellFree(targetX, targetY, unit.size, unit)) return false;
 
-                if (['dragon', 'specter', 'phoenix', 'royal_gryphon'].includes(unit.id)) {
+                if (['dragon', 'specter', 'phoenix', 'vampire'].includes(unit.id)) {
                     return this.getDistance(unit, targetX, targetY, unit.size) <= effectiveMove;
                 }
 
@@ -486,19 +478,7 @@
 
             getEffectiveMove(unit) {
                 if (unit.isFrozen) return 0;
-                let m = unit.move;
-                if (this.isNearIceBehemoth(unit)) {
-                    m = Math.max(0, m - 1);
-                }
-                return m;
-            }
-
-            isNearIceBehemoth(unit) {
-                const behemoths = this.units.filter(u => u.id === 'ice_behemoth' && u.hp > 0 && u.team !== unit.team);
-                for (let b of behemoths) {
-                    if (this.getDistance(unit, b.x, b.y, b.size) <= 1) return true;
-                }
-                return false;
+                return unit.move;
             }
 
             getDistance(u1, x2, y2, size2 = 1) {
@@ -580,7 +560,7 @@
                     let missingPct = Math.floor((1 - (unit.hp / unit.maxHp)) * 20);
                     if (missingPct > 0) mods.push(`Ярость Берсерка (+${missingPct * 5} урона)`);
                 }
-                if (unit.bonusDmg) mods.push(`Души (+${unit.bonusDmg} урона)`);
+                if (unit.bonusDmg) mods.push(`Жатва (+${unit.bonusDmg} урона)`);
                 document.getElementById('info-dmg-debuff').innerText = mods.length > 0 ? mods.join(', ') : "Нет";
 
                 let baseInit = UNIT_TYPES[unit.id].init;
@@ -597,7 +577,6 @@
                 if (unit.isFrozen) buffs.push("🧊 Заморожен (-50% инст., 0 хода)");
                 if (unit.chronoSlowTurns > 0) buffs.push(`⏳ Замедление (-8 инст., ${unit.chronoSlowTurns}х.)`);
                 if (unit.vampireDebuffs > 0) buffs.push(`Укус вампира (-${unit.vampireDebuffs} инст.)`);
-                if (this.isNearIceBehemoth(unit)) buffs.push("❄️ Пещера Инея (-1 ходьба)");
 
                 document.getElementById('info-buffs').innerText = buffs.length > 0 ? "Статусы: " + buffs.join(', ') : "";
 
@@ -809,46 +788,8 @@
                 });
                 if (!canAttack) atkBtn.disabled = true;
 
-                if (u.id === 'soul_eater') {
-                    let cd = u.cooldowns['Devour'] || 0;
-                    let btn = this.createBtn(panel, '👻 Пожирание Тени', 'danger', () => {
-                        this.clearHighlights();
-                        this.selectedAction = 'soul_devour';
-                        this.resetTarget();
-                        this.highlightSoulDevour();
-                    });
-                    if (cd > 0) { btn.disabled = true; btn.innerText += ` (${cd})`; }
-                }
-
-                if (u.id === 'storm_titan') {
-                    let cd = u.cooldowns['StormStep'] || 0;
-                    let btn = this.createBtn(panel, '⚡ Грозовой Шаг', 'primary', () => {
-                        this.clearHighlights();
-                        this.selectedAction = 'storm_step';
-                        this.resetTarget();
-                        this.highlightStormStep();
-                    });
-                    if (cd > 0) { btn.disabled = true; btn.innerText += ` (${cd})`; }
-                }
-
-                if (u.id === 'ice_behemoth') {
-                    let cd = u.cooldowns['IceAura'] || 0;
-                    let btn = this.createBtn(panel, '❄️ Замораж. Аура', 'danger', () => {
-                        this.executeIceAura();
-                    });
-                    if (cd > 0) { btn.disabled = true; btn.innerText += ` (${cd})`; }
-                }
-
-                if (u.id === 'royal_gryphon') {
-                    let cd = u.cooldowns['WingFlap'] || 0;
-                    let btn = this.createBtn(panel, '🦅 Взмах Крыльев', 'danger', () => {
-                        this.executeWingFlap();
-                    });
-                    if (cd > 0) { btn.disabled = true; btn.innerText += ` (${cd})`; }
-                }
-
                 if (u.id === 'necromancer') {
-                    ['soul_eater','storm_titan','ice_behemoth','royal_gryphon','knight','crossbow','ballista','ent','dragon','vampire','stone_golem','chronomancer','berserker','sniper','frost_mage','specter','phoenix'].forEach(type => {
+                    ['knight','crossbow','ballista','ent','dragon','vampire','stone_golem','chronomancer','berserker','sniper','frost_mage','specter','phoenix'].forEach(type => {
                         let cdKey = 'summon_' + type;
                         let cd = u.cooldowns[cdKey] || 0;
                         let btn = this.createBtn(panel, `Призыв ${UNIT_TYPES[type].icon}`, 'success', () => {
@@ -874,7 +815,7 @@
                 }
 
                 if (u.id === 'crossbow') {
-                    this.createBtn(panel, 'Лечение', 'success', () => {
+                    this.createBtn(panel, 'Лечение (+40)', 'success', () => {
                         this.clearHighlights();
                         this.selectedAction = 'heal'; 
                         this.resetTarget(); 
@@ -958,32 +899,6 @@
                         this.resetTarget();
                     }
                 }
-                else if (this.selectedAction === 'soul_devour') {
-                    if (dist <= 2 && targetUnit && targetUnit.team !== au.team) {
-                        let startHp = targetUnit.hp;
-                        this.applyDamageToUnit(au, targetUnit, 40);
-                        let dealt = startHp - Math.max(0, targetUnit.hp);
-                        au.hp = Math.min(au.maxHp, au.hp + dealt);
-                        au.cooldowns['Devour'] = 3;
-                        this.endTurn();
-                    }
-                }
-                else if (this.selectedAction === 'storm_step') {
-                    if (dist <= 3 && this.isCellFree(x, y, 2, au)) {
-                        au.x = x; au.y = y;
-                        au.cooldowns['StormStep'] = 3;
-
-                        const enemies = this.units.filter(u => u.team !== au.team && u.hp > 0);
-                        enemies.forEach(e => {
-                            if (this.getDistance(au, e.x, e.y, e.size) <= 1) {
-                                this.applyDamageToUnit(au, e, 25);
-                                this.pushUnitAway(au, e, 1);
-                            }
-                        });
-
-                        this.endTurn();
-                    }
-                }
                 else if (this.selectedAction === 'summon') {
                     if (dist <= au.range && this.isCellFree(x, y, UNIT_TYPES[this.summonType].size)) {
                         const tpl = UNIT_TYPES[this.summonType];
@@ -1002,7 +917,7 @@
                 }
                 else if (this.selectedAction === 'heal') {
                     if (targetUnit && targetUnit.team === au.team && dist <= au.range) {
-                        targetUnit.hp = Math.min(targetUnit.maxHp, targetUnit.hp + 20);
+                        targetUnit.hp = Math.min(targetUnit.maxHp, targetUnit.hp + 40);
                         this.endTurn();
                     }
                 }
@@ -1019,59 +934,6 @@
                         targetUnit.actionPoints += 100;
                         au.cooldowns['Boost'] = 4;
                         this.endTurn();
-                    }
-                }
-            }
-
-            executeIceAura() {
-                const au = this.activeUnit;
-                au.cooldowns['IceAura'] = 3;
-                const enemies = this.units.filter(u => u.team !== au.team && u.hp > 0);
-                
-                enemies.forEach(e => {
-                    if (this.getDistance(au, e.x, e.y, e.size) <= 2) {
-                        this.applyDamageToUnit(au, e, 20);
-                        if (e.hp > 0) e.isFrozen = true;
-                    }
-                });
-                this.endTurn();
-            }
-
-            executeWingFlap() {
-                const au = this.activeUnit;
-                au.cooldowns['WingFlap'] = 2;
-                const enemies = this.units.filter(u => u.team !== au.team && u.hp > 0 && u.size === 1);
-
-                enemies.forEach(e => {
-                    if (this.getDistance(au, e.x, e.y, 1) <= 1) {
-                        this.applyDamageToUnit(au, e, 20);
-                        this.pushUnitAway(au, e, 2);
-                    }
-                });
-                this.endTurn();
-            }
-
-            pushUnitAway(sourceUnit, targetUnit, steps) {
-                let dx = 0, dy = 0;
-                let srcCenterX = sourceUnit.x + (sourceUnit.size - 1) / 2;
-                let srcCenterY = sourceUnit.y + (sourceUnit.size - 1) / 2;
-                let tgtCenterX = targetUnit.x + (targetUnit.size - 1) / 2;
-                let tgtCenterY = targetUnit.y + (targetUnit.size - 1) / 2;
-
-                if (tgtCenterX > srcCenterX) dx = 1;
-                else if (tgtCenterX < srcCenterX) dx = -1;
-
-                if (tgtCenterY > srcCenterY) dy = 1;
-                else if (tgtCenterY < srcCenterY) dy = -1;
-
-                for (let s = 0; s < steps; s++) {
-                    let nx = targetUnit.x + dx;
-                    let ny = targetUnit.y + dy;
-                    if (this.isCellFree(nx, ny, targetUnit.size, targetUnit)) {
-                        targetUnit.x = nx;
-                        targetUnit.y = ny;
-                    } else {
-                        break;
                     }
                 }
             }
@@ -1101,13 +963,15 @@
 
                 let dmg = this.getActualDmg(attacker, defender);
                 
-                if (defender.id === 'knight' && attacker.dmgType === 'Стрела') dmg = Math.floor(dmg * 0.5);
+                if ((defender.id === 'knight' || defender.id === 'stone_golem') && attacker.dmgType === 'Стрела') {
+                    dmg = Math.floor(dmg * 0.5);
+                }
                 
                 let isPhysDamage = attacker.dmgType === 'Физ' || attacker.dmgType === 'Стрела';
                 if (defender.id === 'ent' && isPhysDamage) dmg = Math.floor(dmg * 0.2);
 
                 if (attacker.id === 'ballista') {
-                    if (defender.id === 'ent') dmg *= 3;
+                    if (defender.id === 'ent') dmg *= 5;
                     if (defender.id === 'dragon') dmg *= 2;
                 }
 
@@ -1134,13 +998,6 @@
                     }
                 }
 
-                if (defender.id === 'storm_titan' && defender.hp > 0 && attacker && attacker.hp > 0) {
-                    if (this.getDistance(attacker, defender.x, defender.y, defender.size) <= 1) {
-                        this.applyDamageToUnit(defender, attacker, 10);
-                        attacker.init = Math.max(1, attacker.init - 2);
-                    }
-                }
-
                 if (defender.hp <= 0) {
                     if (defender.id === 'phoenix') {
                         defender.id = 'phoenix_egg';
@@ -1160,11 +1017,11 @@
             }
 
             triggerHarvestOnDeath() {
-                const reapers = this.units.filter(u => u.id === 'soul_eater' && u.hp > 0);
-                reapers.forEach(r => {
-                    r.maxHp += 10;
-                    r.hp += 10;
-                    r.bonusDmg = (r.bonusDmg || 0) + 5;
+                const dragons = this.units.filter(u => u.id === 'dragon' && u.hp > 0);
+                dragons.forEach(d => {
+                    d.maxHp += 10;
+                    d.hp += 10;
+                    d.bonusDmg = (d.bonusDmg || 0) + 5;
                 });
             }
 
@@ -1178,7 +1035,7 @@
                             let dist = this.getDistance(attacker, u.x, u.y, u.size);
                             
                             if (u.id === 'ent') dmg = Math.floor(dmg * 0.2);
-                            if (u.id === 'knight' && attacker.dmgType === 'Стрела') dmg = Math.floor(dmg * 0.5);
+                            if ((u.id === 'knight' || u.id === 'stone_golem') && attacker.dmgType === 'Стрела') dmg = Math.floor(dmg * 0.5);
                             if (u.id === 'specter') dmg = 0;
 
                             this.applyDamageToUnit(attacker, u, dmg);
@@ -1218,12 +1075,6 @@
                         this.applyDamageToUnit(defender, attacker, Math.max(1, finalReflectDmg));
                     }
                 }
-
-                if (defender.id === 'royal_gryphon') {
-                    let gryphonDmg = this.calculateDamage(defender, attacker);
-                    if (typeof gryphonDmg !== 'number') gryphonDmg = this.getActualDmg(defender, attacker);
-                    this.applyDamageToUnit(defender, attacker, gryphonDmg);
-                }
             }
 
             endTurn() {
@@ -1248,7 +1099,6 @@
 
                 if (enemies.length === 0) return this.endTurn();
 
-                // ИИ Некроманта: приоритет на призыв существ
                 if (me.id === 'necromancer') {
                     const summonableTypes = Object.keys(UNIT_TYPES).filter(t => t !== 'phoenix_egg' && t !== 'necromancer');
                     const availableSummons = summonableTypes.filter(type => (me.cooldowns['summon_' + type] || 0) === 0);
@@ -1264,7 +1114,6 @@
                             }
                         }
 
-                        // Фильтруем типы, которые поместятся на свободные клетки
                         for (let type of availableSummons) {
                             let size = UNIT_TYPES[type].size;
                             let freePos = validCells.find(pos => this.isCellFree(pos.x, pos.y, size));
@@ -1293,34 +1142,6 @@
                 if (me.id === 'ballista' && !me.isPrepared) {
                     me.isPrepared = true;
                     return this.endTurn();
-                }
-
-                if (me.id === 'soul_eater' && (me.cooldowns['Devour'] || 0) === 0) {
-                    let target = enemies.find(e => this.getDistance(me, e.x, e.y, e.size) <= 2);
-                    if (target) {
-                        let startHp = target.hp;
-                        this.applyDamageToUnit(me, target, 40);
-                        let dealt = startHp - Math.max(0, target.hp);
-                        me.hp = Math.min(me.maxHp, me.hp + dealt);
-                        me.cooldowns['Devour'] = 3;
-                        return this.endTurn();
-                    }
-                }
-
-                if (me.id === 'ice_behemoth' && (me.cooldowns['IceAura'] || 0) === 0) {
-                    let nearbyEnemies = enemies.filter(e => this.getDistance(me, e.x, e.y, e.size) <= 2);
-                    if (nearbyEnemies.length > 0) {
-                        this.executeIceAura();
-                        return;
-                    }
-                }
-
-                if (me.id === 'royal_gryphon' && (me.cooldowns['WingFlap'] || 0) === 0) {
-                    let nearby1x1 = enemies.filter(e => e.size === 1 && this.getDistance(me, e.x, e.y, 1) <= 1);
-                    if (nearby1x1.length >= 2) {
-                        this.executeWingFlap();
-                        return;
-                    }
                 }
 
                 if (me.id === 'chronomancer') {
@@ -1414,28 +1235,6 @@
                         if (dist <= au.range) {
                             if (au.id === 'sniper' && dist < 3) continue;
                             this.cells[y][x].classList.add('highlight-attack');
-                        }
-                    }
-                }
-            }
-
-            highlightSoulDevour() {
-                const au = this.activeUnit;
-                for (let y = 0; y < ROWS; y++) {
-                    for (let x = 0; x < COLS; x++) {
-                        if (this.getDistance(au, x, y, 1) <= 2) {
-                            this.cells[y][x].classList.add('highlight-attack');
-                        }
-                    }
-                }
-            }
-
-            highlightStormStep() {
-                const au = this.activeUnit;
-                for (let y = 0; y < ROWS; y++) {
-                    for (let x = 0; x < COLS; x++) {
-                        if (this.getDistance(au, x, y, 1) <= 3 && this.isCellFree(x, y, 2, au)) {
-                            this.cells[y][x].classList.add('highlight-move');
                         }
                     }
                 }
@@ -1544,7 +1343,7 @@
                         uDiv.appendChild(armorBar);
                     }
 
-                    let hasBuff = u.isPrepared || u.isDragonAuraAffected || u.isChronoAuraAffected || u.isFrozen || (u.vampireDebuffs > 0) || (u.chronoSlowTurns > 0) || this.isNearIceBehemoth(u);
+                    let hasBuff = u.isPrepared || u.isDragonAuraAffected || u.isChronoAuraAffected || u.isFrozen || (u.vampireDebuffs > 0) || (u.chronoSlowTurns > 0);
                     if (hasBuff) {
                         const icon = document.createElement('div');
                         icon.className = 'buff-icon';
