@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Medieval Tactics - Teleport & Grid Update</title>
+    <title>Medieval Tactics - Waves & Terrain Generation</title>
     <style>
         :root {
             --bg-color: #121212;
@@ -111,6 +111,17 @@
         .cell.setup-player { background-color: var(--zone-player); }
         .cell.setup-enemy { background-color: var(--zone-enemy); }
         
+        .cell.obstacle {
+            background-color: #1a1a1a;
+            box-shadow: inset 0 0 5px #000;
+        }
+
+        .obstacle-icon {
+            font-size: 16px;
+            opacity: 0.85;
+            pointer-events: none;
+        }
+
         .cell.highlight-move { background-color: var(--highlight-move) !important; cursor: pointer; }
         .cell.highlight-attack { background-color: var(--highlight-attack) !important; cursor: pointer; }
         .cell.highlight-summon { background-color: var(--highlight-summon) !important; cursor: pointer; }
@@ -251,8 +262,13 @@
 
         #setup-controls {
             display: flex;
-            gap: 6px;
+            flex-direction: column;
+            gap: 4px;
             margin-bottom: 4px;
+        }
+        .setup-row {
+            display: flex;
+            gap: 6px;
         }
         select {
             flex: 1;
@@ -262,6 +278,15 @@
             border: 1px solid #555;
             border-radius: 5px;
             font-size: 12px;
+        }
+
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            font-size: 11px;
+            gap: 6px;
+            color: #ffd700;
+            cursor: pointer;
         }
 
         #info-modal {
@@ -333,26 +358,34 @@
             
             <div id="setup-ui">
                 <div id="setup-controls">
-                    <select id="setup-team">
-                        <option value="player">Синие (Нижние 7 рядов)</option>
-                        <option value="enemy">Красные (Верхние 7 рядов)</option>
-                    </select>
-                    <select id="setup-type">
-                        <option value="dragon">🐉 Дракон (2x2)</option>
-                        <option value="necromancer">🧙‍♂️ Некромант</option>
-                        <option value="knight">⚔️ Рыцарь</option>
-                        <option value="crossbow">🏹 Арбалетчик</option>
-                        <option value="ballista">🏗️ Балиста</option>
-                        <option value="ent">🌳 Энт</option>
-                        <option value="vampire">🦇 Вампир</option>
-                        <option value="stone_golem">🪨 Каменный Голем</option>
-                        <option value="chronomancer">🔮 Чародейка Времени</option>
-                        <option value="berserker">🪓 Берсерк</option>
-                        <option value="sniper">🎯 Снайпер</option>
-                        <option value="frost_mage">🧊 Маг Льда</option>
-                        <option value="specter">👻 Призрак</option>
-                        <option value="phoenix">🌟 Феникс</option>
-                    </select>
+                    <div class="setup-row">
+                        <select id="setup-team">
+                            <option value="player">Синие (Нижние 7 рядов)</option>
+                            <option value="enemy">Красные (Верхние 7 рядов)</option>
+                        </select>
+                        <select id="setup-type">
+                            <option value="dragon">🐉 Дракон (2x2)</option>
+                            <option value="necromancer">🧙‍♂️ Некромант</option>
+                            <option value="knight">⚔️ Рыцарь</option>
+                            <option value="crossbow">🏹 Арбалетчик</option>
+                            <option value="ballista">🏗️ Балиста</option>
+                            <option value="ent">🌳 Энт</option>
+                            <option value="vampire">🦇 Вампир</option>
+                            <option value="stone_golem">🪨 Каменный Голем</option>
+                            <option value="chronomancer">🔮 Чародейка Времени</option>
+                            <option value="berserker">🪓 Берсерк</option>
+                            <option value="sniper">🎯 Снайпер</option>
+                            <option value="frost_mage">🧊 Маг Льда</option>
+                            <option value="specter">👻 Призрак</option>
+                            <option value="phoenix">🌟 Феникс</option>
+                        </select>
+                    </div>
+                    <div class="setup-row" style="align-items: center; justify-content: space-between; margin-top: 2px;">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="wave-mode-checkbox"> 🌊 Режим волн врагов
+                        </label>
+                        <button id="regen-terrain-btn" class="secondary" style="padding: 4px 8px; font-size: 11px;">🎲 Пересоздать карту</button>
+                    </div>
                 </div>
                 <div style="font-size: 10px; color: #aaa; text-align: center; margin-bottom: 4px;">
                     Синие в ряды 7-13, Красные в 0-6. Клик по юниту — удалить/инфо.
@@ -372,30 +405,38 @@
             necromancer: { id: 'necromancer', name: 'Некромант', hp: 10, armor: 0, dmg: 5, dmgType: 'Магия', init: 10, move: 1, range: 2, icon: '🧙‍♂️', size: 1, passive: 'Пассивка "Призрачный Щит": Получает строго 1 ед. урона от ЛЮБОЙ атаки.\nАктивка: Умеет призывать союзников любого типа в радиусе 2.' },
             knight: { id: 'knight', name: 'Рыцарь', hp: 100, armor: 0, dmg: 10, dmgType: 'Физ', init: 12, move: 2, range: 1, icon: '⚔️', size: 1, passive: 'Пассивка "Латы": Получает на -50% меньше урона от стрел. Возвращает 80% физ. урона в ближнем бою обратно атакующему.\nАктивка: "Щит" — моментально добавляет +120 к Броне (КД: 2х).' },
             crossbow: { id: 'crossbow', name: 'Арбалетчик', hp: 40, armor: 0, dmg: 50, dmgType: 'Стрела', init: 36, move: 3, range: 2, icon: '🏹', size: 1, passive: 'Пассивка: Высокая инициатива для быстрых дальних атак. Теряет дальность под угрозой врага в упор.\nАктивка: "Лечение" — восстанавливает +40 HP союзнику в радиусе 2.' },
-            ballista: { id: 'ballista', name: 'Балиста', hp: 80, armor: 0, dmg: 80, dmgType: 'Физ', init: 10, move: 1, range: 4, icon: '🏗️', size: 1, passive: 'Пассивка "Осада": Наносит х5 урон по Энтам, х3 по Каменным Големам и х2 по Драконам. Теряет дальность под угрозой врага в упор.\nАктивка: "Подготовка" — необходимо активировать перед выстрелом.' },
+            ballista: { id: 'ballista', name: 'Балиста', hp: 80, armor: 0, dmg: 80, dmgType: 'Физ', init: 10, move: 1, range: 4, icon: '🏗️', size: 1, passive: 'Пассивка "Осада": Наносит х5 урон по Энтам, х3 по Каменным Големам и х2 по Драконам. Теряет дальность под угрозой врага в упор. Иммунитет к Ауре Дракона.\nАктивка: "Подготовка" — необходимо активировать перед выстрелом.' },
             ent: { id: 'ent', name: 'Энт', hp: 250, armor: 50, dmg: 70, dmgType: 'Физ', init: 6, move: 1, range: 1, icon: '🌳', size: 1, passive: 'Пассивка "Кора Древа": Снижает входящий ФИЗИЧЕСКИЙ урон и стрелы на 80%. Атака наносит АОЕ урон всем вокруг.\nАктивка: "Окаменение" — дарует +150 Брони (КД: 3х).' },
-            dragon: { id: 'dragon', name: 'Дракон', hp: 120, armor: 0, dmg: 50, dmgType: 'Магия', init: 10, move: 6, range: 2, icon: '🐉', size: 2, passive: 'Пассивка "Ужасающая Аура": Враги в радиусе 2 теряют -10 Инициативы и наносят на -70% меньше урона. Полет через любые юниты.\nПассивка "Жатва": При смерти ЛЮБОГО юнита получает +50 maxHP/+50 HP, +5 к Урону и +1 к Инициативе.' },
+            dragon: { id: 'dragon', name: 'Дракон', hp: 120, armor: 0, dmg: 50, dmgType: 'Магия', init: 10, move: 6, range: 2, icon: '🐉', size: 2, passive: 'Пассивка "Ужасающая Аура": Враги в радиусе 2 теряют -10 Инициативы и наносят на -70% меньше урона. Полет через любые юниты и препятствия.\nПассивка "Жатва": При смерти ЛЮБОГО юнита получает +50 maxHP/+50 HP, +5 к Урону и +1 к Инициативе.' },
             vampire: { id: 'vampire', name: 'Вампир', hp: 40, armor: 0, dmg: 30, dmgType: 'Физ', init: 24, move: 5, range: 1, icon: '🦇', size: 1, passive: 'Пассивка "Вампиризм": Излечивается на 100% от нанесенного урона. Каждая атака снижает инициативу цели на 1. Перемещение сквозь юнитов.\nАктивка: "Телепортация" — перемещается на любую клетку поля (КД: 4х).' },
             stone_golem: { id: 'stone_golem', name: 'Каменный Голем', hp: 120, armor: 0, dmg: 20, dmgType: 'Физ', init: 5, move: 1, range: 1, icon: '🪨', size: 1, passive: 'Пассивка "Каменная Закалка": После получения любого урона получает +10% защиты (макс. +90%) от физ. урона в ближнем бою и стрел. В конце каждого своего хода автоматически восстанавливает +40 Брони.' },
             chronomancer: { id: 'chronomancer', name: 'Чародейка Времени', hp: 30, armor: 0, dmg: 10, dmgType: 'Магия', init: 14, move: 2, range: 3, icon: '🔮', size: 1, passive: 'Пассивка "Аура Времени": +3 к Инициативе союзникам в радиусе 2. Теряет дальность под угрозой врага в упор.\nАктивка 1: "Замедление" — -30 шкалы хода и -8 Инициативы цели на 2 хода.\nАктивка 2: "Скачок" — моментально дарует ход союзнику.' },
             berserker: { id: 'berserker', name: 'Берсерк', hp: 240, armor: 0, dmg: 20, dmgType: 'Физ', init: 10, move: 3, range: 1, icon: '🪓', size: 1, passive: 'Пассивка "Квадро-Ярость": За каждые потерянные 5% HP получает +3 к Инициативе и +5 к Урону.' },
             sniper: { id: 'sniper', name: 'Снайпер', hp: 25, armor: 0, dmg: 50, dmgType: 'Стрела', init: 8, move: 1, range: 6, icon: '🎯', size: 1, passive: 'Пассивка "Дальний Выстрел": Не поддается срезке дальности от врагов в упор. Не может атаковать цели ближе 3 клеток. Получает +10% к урону за каждую клетку дистанции до цели.' },
             frost_mage: { id: 'frost_mage', name: 'Маг Льда', hp: 35, armor: 0, dmg: 18, dmgType: 'Магия', init: 14, move: 2, range: 3, icon: '🧊', size: 1, passive: 'Пассивка "Глубокая Заморозка": Каждая атака замораживает цель (блокирует Move на 0, снижает Инициативу на 50%). Теряет дальность под угрозой врага в упор.' },
-            specter: { id: 'specter', name: 'Призрак', hp: 30, armor: 0, dmg: 20, dmgType: 'Магия', init: 15, move: 4, range: 1, icon: '👻', size: 1, passive: 'Пассивка "Бестелесность": Полный иммунитет к физ. урону и стрелам. Получает х2 урон от Магии. Проходит сквозь юнитов.' },
-            phoenix: { id: 'phoenix', name: 'Феникс', hp: 50, armor: 0, dmg: 25, dmgType: 'Магия', init: 17, move: 4, range: 2, icon: '🌟', size: 1, passive: 'Пассивка "Возрождение": Летает сквозь юниты. При смерти превращается в Яйцо Феникса и перерождается с удвоенными HP и Уроном!' },
+            specter: { id: 'specter', name: 'Призрак', hp: 30, armor: 0, dmg: 20, dmgType: 'Магия', init: 15, move: 4, range: 1, icon: '👻', size: 1, passive: 'Пассивка "Бестелесность": Полный иммунитет к физ. урону и стрелам. Получает х2 урон от Магии. Проходит сквозь юнитов и препятствия.' },
+            phoenix: { id: 'phoenix', name: 'Феникс', hp: 50, armor: 0, dmg: 25, dmgType: 'Магия', init: 17, move: 4, range: 2, icon: '🌟', size: 1, passive: 'Пассивка "Возрождение": Летает сквозь юниты и препятствия. При смерти превращается в Яйцо Феникса и перерождается с удвоенными HP и Уроном!' },
             phoenix_egg: { id: 'phoenix_egg', name: 'Яйцо Феникса', hp: 20, armor: 0, dmg: 0, dmgType: 'Нет', init: 17, move: 0, range: 0, icon: '🥚', size: 1, passive: 'Пассивка: Не может совершать действия. Автоматически перерождается в усовершенствованного Феникса при наступлении хода.' }
         };
+
+        const OBSTACLE_TYPES = ['⛰️', '🌲', '🏰', '🗿'];
 
         class GameEngine {
             constructor() {
                 this.units = [];
+                this.obstacles = []; // Препятствия рельефа {x, y, icon}
                 this.state = 'SETUP';
                 this.activeUnit = null;
                 this.selectedAction = null; 
                 this.actionTarget = null; 
                 this.summonType = null;
                 
+                // Волновой режим
+                this.isWaveMode = false;
+                this.currentWave = 1;
+                
                 this.initDOM();
+                this.generateTerrain();
             }
 
             initDOM() {
@@ -417,9 +458,32 @@
                 }
 
                 document.getElementById('start-battle-btn').addEventListener('click', () => this.startBattle());
+                document.getElementById('regen-terrain-btn').addEventListener('click', () => this.generateTerrain());
                 document.getElementById('close-info').addEventListener('click', () => {
                     document.getElementById('info-modal').classList.add('hidden');
                 });
+            }
+
+            generateTerrain() {
+                this.obstacles = [];
+                // Создаем от 8 до 14 случайных препятствий
+                let count = Math.floor(Math.random() * 7) + 8;
+                while (count > 0) {
+                    let x = Math.floor(Math.random() * COLS);
+                    let y = Math.floor(Math.random() * ROWS);
+                    
+                    // Не ставить препятствие на имеющиеся или на позиции юнитов
+                    if (!this.getObstacleAt(x, y) && !this.getUnitAt(x, y)) {
+                        let icon = OBSTACLE_TYPES[Math.floor(Math.random() * OBSTACLE_TYPES.length)];
+                        this.obstacles.push({x, y, icon});
+                        count--;
+                    }
+                }
+                this.renderGrid();
+            }
+
+            getObstacleAt(x, y) {
+                return this.obstacles.find(o => o.x === x && o.y === y);
             }
 
             getUnitAt(x, y) {
@@ -436,6 +500,11 @@
                 for (let dy = 0; dy < size; dy++) {
                     for (let dx = 0; dx < size; dx++) {
                         let cx = x + dx, cy = y + dy;
+                        
+                        // Проверка рельефа
+                        if (this.getObstacleAt(cx, cy)) return false;
+
+                        // Проверка заблокированности юнитами
                         let occupier = this.getUnitAt(cx, cy);
                         if (occupier) {
                             if (occupier === movingUnit) continue;
@@ -451,6 +520,7 @@
                 if (effectiveMove <= 0) return false;
                 if (!this.isCellFree(targetX, targetY, unit.size, unit)) return false;
 
+                // Летающие юниты и призраки пролетают сквозь любые препятствия
                 if (['dragon', 'specter', 'phoenix', 'vampire'].includes(unit.id)) {
                     return this.getDistance(unit, targetX, targetY, unit.size) <= effectiveMove;
                 }
@@ -529,7 +599,6 @@
                     const tpl = UNIT_TYPES[type];
 
                     if (targetUnit) {
-                        // Удаление юнита при повторном нажатии на этапе расстановки
                         this.units = this.units.filter(u => u !== targetUnit);
                     } else {
                         let validZone = (team === 'player' && y >= 7 - (tpl.size - 1)) || (team === 'enemy' && y <= 6);
@@ -638,7 +707,17 @@
             }
 
             startBattle() {
-                if (this.units.length === 0) return alert("Поставьте юнитов!");
+                this.isWaveMode = document.getElementById('wave-mode-checkbox').checked;
+                this.currentWave = 1;
+
+                if (this.isWaveMode) {
+                    // Удалить всех ручных красных юнитов и сгенерировать Волну 1
+                    this.units = this.units.filter(u => u.team === 'player');
+                    if (this.units.length === 0) return alert("Поставьте хотя бы одного синего юнита!");
+                    this.spawnWave(this.currentWave);
+                } else {
+                    if (this.units.length === 0) return alert("Поставьте юнитов!");
+                }
                 
                 this.units.forEach(u => {
                     u.actionPoints = 0;
@@ -655,6 +734,66 @@
                 document.getElementById('actions').classList.remove('hidden');
                 this.clearHighlights();
                 this.nextTurn();
+            }
+
+            spawnWave(waveNumber) {
+                const possibleTypes = ['knight', 'crossbow', 'berserker', 'stone_golem', 'frost_mage', 'vampire', 'dragon', 'ballista', 'ent', 'sniper'];
+                let count = Math.min(10, 2 + waveNumber * 2);
+
+                for (let i = 0; i < count; i++) {
+                    let type = possibleTypes[Math.floor(Math.random() * possibleTypes.length)];
+                    let tpl = UNIT_TYPES[type];
+                    
+                    let spawned = false;
+                    for (let attempts = 0; attempts < 50; attempts++) {
+                        let rx = Math.floor(Math.random() * COLS);
+                        let ry = Math.floor(Math.random() * 6); // Верхняя зона
+                        
+                        if (this.isCellFree(rx, ry, tpl.size)) {
+                            // Увеличение характеристик в зависимости от номера волны
+                            let hpMultiplier = 1 + (waveNumber - 1) * 0.2;
+                            let dmgBonus = (waveNumber - 1) * 5;
+
+                            this.units.push({
+                                ...tpl,
+                                x: rx, y: ry,
+                                team: 'enemy',
+                                hp: Math.floor(tpl.hp * hpMultiplier),
+                                maxHp: Math.floor(tpl.hp * hpMultiplier),
+                                maxArmor: tpl.armor,
+                                armor: tpl.armor,
+                                dmg: tpl.dmg + dmgBonus,
+                                bonusDmg: 0,
+                                bonusInit: 0,
+                                actionPoints: 0,
+                                isPrepared: false,
+                                cooldowns: {},
+                                vampireDebuffs: 0,
+                                isDragonAuraAffected: false,
+                                isChronoAuraAffected: false,
+                                isFrozen: false,
+                                chronoSlowTurns: 0,
+                                golemStacks: 0,
+                                isReborn: false,
+                                lastPhoenixHp: tpl.hp,
+                                lastPhoenixDmg: tpl.dmg
+                            });
+                            spawned = true;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            checkWaveProgression() {
+                if (!this.isWaveMode) return;
+
+                let enemiesAlive = this.units.some(u => u.team === 'enemy' && u.hp > 0);
+                if (!enemiesAlive) {
+                    this.currentWave++;
+                    alert(`🎉 Волна зачищена! Начинается ВОЛНА ${this.currentWave}!`);
+                    this.spawnWave(this.currentWave);
+                }
             }
 
             applyGlobalAuras(simUnitsList = null) {
@@ -686,7 +825,8 @@
                 dragons.forEach(dragon => {
                     targetList.forEach(target => {
                         if (target.hp <= 0 || target.team === dragon.team) return;
-                        if (['dragon', 'ent', 'vampire'].includes(target.id)) return;
+                        // НЕ влияет на других драконов, энтов, вампиров И БАЛЛИСТУ
+                        if (['dragon', 'ent', 'vampire', 'ballista'].includes(target.id)) return;
 
                         if (this.getDistance(dragon, target.x, target.y, target.size) <= 2) {
                             target.init -= 10;
@@ -704,6 +844,7 @@
             }
 
             nextTurn() {
+                this.checkWaveProgression();
                 this.applyGlobalAuras();
                 
                 let maxLoops = 2000;
@@ -793,7 +934,9 @@
                 this.actionTarget = null;
                 this.renderGrid();
                 
-                document.getElementById('unit-info-header').innerText = `Ходит: ${this.activeUnit.name} (${this.activeUnit.team === 'player' ? 'Игрок' : 'Враг'})`;
+                let headerText = `Ходит: ${this.activeUnit.name} (${this.activeUnit.team === 'player' ? 'Игрок' : 'Враг'})`;
+                if (this.isWaveMode) headerText += ` | 🌊 Волна ${this.currentWave}`;
+                document.getElementById('unit-info-header').innerText = headerText;
                 
                 if (this.activeUnit.team === 'player') {
                     this.renderActionButtons();
@@ -1437,8 +1580,20 @@
                 for (let y = 0; y < ROWS; y++) {
                     for (let x = 0; x < COLS; x++) {
                         this.cells[y][x].innerHTML = '';
+                        this.cells[y][x].classList.remove('obstacle');
                     }
                 }
+
+                // Отрисовка Препятствий
+                this.obstacles.forEach(o => {
+                    if (this.cells[o.y] && this.cells[o.y][o.x]) {
+                        this.cells[o.y][o.x].classList.add('obstacle');
+                        const obsDiv = document.createElement('div');
+                        obsDiv.className = 'obstacle-icon';
+                        obsDiv.innerText = o.icon;
+                        this.cells[o.y][o.x].appendChild(obsDiv);
+                    }
+                });
                 
                 if (this.state === 'BATTLE' && this.activeUnit) {
                     let au = this.activeUnit;
