@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Medieval Tactics - Balance Update</title>
+    <title>Medieval Tactics - Teleport & Grid Update</title>
     <style>
         :root {
             --bg-color: #121212;
@@ -84,11 +84,11 @@
 
         #grid {
             display: grid;
-            grid-template-columns: repeat(8, 1fr);
-            grid-template-rows: repeat(12, 1fr);
+            grid-template-columns: repeat(10, 1fr);
+            grid-template-rows: repeat(14, 1fr);
             gap: 1px;
             height: 100%;
-            aspect-ratio: 8 / 12;
+            aspect-ratio: 10 / 14;
             background: var(--cell-border);
             border: 2px solid #555;
             position: relative;
@@ -119,7 +119,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            font-size: 18px;
+            font-size: 16px;
             z-index: 10;
             box-shadow: 0 2px 4px rgba(0,0,0,0.8);
             transition: all 0.15s ease-in-out;
@@ -132,7 +132,7 @@
             z-index: 12;
             top: 0;
             left: 0;
-            font-size: 28px;
+            font-size: 26px;
         }
 
         .unit.stone_golem {
@@ -147,50 +147,50 @@
 
         .hp-bar {
             position: absolute;
-            bottom: 4px;
+            bottom: 3px;
             left: 8%;
             width: 84%;
-            height: 5px;
+            height: 4px;
             background: #444;
             border-radius: 3px;
             overflow: hidden;
             border: 1px solid #000;
         }
         .size-2 .hp-bar {
-            bottom: 10px;
+            bottom: 8px;
             left: 10%;
             width: 80%;
-            height: 6px;
+            height: 5px;
         }
         .hp-fill { height: 100%; background: #00ff00; }
 
         .armor-bar {
             position: absolute;
-            bottom: 10px;
+            bottom: 8px;
             left: 8%;
             width: 84%;
-            height: 4px;
+            height: 3px;
             background: #222;
             border-radius: 2px;
             overflow: hidden;
             border: 1px solid #000;
         }
         .size-2 .armor-bar {
-            bottom: 3px;
+            bottom: 2px;
             left: 10%;
             width: 80%;
-            height: 5px;
+            height: 4px;
         }
         .armor-fill { height: 100%; background: #00bcd4; }
         
         .buff-icon {
             position: absolute;
-            top: 2px;
-            right: 2px;
-            font-size: 10px;
+            top: 1px;
+            right: 1px;
+            font-size: 9px;
             background: #fff;
             border-radius: 50%;
-            width: 16px; height: 16px;
+            width: 14px; height: 14px;
             display: flex; justify-content: center; align-items: center;
             z-index: 15;
             color: black;
@@ -327,8 +327,8 @@
             <div id="setup-ui">
                 <div id="setup-controls">
                     <select id="setup-team">
-                        <option value="player">Синие (Нижние 6 рядов)</option>
-                        <option value="enemy">Красные (Верхние 6 рядов)</option>
+                        <option value="player">Синие (Нижние 7 рядов)</option>
+                        <option value="enemy">Красные (Верхние 7 рядов)</option>
                     </select>
                     <select id="setup-type">
                         <option value="dragon">🐉 Дракон (2x2)</option>
@@ -348,7 +348,7 @@
                     </select>
                 </div>
                 <div style="font-size: 10px; color: #aaa; text-align: center; margin-bottom: 4px;">
-                    Синие в ряды 6-11, Красные в 0-5. Клик по юниту — удалить/инфо.
+                    Синие в ряды 7-13, Красные в 0-6. Клик по юниту — удалить/инфо.
                 </div>
                 <button id="start-battle-btn" class="success" style="width: 100%; padding: 8px;">⚔️ НАЧАТЬ БОЙ ⚔️</button>
             </div>
@@ -358,8 +358,8 @@
     </div>
 
     <script>
-        const COLS = 8;
-        const ROWS = 12;
+        const COLS = 10;
+        const ROWS = 14;
 
         const UNIT_TYPES = {
             necromancer: { id: 'necromancer', name: 'Некромант', hp: 10, armor: 0, dmg: 5, dmgType: 'Магия', init: 10, move: 1, range: 2, icon: '🧙‍♂️', size: 1, passive: 'Пассивка "Призрачный Щит": Получает строго 1 ед. урона от ЛЮБОЙ атаки.\nАктивка: Умеет призывать союзников любого типа в радиусе 2.' },
@@ -368,7 +368,7 @@
             ballista: { id: 'ballista', name: 'Балиста', hp: 80, armor: 0, dmg: 80, dmgType: 'Физ', init: 10, move: 1, range: 4, icon: '🏗️', size: 1, passive: 'Пассивка "Осада": Наносит х5 урон по Энтам, х3 по Каменным Големам и х2 по Драконам. Теряет дальность под угрозой врага в упор.\nАктивка: "Подготовка" — необходимо активировать перед выстрелом.' },
             ent: { id: 'ent', name: 'Энт', hp: 250, armor: 50, dmg: 70, dmgType: 'Физ', init: 6, move: 1, range: 1, icon: '🌳', size: 1, passive: 'Пассивка "Кора Древа": Снижает входящий ФИЗИЧЕСКИЙ урон и стрелы на 80%. Атака наносит АОЕ урон всем вокруг.\nАктивка: "Окаменение" — дарует +150 Брони (КД: 3х).' },
             dragon: { id: 'dragon', name: 'Дракон', hp: 120, armor: 0, dmg: 50, dmgType: 'Магия', init: 10, move: 6, range: 2, icon: '🐉', size: 2, passive: 'Пассивка "Ужасающая Аура": Враги в радиусе 2 теряют -10 Инициативы и наносят на -70% меньше урона. Полет через любые юниты.\nПассивка "Жатва": При смерти ЛЮБОГО юнита получает +50 maxHP/+50 HP, +5 к Урону и +1 к Инициативе.' },
-            vampire: { id: 'vampire', name: 'Вампир', hp: 40, armor: 0, dmg: 30, dmgType: 'Физ', init: 24, move: 5, range: 1, icon: '🦇', size: 1, passive: 'Пассивка "Вампиризм": Излечивается на 100% от нанесенного урона. Каждая атака снижает инициативу цели на 1. Перемещение сквозь юнитов.' },
+            vampire: { id: 'vampire', name: 'Вампир', hp: 40, armor: 0, dmg: 30, dmgType: 'Физ', init: 24, move: 5, range: 1, icon: '🦇', size: 1, passive: 'Пассивка "Вампиризм": Излечивается на 100% от нанесенного урона. Каждая атака снижает инициативу цели на 1. Перемещение сквозь юнитов.\nАктивка: "Телепортация" — перемещается на любую клетку поля (КД: 4х).' },
             stone_golem: { id: 'stone_golem', name: 'Каменный Голем', hp: 120, armor: 0, dmg: 20, dmgType: 'Физ', init: 5, move: 1, range: 1, icon: '🪨', size: 1, passive: 'Пассивка "Каменная Закалка": После получения любого урона получает +10% защиты (макс. +90%) от физ. урона в ближнем бою и стрел. В конце каждого своего хода автоматически восстанавливает +40 Брони.' },
             chronomancer: { id: 'chronomancer', name: 'Чародейка Времени', hp: 30, armor: 0, dmg: 10, dmgType: 'Магия', init: 14, move: 2, range: 3, icon: '🔮', size: 1, passive: 'Пассивка "Аура Времени": +3 к Инициативе союзникам в радиусе 2. Теряет дальность под угрозой врага в упор.\nАктивка 1: "Замедление" — -30 шкалы хода и -8 Инициативы цели на 2 хода.\nАктивка 2: "Скачок" — моментально дарует ход союзнику.' },
             berserker: { id: 'berserker', name: 'Берсерк', hp: 240, armor: 0, dmg: 20, dmgType: 'Физ', init: 10, move: 3, range: 1, icon: '🪓', size: 1, passive: 'Пассивка "Квадро-Ярость": За каждые потерянные 5% HP получает +3 к Инициативе и +5 к Урону.' },
@@ -400,8 +400,8 @@
                     for (let x = 0; x < COLS; x++) {
                         const cell = document.createElement('div');
                         cell.className = 'cell';
-                        if (y <= 5) cell.classList.add('setup-enemy');
-                        if (y >= 6) cell.classList.add('setup-player');
+                        if (y <= 6) cell.classList.add('setup-enemy');
+                        if (y >= 7) cell.classList.add('setup-player');
                         
                         cell.addEventListener('click', () => this.handleCellClick(x, y));
                         gridEl.appendChild(cell);
@@ -485,10 +485,8 @@
                 let baseRange = unit.range;
                 if (baseRange <= 1) return baseRange;
 
-                // Исключения для правила отмены дальнобойности при близости врага
                 if (['dragon', 'phoenix', 'sniper'].includes(unit.id)) return baseRange;
 
-                // Проверка: есть ли вражеский юнит в упор (дистанция 1)
                 let enemyAdjacent = this.units.some(u => u.team !== unit.team && u.hp > 0 && this.getDistance(unit, u.x, u.y, u.size) === 1);
                 if (enemyAdjacent) {
                     return 1;
@@ -526,7 +524,7 @@
                     if (targetUnit) {
                         this.showUnitInfo(targetUnit);
                     } else {
-                        let validZone = (team === 'player' && y >= 6 - (tpl.size - 1)) || (team === 'enemy' && y <= 5);
+                        let validZone = (team === 'player' && y >= 7 - (tpl.size - 1)) || (team === 'enemy' && y <= 6);
                         if (validZone && this.isCellFree(x, y, tpl.size)) {
                             this.units.push({
                                 ...tpl, x, y, team,
@@ -620,7 +618,7 @@
                 }
 
                 if (unit.isDragonAuraAffected) {
-                    dmg = Math.floor(dmg * 0.3); // Снижение урона на 70%
+                    dmg = Math.floor(dmg * 0.3);
                 }
 
                 if (unit.id === 'sniper' && target) {
@@ -821,6 +819,17 @@
                 });
                 if (!canAttack) atkBtn.disabled = true;
 
+                if (u.id === 'vampire') {
+                    let cd = u.cooldowns['Teleport'] || 0;
+                    let btn = this.createBtn(panel, '🦇 Телепортация', 'success', () => {
+                        this.clearHighlights();
+                        this.selectedAction = 'vampire_teleport';
+                        this.resetTarget();
+                        this.highlightTeleport();
+                    });
+                    if (cd > 0) { btn.disabled = true; btn.innerText += ` (${cd})`; }
+                }
+
                 if (u.id === 'necromancer') {
                     ['knight','crossbow','ballista','ent','dragon','vampire','stone_golem','chronomancer','berserker','sniper','frost_mage','specter','phoenix'].forEach(type => {
                         let cdKey = 'summon_' + type;
@@ -841,7 +850,7 @@
                     let btn = this.createBtn(panel, 'Щит (+120)', 'success', () => {
                         u.armor = (u.armor || 0) + 120;
                         u.maxArmor = Math.max(u.maxArmor || 0, u.armor);
-                        u.cooldowns['Armor'] = 2; // Перезарядка 2 хода
+                        u.cooldowns['Armor'] = 2;
                         this.endTurn();
                     });
                     if (cd > 0) { btn.disabled = true; btn.innerText += ` (${cd})`; }
@@ -925,6 +934,14 @@
                         this.endTurn();
                     }
                 } 
+                else if (this.selectedAction === 'vampire_teleport') {
+                    if (this.isCellFree(x, y, au.size, au)) {
+                        au.x = x;
+                        au.y = y;
+                        au.cooldowns['Teleport'] = 4; // КД 4 хода
+                        this.endTurn();
+                    }
+                }
                 else if (this.selectedAction === 'attack') {
                     if (dist <= curRange && targetUnit && targetUnit.team !== au.team) {
                         if (au.id === 'sniper' && dist < 3) return alert("Снайпер не может атаковать цели ближе 3 клеток!");
@@ -1000,11 +1017,10 @@
                 let dmg = this.getActualDmg(attacker, defender);
                 let dist = this.getDistance(attacker, defender.x, defender.y, defender.size);
 
-                // Пассивка Каменного Голема (Каменная закалка + защита от стрел)
                 if (defender.id === 'stone_golem') {
                     if (attacker.dmgType === 'Стрела' || (attacker.dmgType === 'Физ' && dist === 1)) {
                         let armorBonus = (defender.golemStacks || 0) * 0.10;
-                        let reduction = 0.50 + armorBonus; // Базовая срезка стрел 50% + стаки
+                        let reduction = 0.50 + armorBonus;
                         dmg = Math.floor(dmg * (1 - reduction));
                     }
                 }
@@ -1018,7 +1034,7 @@
 
                 if (attacker.id === 'ballista') {
                     if (defender.id === 'ent') dmg *= 5;
-                    if (defender.id === 'stone_golem') dmg *= 3; // Балиста x3 по Голему
+                    if (defender.id === 'stone_golem') dmg *= 3;
                     if (defender.id === 'dragon') dmg *= 2;
                 }
 
@@ -1028,7 +1044,6 @@
             applyDamageToUnit(attacker, defender, rawDmg) {
                 if (rawDmg <= 0) return;
 
-                // Начисление стаков Каменному Голему за любой полученный урон (макс 9)
                 if (defender.id === 'stone_golem') {
                     defender.golemStacks = Math.min(9, (defender.golemStacks || 0) + 1);
                 }
@@ -1071,10 +1086,10 @@
             triggerHarvestOnDeath() {
                 const dragons = this.units.filter(u => u.id === 'dragon' && u.hp > 0);
                 dragons.forEach(d => {
-                    d.maxHp += 50; // +50 maxHP
-                    d.hp += 50;    // +50 HP
+                    d.maxHp += 50;
+                    d.hp += 50;
                     d.bonusDmg = (d.bonusDmg || 0) + 5;
-                    d.bonusInit = (d.bonusInit || 0) + 1; // +1 к Инициативе
+                    d.bonusInit = (d.bonusInit || 0) + 1;
                     d.init += 1;
                 });
             }
@@ -1247,6 +1262,40 @@
                 }
 
                 let closestEnemy = enemies.sort((a,b) => this.getDistance(me, a.x, a.y, a.size) - this.getDistance(me, b.x, b.y, b.size))[0];
+                
+                // Использование телепортации Вампиром AI, если враг далеко
+                if (me.id === 'vampire' && (me.cooldowns['Teleport'] || 0) === 0 && closestEnemy) {
+                    let closestDist = this.getDistance(me, closestEnemy.x, closestEnemy.y, closestEnemy.size);
+                    if (closestDist > me.move) {
+                        let bestTeleportPos = null;
+                        let minD = Infinity;
+
+                        for (let y = 0; y < ROWS; y++) {
+                            for (let x = 0; x < COLS; x++) {
+                                if (this.isCellFree(x, y, me.size, me)) {
+                                    let d = this.getDistance({x, y, size: me.size}, closestEnemy.x, closestEnemy.y, closestEnemy.size);
+                                    if (d === 1) {
+                                        bestTeleportPos = {x, y};
+                                        minD = 1;
+                                        break;
+                                    } else if (d < minD) {
+                                        minD = d;
+                                        bestTeleportPos = {x, y};
+                                    }
+                                }
+                            }
+                            if (minD === 1) break;
+                        }
+
+                        if (bestTeleportPos) {
+                            me.x = bestTeleportPos.x;
+                            me.y = bestTeleportPos.y;
+                            me.cooldowns['Teleport'] = 4;
+                            return this.endTurn();
+                        }
+                    }
+                }
+
                 let actualMove = this.getEffectiveMove(me);
                 if (closestEnemy && actualMove > 0) {
                     let bestDist = Infinity;
@@ -1287,6 +1336,17 @@
                 for (let y = 0; y < ROWS; y++) {
                     for (let x = 0; x < COLS; x++) {
                         if (this.canReachPosition(au, x, y)) {
+                            this.cells[y][x].classList.add('highlight-move');
+                        }
+                    }
+                }
+            }
+
+            highlightTeleport() {
+                const au = this.activeUnit;
+                for (let y = 0; y < ROWS; y++) {
+                    for (let x = 0; x < COLS; x++) {
+                        if (this.isCellFree(x, y, au.size, au)) {
                             this.cells[y][x].classList.add('highlight-move');
                         }
                     }
