@@ -358,7 +358,6 @@
             
             <div id="setup-ui">
                 <div id="setup-controls">
-                    <!-- Переключатель режима: Юниты или Рельеф -->
                     <div class="setup-row">
                         <select id="setup-mode">
                             <option value="units">⚔️ Размещение юнитов</option>
@@ -367,7 +366,6 @@
                         <button id="clear-terrain-btn" class="secondary" style="padding: 4px 8px; font-size: 11px;">🧹 Очистить карту</button>
                     </div>
 
-                    <!-- Панель для настройки юнитов -->
                     <div id="unit-select-row" class="setup-row">
                         <select id="setup-team">
                             <option value="player">Синие (Нижние 7 рядов)</option>
@@ -391,7 +389,6 @@
                         </select>
                     </div>
 
-                    <!-- Панель для выбора рельефа -->
                     <div id="terrain-select-row" class="setup-row hidden">
                         <select id="setup-obstacle-type">
                             <option value="⛰️">⛰️ Скала</option>
@@ -525,10 +522,8 @@
                     for (let dx = 0; dx < size; dx++) {
                         let cx = x + dx, cy = y + dy;
                         
-                        // Проверка рельефа
                         if (this.getObstacleAt(cx, cy)) return false;
 
-                        // Проверка заблокированности юнитами
                         let occupier = this.getUnitAt(cx, cy);
                         if (occupier) {
                             if (occupier === movingUnit) continue;
@@ -613,6 +608,12 @@
                 return minD;
             }
 
+            // Вспомогательный метод получения КД с учетом волны (-5% за волну)
+            getAdjustedCooldown(baseCd, waveNumber) {
+                let mult = Math.max(0.2, 1 - (waveNumber - 1) * 0.05);
+                return Math.max(1, Math.round(baseCd * mult));
+            }
+
             handleCellClick(x, y) {
                 const targetUnit = this.getUnitAt(x, y);
 
@@ -620,10 +621,8 @@
                     const setupMode = document.getElementById('setup-mode').value;
 
                     if (setupMode === 'terrain') {
-                        // Режим установки рельефа
                         const obstacleType = document.getElementById('setup-obstacle-type').value;
                         
-                        // Удалить юнит с этой клетки, если он тут стоял
                         if (targetUnit) {
                             this.units = this.units.filter(u => u !== targetUnit);
                         }
@@ -640,7 +639,6 @@
                         return;
                     }
 
-                    // Режим установки юнитов
                     const team = document.getElementById('setup-team').value;
                     const type = document.getElementById('setup-type').value;
                     const tpl = UNIT_TYPES[type];
@@ -652,6 +650,8 @@
                         if (validZone && this.isCellFree(x, y, tpl.size)) {
                             this.units.push({
                                 ...tpl, x, y, team,
+                                waveLevel: 1,
+                                baseInitStat: tpl.init,
                                 maxHp: tpl.hp,
                                 maxArmor: tpl.armor,
                                 armor: tpl.armor,
@@ -705,7 +705,7 @@
                 if (unit.bonusDmg) mods.push(`Жатва (+${unit.bonusDmg} урона)`);
                 document.getElementById('info-dmg-debuff').innerText = mods.length > 0 ? mods.join(', ') : "Нет";
 
-                let baseInit = UNIT_TYPES[unit.id].init;
+                let baseInit = unit.baseInitStat || UNIT_TYPES[unit.id].init;
                 document.getElementById('info-init').innerText = (unit.init !== baseInit) ? `${unit.init} (баз. ${baseInit})` : unit.init;
                 
                 let curMove = this.getEffectiveMove(unit);
@@ -722,6 +722,7 @@
                 if (unit.vampireDebuffs > 0) buffs.push(`Укус вампира (-${unit.vampireDebuffs} инст.)`);
                 if (unit.id === 'stone_golem' && unit.golemStacks > 0) buffs.push(`🪨 Закалка (+${unit.golemStacks * 10}% защиты)`);
                 if (unit.isReborn) buffs.push("🌟 Перерожден (x2 HP/Урон)");
+                if (unit.waveLevel && unit.waveLevel > 1) buffs.push(`🌊 Усиление Волны +${Math.round((unit.waveLevel - 1) * 10)}%`);
 
                 document.getElementById('info-buffs').innerText = buffs.length > 0 ? "Статусы: " + buffs.join(', ') : "";
 
@@ -738,7 +739,8 @@
                 
                 if (unit.id === 'berserker') {
                     let missingPct = Math.floor((1 - (unit.hp / unit.maxHp)) * 20);
-                    dmg += missingPct * 5;
+                    let scale = 1 + ((unit.waveLevel || 1) - 1) * 0.10;
+                    dmg += Math.round(missingPct * 5 * scale);
                 }
 
                 if (unit.isDragonAuraAffected) {
@@ -771,6 +773,8 @@
                     u.bonusDmg = u.bonusDmg || 0;
                     u.bonusInit = u.bonusInit || 0;
                     u.golemStacks = u.golemStacks || 0;
+                    u.waveLevel = u.waveLevel || 1;
+                    u.baseInitStat = u.baseInitStat || u.init;
                     u.lastPhoenixHp = u.lastPhoenixHp || u.hp;
                     u.lastPhoenixDmg = u.lastPhoenixDmg || u.dmg;
                 });
@@ -783,11 +787,22 @@
             }
 
             spawnWave(waveNumber) {
-                const possibleTypes = ['knight', 'crossbow', 'berserker', 'stone_golem', 'frost_mage', 'vampire', 'dragon', 'ballista', 'ent', 'sniper'];
-                let count = Math.min(10, 2 + waveNumber * 2);
+                const baseTypes = ['knight', 'crossbow', 'berserker', 'stone_golem', 'frost_mage', 'vampire', 'dragon', 'ballista', 'ent', 'sniper'];
+                let count = Math.min(12, 2 + waveNumber * 2);
+
+                let necronsToSpawn = 0;
+                if (waveNumber >= 10) {
+                    necronsToSpawn = Math.floor(Math.random() * 3) + 1; // 1-3 некромантов
+                }
 
                 for (let i = 0; i < count; i++) {
-                    let type = possibleTypes[Math.floor(Math.random() * possibleTypes.length)];
+                    let type;
+                    if (necronsToSpawn > 0 && i < necronsToSpawn) {
+                        type = 'necromancer';
+                    } else {
+                        type = baseTypes[Math.floor(Math.random() * baseTypes.length)];
+                    }
+                    
                     let tpl = UNIT_TYPES[type];
                     
                     let spawned = false;
@@ -796,18 +811,24 @@
                         let ry = Math.floor(Math.random() * 6);
                         
                         if (this.isCellFree(rx, ry, tpl.size)) {
-                            let hpMultiplier = 1 + (waveNumber - 1) * 0.2;
-                            let dmgBonus = (waveNumber - 1) * 5;
+                            // Расчет характеристик: базовое + 10% за каждую новую волну
+                            let scale = 1 + (waveNumber - 1) * 0.10;
+                            let scaledHp = Math.round(tpl.hp * scale);
+                            let scaledDmg = Math.round(tpl.dmg * scale);
+                            let scaledInit = Math.round(tpl.init * scale);
 
                             this.units.push({
                                 ...tpl,
                                 x: rx, y: ry,
                                 team: 'enemy',
-                                hp: Math.floor(tpl.hp * hpMultiplier),
-                                maxHp: Math.floor(tpl.hp * hpMultiplier),
+                                waveLevel: waveNumber,
+                                hp: scaledHp,
+                                maxHp: scaledHp,
+                                dmg: scaledDmg,
+                                baseInitStat: scaledInit,
+                                init: scaledInit,
                                 maxArmor: tpl.armor,
                                 armor: tpl.armor,
-                                dmg: tpl.dmg + dmgBonus,
                                 bonusDmg: 0,
                                 bonusInit: 0,
                                 actionPoints: 0,
@@ -820,8 +841,8 @@
                                 chronoSlowTurns: 0,
                                 golemStacks: 0,
                                 isReborn: false,
-                                lastPhoenixHp: tpl.hp,
-                                lastPhoenixDmg: tpl.dmg
+                                lastPhoenixHp: scaledHp,
+                                lastPhoenixDmg: scaledDmg
                             });
                             spawned = true;
                             break;
@@ -845,13 +866,14 @@
                 let targetList = simUnitsList || this.units;
                 
                 targetList.forEach(u => {
-                    u.init = UNIT_TYPES[u.id].init + (u.bonusInit || 0);
+                    u.init = (u.baseInitStat || UNIT_TYPES[u.id].init) + (u.bonusInit || 0);
                     u.isDragonAuraAffected = false;
                     u.isChronoAuraAffected = false;
 
                     if (u.id === 'berserker') {
                         let missingPct = Math.floor((1 - (u.hp / u.maxHp)) * 20);
-                        u.init += missingPct * 3;
+                        let scale = 1 + ((u.waveLevel || 1) - 1) * 0.10;
+                        u.init += Math.round(missingPct * 3 * scale);
                     }
                 });
 
@@ -860,7 +882,8 @@
                     targetList.forEach(target => {
                         if (target.hp <= 0 || target.team !== chrono.team) return;
                         if (this.getDistance(chrono, target.x, target.y, target.size) <= 2) {
-                            target.init += 3;
+                            let scale = 1 + ((chrono.waveLevel || 1) - 1) * 0.10;
+                            target.init += Math.round(3 * scale);
                             target.isChronoAuraAffected = true;
                         }
                     });
@@ -873,7 +896,8 @@
                         if (['dragon', 'ent', 'vampire', 'ballista'].includes(target.id)) return;
 
                         if (this.getDistance(dragon, target.x, target.y, target.size) <= 2) {
-                            target.init -= 10;
+                            let scale = 1 + ((dragon.waveLevel || 1) - 1) * 0.10;
+                            target.init -= Math.round(10 * scale);
                             target.isDragonAuraAffected = true;
                         }
                     });
@@ -994,6 +1018,7 @@
                 const panel = document.getElementById('actions');
                 panel.innerHTML = '';
                 const u = this.activeUnit;
+                const wl = u.waveLevel || 1;
 
                 let moveBtn = this.createBtn(panel, 'Движение', 'primary', () => { 
                     this.clearHighlights();
@@ -1042,17 +1067,19 @@
                 
                 if (u.id === 'knight') {
                     let cd = u.cooldowns['Armor'] || 0;
-                    let btn = this.createBtn(panel, 'Щит (+120)', 'success', () => {
-                        u.armor = (u.armor || 0) + 120;
+                    let amount = Math.round(120 * (1 + (wl - 1) * 0.10));
+                    let btn = this.createBtn(panel, `Щит (+${amount})`, 'success', () => {
+                        u.armor = (u.armor || 0) + amount;
                         u.maxArmor = Math.max(u.maxArmor || 0, u.armor);
-                        u.cooldowns['Armor'] = 2;
+                        u.cooldowns['Armor'] = this.getAdjustedCooldown(2, wl);
                         this.endTurn();
                     });
                     if (cd > 0) { btn.disabled = true; btn.innerText += ` (${cd})`; }
                 }
 
                 if (u.id === 'crossbow') {
-                    this.createBtn(panel, 'Лечение (+40)', 'success', () => {
+                    let healAmount = Math.round(40 * (1 + (wl - 1) * 0.10));
+                    this.createBtn(panel, `Лечение (+${healAmount})`, 'success', () => {
                         this.clearHighlights();
                         this.selectedAction = 'heal'; 
                         this.resetTarget(); 
@@ -1070,10 +1097,11 @@
 
                 if (u.id === 'ent') {
                     let cd = u.cooldowns['Petrify'] || 0;
-                    let btn = this.createBtn(panel, 'Окаменение (+150)', 'success', () => {
-                        u.armor = (u.armor || 0) + 150;
+                    let amount = Math.round(150 * (1 + (wl - 1) * 0.10));
+                    let btn = this.createBtn(panel, `Окаменение (+${amount})`, 'success', () => {
+                        u.armor = (u.armor || 0) + amount;
                         u.maxArmor = Math.max(u.maxArmor || 0, u.armor);
-                        u.cooldowns['Petrify'] = 3;
+                        u.cooldowns['Petrify'] = this.getAdjustedCooldown(3, wl);
                         this.endTurn();
                     });
                     if (cd > 0) { btn.disabled = true; btn.innerText += ` (${cd})`; }
@@ -1120,6 +1148,7 @@
 
             processActionClick(x, y, targetUnit) {
                 const au = this.activeUnit;
+                const wl = au.waveLevel || 1;
                 const dist = this.getDistance(au, x, y, targetUnit ? targetUnit.size : 1);
                 const curRange = this.getEffectiveRange(au);
 
@@ -1133,7 +1162,7 @@
                     if (this.isCellFree(x, y, au.size, au)) {
                         au.x = x;
                         au.y = y;
-                        au.cooldowns['Teleport'] = 4;
+                        au.cooldowns['Teleport'] = this.getAdjustedCooldown(4, wl);
                         this.endTurn();
                     }
                 }
@@ -1148,24 +1177,34 @@
                 else if (this.selectedAction === 'summon') {
                     if (dist <= curRange && this.isCellFree(x, y, UNIT_TYPES[this.summonType].size)) {
                         const tpl = UNIT_TYPES[this.summonType];
+                        let scale = 1 + (wl - 1) * 0.10;
+                        let sHp = Math.round(tpl.hp * scale);
+                        let sDmg = Math.round(tpl.dmg * scale);
+                        let sInit = Math.round(tpl.init * scale);
+
                         this.units.push({
-                            ...tpl, x, y, team: au.team, maxHp: tpl.hp, 
-                            maxArmor: tpl.armor, 
-                            armor: tpl.armor, 
-                            bonusDmg: 0,
-                            bonusInit: 0,
+                            ...tpl, x, y, team: au.team,
+                            waveLevel: wl,
+                            hp: sHp, maxHp: sHp,
+                            dmg: sDmg,
+                            baseInitStat: sInit, init: sInit,
+                            maxArmor: tpl.armor, armor: tpl.armor, 
+                            bonusDmg: 0, bonusInit: 0,
                             actionPoints: 0, isPrepared: false, cooldowns: {},
                             vampireDebuffs: 0, isDragonAuraAffected: false, isChronoAuraAffected: false,
                             isFrozen: false, chronoSlowTurns: 0, golemStacks: 0, isReborn: false,
-                            lastPhoenixHp: tpl.hp, lastPhoenixDmg: tpl.dmg
+                            lastPhoenixHp: sHp, lastPhoenixDmg: sDmg
                         });
-                        au.cooldowns['summon_' + this.summonType] = (this.summonType === 'stone_golem') ? 2 : 20;
+                        
+                        let baseCd = (this.summonType === 'stone_golem') ? 2 : 20;
+                        au.cooldowns['summon_' + this.summonType] = this.getAdjustedCooldown(baseCd, wl);
                         this.endTurn();
                     }
                 }
                 else if (this.selectedAction === 'heal') {
                     if (targetUnit && targetUnit.team === au.team && dist <= curRange) {
-                        targetUnit.hp = Math.min(targetUnit.maxHp, targetUnit.hp + 40);
+                        let healAmount = Math.round(40 * (1 + (wl - 1) * 0.10));
+                        targetUnit.hp = Math.min(targetUnit.maxHp, targetUnit.hp + healAmount);
                         this.endTurn();
                     }
                 }
@@ -1173,14 +1212,14 @@
                     if (targetUnit && targetUnit.team !== au.team && dist <= 3) {
                         targetUnit.actionPoints = Math.max(0, targetUnit.actionPoints - 30);
                         targetUnit.chronoSlowTurns = 2;
-                        au.cooldowns['Slow'] = 3;
+                        au.cooldowns['Slow'] = this.getAdjustedCooldown(3, wl);
                         this.endTurn();
                     }
                 }
                 else if (this.selectedAction === 'chrono_boost') {
                     if (targetUnit && targetUnit.team === au.team && dist <= 3) {
                         targetUnit.actionPoints += 100;
-                        au.cooldowns['Boost'] = 4;
+                        au.cooldowns['Boost'] = this.getAdjustedCooldown(4, wl);
                         this.endTurn();
                     }
                 }
@@ -1265,8 +1304,10 @@
                         defender.id = 'phoenix_egg';
                         defender.name = UNIT_TYPES.phoenix_egg.name;
                         defender.icon = UNIT_TYPES.phoenix_egg.icon;
-                        defender.hp = UNIT_TYPES.phoenix_egg.hp;
-                        defender.maxHp = UNIT_TYPES.phoenix_egg.hp;
+                        let scale = 1 + ((defender.waveLevel || 1) - 1) * 0.10;
+                        let eggHp = Math.round(UNIT_TYPES.phoenix_egg.hp * scale);
+                        defender.hp = eggHp;
+                        defender.maxHp = eggHp;
                         defender.dmg = 0;
                         defender.armor = 0;
                         defender.move = 0;
@@ -1281,11 +1322,16 @@
             triggerHarvestOnDeath() {
                 const dragons = this.units.filter(u => u.id === 'dragon' && u.hp > 0);
                 dragons.forEach(d => {
-                    d.maxHp += 50;
-                    d.hp += 50;
-                    d.bonusDmg = (d.bonusDmg || 0) + 5;
-                    d.bonusInit = (d.bonusInit || 0) + 1;
-                    d.init += 1;
+                    let scale = 1 + ((d.waveLevel || 1) - 1) * 0.10;
+                    let hpGain = Math.round(50 * scale);
+                    let dmgGain = Math.round(5 * scale);
+                    let initGain = Math.round(1 * scale);
+
+                    d.maxHp += hpGain;
+                    d.hp += hpGain;
+                    d.bonusDmg = (d.bonusDmg || 0) + dmgGain;
+                    d.bonusInit = (d.bonusInit || 0) + initGain;
+                    d.init += initGain;
                 });
             }
 
@@ -1325,7 +1371,8 @@
 
                     if (attacker.id === 'vampire' && defender.id !== 'specter') {
                         attacker.hp = Math.min(attacker.maxHp, attacker.hp + (typeof dmg === 'number' ? dmg : 1));
-                        defender.vampireDebuffs = (defender.vampireDebuffs || 0) + 1;
+                        let scale = 1 + ((attacker.waveLevel || 1) - 1) * 0.10;
+                        attacker.vampireDebuffs = (attacker.vampireDebuffs || 0) + Math.round(1 * scale);
                     }
                 }
             }
@@ -1348,7 +1395,9 @@
             endTurn() {
                 if (this.activeUnit && this.activeUnit.hp > 0) {
                     if (this.activeUnit.id === 'stone_golem') {
-                        this.activeUnit.armor = (this.activeUnit.armor || 0) + 40;
+                        let scale = 1 + ((this.activeUnit.waveLevel || 1) - 1) * 0.10;
+                        let armorRestore = Math.round(40 * scale);
+                        this.activeUnit.armor = (this.activeUnit.armor || 0) + armorRestore;
                         this.activeUnit.maxArmor = Math.max(this.activeUnit.maxArmor || 0, this.activeUnit.armor);
                     }
                     if (this.activeUnit.isFrozen) {
@@ -1393,15 +1442,27 @@
                             let freePos = validCells.find(pos => this.isCellFree(pos.x, pos.y, size));
                             if (freePos) {
                                 const tpl = UNIT_TYPES[type];
+                                let wl = me.waveLevel || 1;
+                                let scale = 1 + (wl - 1) * 0.10;
+                                let sHp = Math.round(tpl.hp * scale);
+                                let sDmg = Math.round(tpl.dmg * scale);
+                                let sInit = Math.round(tpl.init * scale);
+
                                 this.units.push({
                                     ...tpl, x: freePos.x, y: freePos.y, team: me.team,
-                                    maxHp: tpl.hp, maxArmor: tpl.armor, armor: tpl.armor,
+                                    waveLevel: wl,
+                                    hp: sHp, maxHp: sHp,
+                                    dmg: sDmg,
+                                    baseInitStat: sInit, init: sInit,
+                                    maxArmor: tpl.armor, armor: tpl.armor,
                                     bonusDmg: 0, bonusInit: 0, actionPoints: 0, isPrepared: false, cooldowns: {},
                                     vampireDebuffs: 0, isDragonAuraAffected: false, isChronoAuraAffected: false,
                                     isFrozen: false, chronoSlowTurns: 0, golemStacks: 0, isReborn: false,
-                                    lastPhoenixHp: tpl.hp, lastPhoenixDmg: tpl.dmg
+                                    lastPhoenixHp: sHp, lastPhoenixDmg: sDmg
                                 });
-                                me.cooldowns['summon_' + type] = (type === 'stone_golem') ? 2 : 20;
+                                
+                                let baseCd = (type === 'stone_golem') ? 2 : 20;
+                                me.cooldowns['summon_' + type] = this.getAdjustedCooldown(baseCd, wl);
                                 return this.endTurn();
                             }
                         }
@@ -1421,12 +1482,13 @@
                 }
 
                 if (me.id === 'chronomancer') {
+                    let wl = me.waveLevel || 1;
                     if ((me.cooldowns['Slow'] || 0) === 0) {
                         let slowTarget = enemies.find(e => this.getDistance(me, e.x, e.y, e.size) <= 3);
                         if (slowTarget) {
                             slowTarget.actionPoints = Math.max(0, slowTarget.actionPoints - 30);
                             slowTarget.chronoSlowTurns = 2;
-                            me.cooldowns['Slow'] = 3;
+                            me.cooldowns['Slow'] = this.getAdjustedCooldown(3, wl);
                             return this.endTurn();
                         }
                     }
@@ -1434,7 +1496,7 @@
                         let boostTarget = allies.find(a => a !== me && this.getDistance(me, a.x, a.y, a.size) <= 3);
                         if (boostTarget) {
                             boostTarget.actionPoints += 100;
-                            me.cooldowns['Boost'] = 4;
+                            me.cooldowns['Boost'] = this.getAdjustedCooldown(4, wl);
                             return this.endTurn();
                         }
                     }
@@ -1484,7 +1546,7 @@
                         if (bestTeleportPos) {
                             me.x = bestTeleportPos.x;
                             me.y = bestTeleportPos.y;
-                            me.cooldowns['Teleport'] = 4;
+                            me.cooldowns['Teleport'] = this.getAdjustedCooldown(4, me.waveLevel || 1);
                             return this.endTurn();
                         }
                     }
@@ -1628,7 +1690,6 @@
                     }
                 }
 
-                // Отрисовка Препятствий
                 this.obstacles.forEach(o => {
                     if (this.cells[o.y] && this.cells[o.y][o.x]) {
                         this.cells[o.y][o.x].classList.add('obstacle');
@@ -1678,7 +1739,7 @@
                         uDiv.appendChild(armorBar);
                     }
 
-                    let hasBuff = u.isPrepared || u.isDragonAuraAffected || u.isChronoAuraAffected || u.isFrozen || (u.vampireDebuffs > 0) || (u.chronoSlowTurns > 0) || (u.golemStacks > 0) || u.isReborn;
+                    let hasBuff = u.isPrepared || u.isDragonAuraAffected || u.isChronoAuraAffected || u.isFrozen || (u.vampireDebuffs > 0) || (u.chronoSlowTurns > 0) || (u.golemStacks > 0) || u.isReborn || (u.waveLevel > 1);
                     if (hasBuff) {
                         const icon = document.createElement('div');
                         icon.className = 'buff-icon';
