@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Medieval Tactics - Waves & Terrain Generation</title>
+    <title>Medieval Tactics - Manual Terrain Setup</title>
     <style>
         :root {
             --bg-color: #121212;
@@ -358,7 +358,17 @@
             
             <div id="setup-ui">
                 <div id="setup-controls">
+                    <!-- Переключатель режима: Юниты или Рельеф -->
                     <div class="setup-row">
+                        <select id="setup-mode">
+                            <option value="units">⚔️ Размещение юнитов</option>
+                            <option value="terrain">🧱 Редактировать рельеф</option>
+                        </select>
+                        <button id="clear-terrain-btn" class="secondary" style="padding: 4px 8px; font-size: 11px;">🧹 Очистить карту</button>
+                    </div>
+
+                    <!-- Панель для настройки юнитов -->
+                    <div id="unit-select-row" class="setup-row">
                         <select id="setup-team">
                             <option value="player">Синие (Нижние 7 рядов)</option>
                             <option value="enemy">Красные (Верхние 7 рядов)</option>
@@ -380,16 +390,29 @@
                             <option value="phoenix">🌟 Феникс</option>
                         </select>
                     </div>
+
+                    <!-- Панель для выбора рельефа -->
+                    <div id="terrain-select-row" class="setup-row hidden">
+                        <select id="setup-obstacle-type">
+                            <option value="⛰️">⛰️ Скала</option>
+                            <option value="🌲">🌲 Лес</option>
+                            <option value="🏰">🏰 Руины</option>
+                            <option value="🗿">🗿 Истукан</option>
+                            <option value="REMOVE">🧹 Очистить клетку</option>
+                        </select>
+                    </div>
+
                     <div class="setup-row" style="align-items: center; justify-content: space-between; margin-top: 2px;">
                         <label class="checkbox-label">
                             <input type="checkbox" id="wave-mode-checkbox"> 🌊 Режим волн врагов
                         </label>
-                        <button id="regen-terrain-btn" class="secondary" style="padding: 4px 8px; font-size: 11px;">🎲 Пересоздать карту</button>
                     </div>
                 </div>
-                <div style="font-size: 10px; color: #aaa; text-align: center; margin-bottom: 4px;">
+
+                <div id="setup-help-text" style="font-size: 10px; color: #aaa; text-align: center; margin-bottom: 4px;">
                     Синие в ряды 7-13, Красные в 0-6. Клик по юниту — удалить/инфо.
                 </div>
+
                 <button id="start-battle-btn" class="success" style="width: 100%; padding: 8px;">⚔️ НАЧАТЬ БОЙ ⚔️</button>
             </div>
 
@@ -419,12 +442,10 @@
             phoenix_egg: { id: 'phoenix_egg', name: 'Яйцо Феникса', hp: 20, armor: 0, dmg: 0, dmgType: 'Нет', init: 17, move: 0, range: 0, icon: '🥚', size: 1, passive: 'Пассивка: Не может совершать действия. Автоматически перерождается в усовершенствованного Феникса при наступлении хода.' }
         };
 
-        const OBSTACLE_TYPES = ['⛰️', '🌲', '🏰', '🗿'];
-
         class GameEngine {
             constructor() {
                 this.units = [];
-                this.obstacles = []; // Препятствия рельефа {x, y, icon}
+                this.obstacles = [];
                 this.state = 'SETUP';
                 this.activeUnit = null;
                 this.selectedAction = null; 
@@ -436,7 +457,7 @@
                 this.currentWave = 1;
                 
                 this.initDOM();
-                this.generateTerrain();
+                this.renderGrid();
             }
 
             initDOM() {
@@ -458,28 +479,31 @@
                 }
 
                 document.getElementById('start-battle-btn').addEventListener('click', () => this.startBattle());
-                document.getElementById('regen-terrain-btn').addEventListener('click', () => this.generateTerrain());
+                document.getElementById('clear-terrain-btn').addEventListener('click', () => {
+                    this.obstacles = [];
+                    this.renderGrid();
+                });
+                
+                document.getElementById('setup-mode').addEventListener('change', (e) => {
+                    const mode = e.target.value;
+                    const unitRow = document.getElementById('unit-select-row');
+                    const terrainRow = document.getElementById('terrain-select-row');
+                    const helpText = document.getElementById('setup-help-text');
+
+                    if (mode === 'units') {
+                        unitRow.classList.remove('hidden');
+                        terrainRow.classList.add('hidden');
+                        helpText.innerText = 'Синие в ряды 7-13, Красные в 0-6. Клик по юниту — удалить/инфо.';
+                    } else {
+                        unitRow.classList.add('hidden');
+                        terrainRow.classList.remove('hidden');
+                        helpText.innerText = 'Клик по свободной клетке — поставить/удалить выбранное препятствие.';
+                    }
+                });
+
                 document.getElementById('close-info').addEventListener('click', () => {
                     document.getElementById('info-modal').classList.add('hidden');
                 });
-            }
-
-            generateTerrain() {
-                this.obstacles = [];
-                // Создаем от 8 до 14 случайных препятствий
-                let count = Math.floor(Math.random() * 7) + 8;
-                while (count > 0) {
-                    let x = Math.floor(Math.random() * COLS);
-                    let y = Math.floor(Math.random() * ROWS);
-                    
-                    // Не ставить препятствие на имеющиеся или на позиции юнитов
-                    if (!this.getObstacleAt(x, y) && !this.getUnitAt(x, y)) {
-                        let icon = OBSTACLE_TYPES[Math.floor(Math.random() * OBSTACLE_TYPES.length)];
-                        this.obstacles.push({x, y, icon});
-                        count--;
-                    }
-                }
-                this.renderGrid();
             }
 
             getObstacleAt(x, y) {
@@ -520,7 +544,6 @@
                 if (effectiveMove <= 0) return false;
                 if (!this.isCellFree(targetX, targetY, unit.size, unit)) return false;
 
-                // Летающие юниты и призраки пролетают сквозь любые препятствия
                 if (['dragon', 'specter', 'phoenix', 'vampire'].includes(unit.id)) {
                     return this.getDistance(unit, targetX, targetY, unit.size) <= effectiveMove;
                 }
@@ -594,6 +617,30 @@
                 const targetUnit = this.getUnitAt(x, y);
 
                 if (this.state === 'SETUP') {
+                    const setupMode = document.getElementById('setup-mode').value;
+
+                    if (setupMode === 'terrain') {
+                        // Режим установки рельефа
+                        const obstacleType = document.getElementById('setup-obstacle-type').value;
+                        
+                        // Удалить юнит с этой клетки, если он тут стоял
+                        if (targetUnit) {
+                            this.units = this.units.filter(u => u !== targetUnit);
+                        }
+
+                        let existingObstacle = this.getObstacleAt(x, y);
+                        if (existingObstacle) {
+                            this.obstacles = this.obstacles.filter(o => o !== existingObstacle);
+                        }
+
+                        if (obstacleType !== 'REMOVE') {
+                            this.obstacles.push({x, y, icon: obstacleType});
+                        }
+                        this.renderGrid();
+                        return;
+                    }
+
+                    // Режим установки юнитов
                     const team = document.getElementById('setup-team').value;
                     const type = document.getElementById('setup-type').value;
                     const tpl = UNIT_TYPES[type];
@@ -711,7 +758,6 @@
                 this.currentWave = 1;
 
                 if (this.isWaveMode) {
-                    // Удалить всех ручных красных юнитов и сгенерировать Волну 1
                     this.units = this.units.filter(u => u.team === 'player');
                     if (this.units.length === 0) return alert("Поставьте хотя бы одного синего юнита!");
                     this.spawnWave(this.currentWave);
@@ -747,10 +793,9 @@
                     let spawned = false;
                     for (let attempts = 0; attempts < 50; attempts++) {
                         let rx = Math.floor(Math.random() * COLS);
-                        let ry = Math.floor(Math.random() * 6); // Верхняя зона
+                        let ry = Math.floor(Math.random() * 6);
                         
                         if (this.isCellFree(rx, ry, tpl.size)) {
-                            // Увеличение характеристик в зависимости от номера волны
                             let hpMultiplier = 1 + (waveNumber - 1) * 0.2;
                             let dmgBonus = (waveNumber - 1) * 5;
 
@@ -825,7 +870,6 @@
                 dragons.forEach(dragon => {
                     targetList.forEach(target => {
                         if (target.hp <= 0 || target.team === dragon.team) return;
-                        // НЕ влияет на других драконов, энтов, вампиров И БАЛЛИСТУ
                         if (['dragon', 'ent', 'vampire', 'ballista'].includes(target.id)) return;
 
                         if (this.getDistance(dragon, target.x, target.y, target.size) <= 2) {
