@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Medieval Tactics - Manual Terrain Setup</title>
+    <title>Средневековье</title>
     <style>
         :root {
             --bg-color: #121212;
@@ -88,7 +88,7 @@
         #grid {
             display: grid;
             grid-template-columns: repeat(10, 1fr);
-            grid-template-rows: repeat(14, 1fr);
+            grid-template-rows: repeat(12, 1fr);
             gap: 1px;
             width: 100%;
             height: 100%;
@@ -110,6 +110,11 @@
 
         .cell.setup-player { background-color: var(--zone-player); }
         .cell.setup-enemy { background-color: var(--zone-enemy); }
+        .cell.setup-neutral {
+            background-color: rgba(255, 255, 255, 0.025);
+        }
+        .cell.setup-neutral.zone-edge-top { box-shadow: inset 0 2px 0 0 rgba(255,215,0,0.15); }
+        .cell.setup-neutral.zone-edge-bottom { box-shadow: inset 0 -2px 0 0 rgba(255,215,0,0.15); }
         
         .cell.obstacle {
             background-color: #1a1a1a;
@@ -307,6 +312,26 @@
         #info-modal p { margin: 4px 0; font-size: 13px; }
         #close-info { width: 100%; margin-top: 12px; padding: 8px; background: #0059b3; border: none; border-radius: 5px; color: white; font-weight: bold;}
 
+        #wave-bonus-modal {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(20, 20, 20, 0.97);
+            padding: 16px;
+            border-radius: 10px;
+            border: 2px solid #ffd700;
+            z-index: 1000;
+            width: 90%;
+            max-width: 340px;
+            color: white;
+            box-shadow: 0 0 24px rgba(0,0,0,0.9);
+        }
+        #wave-bonus-modal h3 { color: #ffd700; text-align: center; margin-bottom: 4px; }
+        #wave-bonus-options button { text-align: left; line-height: 1.4; }
+        #wave-bonus-options button span { display: block; color: #cde; }
+
+        #campaign-budget-row span b { color: #fff; }
+
         #damage-preview {
             position: absolute;
             top: 35%; left: 50%;
@@ -322,6 +347,49 @@
             text-align: center;
         }
         
+        @keyframes unitPopIn {
+            0% { transform: scale(0.35); opacity: 0; }
+            60% { transform: scale(1.1); opacity: 1; }
+            100% { transform: scale(1); }
+        }
+        @keyframes unitShakeHit {
+            0%, 100% { transform: translateX(0); filter: brightness(1); }
+            20% { transform: translateX(-4px); filter: brightness(1.6); }
+            40% { transform: translateX(4px); }
+            60% { transform: translateX(-3px); }
+            80% { transform: translateX(3px); }
+        }
+        @keyframes unitLungeAttack {
+            0% { transform: scale(1); }
+            40% { transform: scale(1.22); }
+            100% { transform: scale(1); }
+        }
+        @keyframes unitBuffPulse {
+            0% { box-shadow: 0 0 0 0 rgba(255, 215, 0, 0.7); }
+            100% { box-shadow: 0 0 0 12px rgba(255, 215, 0, 0); }
+        }
+        @keyframes floatUpFade {
+            0% { transform: translate(-50%, -50%); opacity: 1; }
+            100% { transform: translate(-50%, -130%); opacity: 0; }
+        }
+
+        .unit.size-2.unit-anim-spawn,
+        .unit.unit-anim-spawn { animation: unitPopIn 0.3s ease-out; }
+        .unit.unit-anim-hit { animation: unitShakeHit 0.38s ease-in-out; }
+        .unit.unit-anim-attack { animation: unitLungeAttack 0.28s ease-in-out; }
+        .unit.unit-anim-buff { animation: unitBuffPulse 0.5s ease-out; }
+
+        .floating-text {
+            position: absolute;
+            font-weight: bold;
+            font-size: 14px;
+            pointer-events: none;
+            z-index: 300;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.9), 0 0 6px rgba(0,0,0,0.6);
+            animation: floatUpFade 0.85s ease-out forwards;
+            white-space: nowrap;
+        }
+
         .hidden { display: none !important; }
     </style>
 </head>
@@ -351,10 +419,16 @@
                 Урон: <span id="preview-dmg" style="font-size: 22px; font-weight: bold;">0</span><br>
                 <span style="font-size: 11px; color: #ccc;">Нажми еще раз для выполнения</span>
             </div>
+
+            <div id="wave-bonus-modal" class="hidden">
+                <h3>🏆 Волна отбита!</h3>
+                <p style="font-size: 12px; color: #ccc; text-align: center; margin-bottom: 10px;">Выберите награду для своего отряда:</p>
+                <div id="wave-bonus-options" style="display: flex; flex-direction: column; gap: 8px;"></div>
+            </div>
         </div>
 
         <div id="action-panel">
-            <div id="unit-info-header">Режим расстановки</div>
+            <div id="unit-info-header">⚔️ Средневековье — Режим расстановки</div>
             
             <div id="setup-ui">
                 <div id="setup-controls">
@@ -363,30 +437,28 @@
                             <option value="units">⚔️ Размещение юнитов</option>
                             <option value="terrain">🧱 Редактировать рельеф</option>
                         </select>
-                        <button id="clear-terrain-btn" class="secondary" style="padding: 4px 8px; font-size: 11px;">🧹 Очистить карту</button>
+                        <button id="regen-terrain-btn" class="secondary" style="padding: 4px 8px; font-size: 11px;">🎲 Новый рельеф</button>
+                        <button id="clear-terrain-btn" class="secondary" style="padding: 4px 8px; font-size: 11px;">🧹 Очистить</button>
                     </div>
 
-                    <div id="unit-select-row" class="setup-row">
-                        <select id="setup-team">
-                            <option value="player">Синие (Нижние 7 рядов)</option>
-                            <option value="enemy">Красные (Верхние 7 рядов)</option>
-                        </select>
+                    <div id="unit-select-row" class="setup-row" style="align-items: center;">
                         <select id="setup-type">
-                            <option value="dragon">🐉 Дракон (2x2)</option>
-                            <option value="necromancer">🧙‍♂️ Некромант</option>
-                            <option value="knight">⚔️ Рыцарь</option>
-                            <option value="crossbow">🏹 Арбалетчик</option>
-                            <option value="ballista">🏗️ Балиста</option>
-                            <option value="ent">🌳 Энт</option>
-                            <option value="vampire">🦇 Вампир</option>
-                            <option value="stone_golem">🪨 Каменный Голем</option>
-                            <option value="chronomancer">🔮 Чародейка Времени</option>
-                            <option value="berserker">🪓 Берсерк</option>
-                            <option value="sniper">🎯 Снайпер</option>
-                            <option value="frost_mage">🧊 Маг Льда</option>
-                            <option value="specter">👻 Призрак</option>
-                            <option value="phoenix">🌟 Феникс</option>
+                            <option value="dragon">🐉 Дракон (2x2) — 14</option>
+                            <option value="necromancer">🧙‍♂️ Некромант — 9</option>
+                            <option value="knight">⚔️ Рыцарь — 6</option>
+                            <option value="crossbow">🏹 Арбалетчик — 5</option>
+                            <option value="ballista">🏗️ Балиста — 7</option>
+                            <option value="ent">🌳 Энт — 9</option>
+                            <option value="vampire">🦇 Вампир — 7</option>
+                            <option value="stone_golem">🪨 Каменный Голем — 7</option>
+                            <option value="chronomancer">🔮 Чародейка Времени — 7</option>
+                            <option value="berserker">🪓 Берсерк — 6</option>
+                            <option value="sniper">🎯 Снайпер — 6</option>
+                            <option value="frost_mage">🧊 Маг Льда — 5</option>
+                            <option value="specter">👻 Призрак — 6</option>
+                            <option value="phoenix">🌟 Феникс — 8</option>
                         </select>
+                        <span id="setup-type-cost" style="font-size: 12px; color: #ffd700; white-space: nowrap; padding: 0 4px; font-weight: bold;">💰 6</span>
                     </div>
 
                     <div id="terrain-select-row" class="setup-row hidden">
@@ -399,18 +471,17 @@
                         </select>
                     </div>
 
-                    <div class="setup-row" style="align-items: center; justify-content: space-between; margin-top: 2px;">
-                        <label class="checkbox-label">
-                            <input type="checkbox" id="wave-mode-checkbox"> 🌊 Режим волн врагов
-                        </label>
+                    <div id="campaign-budget-row" class="setup-row" style="align-items: center; justify-content: space-between; margin-top: 2px;">
+                        <span style="font-size: 11px; color: #ffd700;">💰 Бюджет: <b id="campaign-budget-display">0/0</b></span>
+                        <span style="font-size: 11px; color: #aaa;">🌊 Волн в кампании: <b id="campaign-waves-display">8</b></span>
                     </div>
                 </div>
 
                 <div id="setup-help-text" style="font-size: 10px; color: #aaa; text-align: center; margin-bottom: 4px;">
-                    Синие в ряды 7-13, Красные в 0-6. Клик по юниту — удалить/инфо.
+                    Расставьте синих юнитов в рядах 8-11 (нейтральная полоса 4-7 недоступна). Клик по юниту — удалить/инфо.
                 </div>
 
-                <button id="start-battle-btn" class="success" style="width: 100%; padding: 8px;">⚔️ НАЧАТЬ БОЙ ⚔️</button>
+                <button id="start-battle-btn" class="success" style="width: 100%; padding: 8px;">⚔️ НАЧАТЬ КАМПАНИЮ ⚔️</button>
             </div>
 
             <div id="actions" class="hidden"></div>
@@ -419,7 +490,11 @@
 
     <script>
         const COLS = 10;
-        const ROWS = 14;
+        const ROWS = 12;
+        // Зоны поля: Враги (0..ENEMY_ZONE_END), Нейтральная полоса, Игрок (PLAYER_ZONE_START..ROWS-1)
+        const ENEMY_ZONE_END = 3;      // ряды 0-3 — зона врага
+        const PLAYER_ZONE_START = 8;   // ряды 8-11 — зона игрока
+        // ряды 4-7 — нейтральная полоса, изначально никто не может там вставать
 
         const UNIT_TYPES = {
             necromancer: { id: 'necromancer', name: 'Некромант', hp: 10, armor: 0, dmg: 5, dmgType: 'Магия', init: 10, move: 1, range: 2, icon: '🧙‍♂️', size: 1, passive: 'Пассивка "Призрачный Щит": Получает строго 1 ед. урона от ЛЮБОЙ атаки.\nАктивка: Умеет призывать союзников любого типа в радиусе 2.' },
@@ -439,6 +514,33 @@
             phoenix_egg: { id: 'phoenix_egg', name: 'Яйцо Феникса', hp: 20, armor: 0, dmg: 0, dmgType: 'Нет', init: 17, move: 0, range: 0, icon: '🥚', size: 1, passive: 'Пассивка: Не может совершать действия. Автоматически перерождается в усовершенствованного Феникса при наступлении хода.' }
         };
 
+        // ---- Режим "Кампания" ----
+        // Стоимость юнитов для бюджетной расстановки
+        const UNIT_COST = {
+            necromancer: 9, knight: 6, crossbow: 5, ballista: 7, ent: 9,
+            dragon: 14, vampire: 7, stone_golem: 7, chronomancer: 7,
+            berserker: 6, sniper: 6, frost_mage: 5, specter: 6, phoenix: 8
+        };
+
+        // Роли юнитов для осмысленной генерации и расстановки врагов
+        const UNIT_ROLES = {
+            knight: 'tank', ent: 'tank', stone_golem: 'tank',
+            crossbow: 'ranged', ballista: 'ranged', sniper: 'ranged',
+            necromancer: 'support', chronomancer: 'support', frost_mage: 'support',
+            vampire: 'skirmisher', berserker: 'skirmisher',
+            dragon: 'flyer', phoenix: 'flyer', specter: 'flyer'
+        };
+
+        // Бонусы, выдаваемые игроку после зачистки волны в Кампании
+        const CAMPAIGN_BONUSES = [
+            { id: 'dmg', name: '💪 Мощь', desc: '+15% урона всем юнитам отряда', apply: (u) => { u.dmg = Math.max(1, Math.round(u.dmg * 1.15)); } },
+            { id: 'hp', name: '❤️ Живучесть', desc: '+20% макс. HP, полное исцеление', apply: (u) => { u.maxHp = Math.round(u.maxHp * 1.2); u.hp = u.maxHp; } },
+            { id: 'armor', name: '🛡️ Броня', desc: '+50 брони (и макс. брони) всем юнитам', apply: (u) => { u.armor = (u.armor || 0) + 50; u.maxArmor = Math.max(u.maxArmor || 0, u.armor); } },
+            { id: 'init', name: '⚡ Скорость', desc: '+5 к Инициативе всем юнитам', apply: (u) => { u.baseInitStat = (u.baseInitStat || u.init) + 5; u.init = u.baseInitStat; } },
+            { id: 'heal', name: '✨ Восстановление', desc: 'Полностью восстановить HP и Броню всем юнитам', apply: (u) => { u.hp = u.maxHp; if (u.maxArmor) u.armor = u.maxArmor; } },
+            { id: 'cd', name: '🔄 Мастерство', desc: '-20% времени восстановления способностей (макс. -60%)', apply: (u) => { u.cdReductionCampaign = Math.min(0.6, (u.cdReductionCampaign || 0) + 0.2); } }
+        ];
+
         class GameEngine {
             constructor() {
                 this.units = [];
@@ -449,11 +551,16 @@
                 this.actionTarget = null; 
                 this.summonType = null;
                 
-                // Волновой режим
-                this.isWaveMode = false;
-                this.currentWave = 1;
+                // Кампания
+                this.campaignWave = 1;
+                this.campaignTotalWaves = 8;
+                this.campaignPlayerBudget = 45;
+                this.awaitingWaveBonus = false;
+                this.gameOver = false;
+                this.nextUid = 1;
                 
                 this.initDOM();
+                this.generateSmartTerrain();
                 this.renderGrid();
             }
 
@@ -466,8 +573,13 @@
                     for (let x = 0; x < COLS; x++) {
                         const cell = document.createElement('div');
                         cell.className = 'cell';
-                        if (y <= 6) cell.classList.add('setup-enemy');
-                        if (y >= 7) cell.classList.add('setup-player');
+                        if (y <= ENEMY_ZONE_END) cell.classList.add('setup-enemy');
+                        else if (y >= PLAYER_ZONE_START) cell.classList.add('setup-player');
+                        else {
+                            cell.classList.add('setup-neutral');
+                            if (y === ENEMY_ZONE_END + 1) cell.classList.add('zone-edge-top');
+                            if (y === PLAYER_ZONE_START - 1) cell.classList.add('zone-edge-bottom');
+                        }
                         
                         cell.addEventListener('click', () => this.handleCellClick(x, y));
                         gridEl.appendChild(cell);
@@ -480,6 +592,10 @@
                     this.obstacles = [];
                     this.renderGrid();
                 });
+                document.getElementById('regen-terrain-btn').addEventListener('click', () => {
+                    this.generateSmartTerrain();
+                    this.renderGrid();
+                });
                 
                 document.getElementById('setup-mode').addEventListener('change', (e) => {
                     const mode = e.target.value;
@@ -490,7 +606,7 @@
                     if (mode === 'units') {
                         unitRow.classList.remove('hidden');
                         terrainRow.classList.add('hidden');
-                        helpText.innerText = 'Синие в ряды 7-13, Красные в 0-6. Клик по юниту — удалить/инфо.';
+                        helpText.innerText = 'Расставьте синих юнитов в рядах 8-11 (нейтральная полоса 4-7 недоступна). Клик по юниту — удалить/инфо.';
                     } else {
                         unitRow.classList.add('hidden');
                         terrainRow.classList.remove('hidden');
@@ -501,6 +617,64 @@
                 document.getElementById('close-info').addEventListener('click', () => {
                     document.getElementById('info-modal').classList.add('hidden');
                 });
+
+                const typeSelect = document.getElementById('setup-type');
+                const costDisplay = document.getElementById('setup-type-cost');
+                const updateCostDisplay = () => {
+                    costDisplay.innerText = `💰 ${UNIT_COST[typeSelect.value] || 5}`;
+                };
+                typeSelect.addEventListener('change', updateCostDisplay);
+                updateCostDisplay();
+
+                this.updateCampaignBudgetUI();
+            }
+
+            updateCampaignBudgetUI() {
+                const used = this.units
+                    .filter(u => u.team === 'player')
+                    .reduce((sum, u) => sum + (UNIT_COST[u.id] || 5), 0);
+                const displayEl = document.getElementById('campaign-budget-display');
+                if (displayEl) displayEl.innerText = `${used}/${this.campaignPlayerBudget}`;
+                const wavesEl = document.getElementById('campaign-waves-display');
+                if (wavesEl) wavesEl.innerText = this.campaignTotalWaves;
+            }
+
+            // Осмысленная (симметричная) генерация рельефа перед первой волной:
+            // препятствия концентрируются в нейтральной полосе (создают тактические укрытия и чок-поинты),
+            // немного заходят на края зон, и зеркалятся по горизонтали для честности обеим сторонам.
+            generateSmartTerrain() {
+                this.obstacles = [];
+                const icons = ['⛰️', '🌲', '🏰', '🗿'];
+                const neutralStart = ENEMY_ZONE_END + 1;
+                const neutralEnd = PLAYER_ZONE_START - 1;
+
+                const pickWeightedRow = () => {
+                    let pool = [];
+                    for (let y = neutralStart; y <= neutralEnd; y++) pool.push(y, y, y);
+                    pool.push(neutralStart - 1, neutralEnd + 1); // немного заходит на края зон
+                    return pool[Math.floor(Math.random() * pool.length)];
+                };
+
+                let clusterCount = 5 + Math.floor(Math.random() * 3); // 5-7 пар препятствий
+                let guard = 100;
+
+                while (clusterCount > 0 && guard-- > 0) {
+                    let ry = pickWeightedRow();
+                    let rx = Math.floor(Math.random() * Math.ceil(COLS / 2));
+                    let mirroredX = COLS - 1 - rx;
+                    let icon = icons[Math.floor(Math.random() * icons.length)];
+
+                    let posA = { x: rx, y: ry };
+                    let posB = { x: mirroredX, y: ry };
+
+                    let freeA = !this.getObstacleAt(posA.x, posA.y) && !this.getUnitAt(posA.x, posA.y);
+                    let freeB = !this.getObstacleAt(posB.x, posB.y) && !this.getUnitAt(posB.x, posB.y);
+
+                    if (freeA) this.obstacles.push({ x: posA.x, y: posA.y, icon });
+                    if (freeB && mirroredX !== rx) this.obstacles.push({ x: posB.x, y: posB.y, icon });
+
+                    if (freeA || freeB) clusterCount--;
+                }
             }
 
             getObstacleAt(x, y) {
@@ -609,8 +783,9 @@
             }
 
             // Вспомогательный метод получения КД с учетом волны (-5% за волну)
-            getAdjustedCooldown(baseCd, waveNumber) {
+            getAdjustedCooldown(baseCd, waveNumber, unit = null) {
                 let mult = Math.max(0.2, 1 - (waveNumber - 1) * 0.05);
+                if (unit && unit.cdReductionCampaign) mult *= (1 - unit.cdReductionCampaign);
                 return Math.max(1, Math.round(baseCd * mult));
             }
 
@@ -635,21 +810,33 @@
                         if (obstacleType !== 'REMOVE') {
                             this.obstacles.push({x, y, icon: obstacleType});
                         }
+                        this.updateCampaignBudgetUI();
                         this.renderGrid();
                         return;
                     }
 
-                    const team = document.getElementById('setup-team').value;
+                    const team = 'player';
                     const type = document.getElementById('setup-type').value;
                     const tpl = UNIT_TYPES[type];
 
                     if (targetUnit) {
                         this.units = this.units.filter(u => u !== targetUnit);
                     } else {
-                        let validZone = (team === 'player' && y >= 7 - (tpl.size - 1)) || (team === 'enemy' && y <= 6);
+                        let validZone = y >= PLAYER_ZONE_START - (tpl.size - 1);
+
+                        if (validZone) {
+                            let used = this.units.filter(u => u.team === 'player').reduce((sum, u) => sum + (UNIT_COST[u.id] || 5), 0);
+                            let cost = UNIT_COST[type] || 5;
+                            if (used + cost > this.campaignPlayerBudget) {
+                                alert(`Недостаточно бюджета! Нужно ${cost}, доступно ${this.campaignPlayerBudget - used}.`);
+                                return;
+                            }
+                        }
+
                         if (validZone && this.isCellFree(x, y, tpl.size)) {
                             this.units.push({
                                 ...tpl, x, y, team,
+                                uid: this.nextUid++,
                                 waveLevel: 1,
                                 baseInitStat: tpl.init,
                                 maxHp: tpl.hp,
@@ -672,6 +859,7 @@
                             });
                         }
                     }
+                    this.updateCampaignBudgetUI();
                     this.renderGrid();
                 } 
                 else if (this.state === 'BATTLE') {
@@ -756,16 +944,13 @@
             }
 
             startBattle() {
-                this.isWaveMode = document.getElementById('wave-mode-checkbox').checked;
-                this.currentWave = 1;
+                this.campaignWave = 1;
+                this.gameOver = false;
+                this.awaitingWaveBonus = false;
 
-                if (this.isWaveMode) {
-                    this.units = this.units.filter(u => u.team === 'player');
-                    if (this.units.length === 0) return alert("Поставьте хотя бы одного синего юнита!");
-                    this.spawnWave(this.currentWave);
-                } else {
-                    if (this.units.length === 0) return alert("Поставьте юнитов!");
-                }
+                this.units = this.units.filter(u => u.team === 'player');
+                if (this.units.length === 0) return alert("Поставьте хотя бы одного синего юнита в рамках бюджета!");
+                this.spawnCampaignWave(this.campaignWave);
                 
                 this.units.forEach(u => {
                     u.actionPoints = 0;
@@ -786,80 +971,178 @@
                 this.nextTurn();
             }
 
-            spawnWave(waveNumber) {
-                const baseTypes = ['knight', 'crossbow', 'berserker', 'stone_golem', 'frost_mage', 'vampire', 'dragon', 'ballista', 'ent', 'sniper'];
-                let count = Math.min(12, 2 + waveNumber * 2);
+            // Создает вражеского юнита указанного типа на клетке (x,y) с масштабированием по волне
+            pushEnemyUnit(tpl, x, y, waveNumber, scale) {
+                let scaledHp = Math.round(tpl.hp * scale);
+                let scaledDmg = Math.round(tpl.dmg * scale);
+                let scaledInit = Math.round(tpl.init * scale);
 
-                let necronsToSpawn = 0;
-                if (waveNumber >= 10) {
-                    necronsToSpawn = Math.floor(Math.random() * 3) + 1; // 1-3 некромантов
+                this.units.push({
+                    ...tpl,
+                    x, y,
+                    team: 'enemy',
+                    uid: this.nextUid++,
+                    waveLevel: waveNumber,
+                    hp: scaledHp,
+                    maxHp: scaledHp,
+                    dmg: scaledDmg,
+                    baseInitStat: scaledInit,
+                    init: scaledInit,
+                    maxArmor: tpl.armor,
+                    armor: tpl.armor,
+                    bonusDmg: 0,
+                    bonusInit: 0,
+                    actionPoints: 0,
+                    isPrepared: false,
+                    cooldowns: {},
+                    vampireDebuffs: 0,
+                    isDragonAuraAffected: false,
+                    isChronoAuraAffected: false,
+                    isFrozen: false,
+                    chronoSlowTurns: 0,
+                    golemStacks: 0,
+                    isReborn: false,
+                    lastPhoenixHp: scaledHp,
+                    lastPhoenixDmg: scaledDmg
+                });
+            }
+
+            // Бюджет врагов на волну N в Кампании (растет быстрее, чем у игрока)
+            getCampaignEnemyBudget(waveNumber) {
+                return Math.round(24 + waveNumber * 13 + Math.pow(waveNumber, 1.2));
+            }
+
+            // Осмысленная генерация состава врагов: гарантированный танк + дальник, затем заполнение бюджета
+            generateCampaignComposition(budget) {
+                let comp = [];
+                let remaining = budget;
+                const allTypes = Object.keys(UNIT_COST);
+                const minCost = Math.min(...allTypes.map(t => UNIT_COST[t]));
+
+                const tanks = allTypes.filter(t => UNIT_ROLES[t] === 'tank');
+                const ranged = allTypes.filter(t => UNIT_ROLES[t] === 'ranged');
+
+                const affordable = (list) => list.filter(t => UNIT_COST[t] <= remaining);
+
+                let tOpts = affordable(tanks);
+                if (tOpts.length) {
+                    let pick = tOpts[Math.floor(Math.random() * tOpts.length)];
+                    comp.push(pick); remaining -= UNIT_COST[pick];
+                }
+                let rOpts = affordable(ranged);
+                if (rOpts.length) {
+                    let pick = rOpts[Math.floor(Math.random() * rOpts.length)];
+                    comp.push(pick); remaining -= UNIT_COST[pick];
                 }
 
-                for (let i = 0; i < count; i++) {
-                    let type;
-                    if (necronsToSpawn > 0 && i < necronsToSpawn) {
-                        type = 'necromancer';
-                    } else {
-                        type = baseTypes[Math.floor(Math.random() * baseTypes.length)];
-                    }
-                    
-                    let tpl = UNIT_TYPES[type];
-                    
-                    let spawned = false;
-                    for (let attempts = 0; attempts < 50; attempts++) {
-                        let rx = Math.floor(Math.random() * COLS);
-                        let ry = Math.floor(Math.random() * 6);
-                        
-                        if (this.isCellFree(rx, ry, tpl.size)) {
-                            // Расчет характеристик: базовое + 10% за каждую новую волну
-                            let scale = 1 + (waveNumber - 1) * 0.10;
-                            let scaledHp = Math.round(tpl.hp * scale);
-                            let scaledDmg = Math.round(tpl.dmg * scale);
-                            let scaledInit = Math.round(tpl.init * scale);
+                let guard = 60;
+                while (remaining >= minCost && guard-- > 0) {
+                    let opts = affordable(allTypes);
+                    if (opts.length === 0) break;
+                    // Слегка предпочитаем разнообразие ролей, чтобы не было "все дракона"
+                    let existingRoles = comp.map(t => UNIT_ROLES[t]);
+                    let underrepresented = opts.filter(t => !existingRoles.includes(UNIT_ROLES[t]));
+                    let pool = underrepresented.length > 0 && Math.random() < 0.6 ? underrepresented : opts;
+                    let pick = pool[Math.floor(Math.random() * pool.length)];
+                    comp.push(pick); remaining -= UNIT_COST[pick];
+                }
+                return comp;
+            }
 
-                            this.units.push({
-                                ...tpl,
-                                x: rx, y: ry,
-                                team: 'enemy',
-                                waveLevel: waveNumber,
-                                hp: scaledHp,
-                                maxHp: scaledHp,
-                                dmg: scaledDmg,
-                                baseInitStat: scaledInit,
-                                init: scaledInit,
-                                maxArmor: tpl.armor,
-                                armor: tpl.armor,
-                                bonusDmg: 0,
-                                bonusInit: 0,
-                                actionPoints: 0,
-                                isPrepared: false,
-                                cooldowns: {},
-                                vampireDebuffs: 0,
-                                isDragonAuraAffected: false,
-                                isChronoAuraAffected: false,
-                                isFrozen: false,
-                                chronoSlowTurns: 0,
-                                golemStacks: 0,
-                                isReborn: false,
-                                lastPhoenixHp: scaledHp,
-                                lastPhoenixDmg: scaledDmg
-                            });
-                            spawned = true;
-                            break;
+            // Осмысленная генерация волны в Кампании: состав по бюджету + тактическая расстановка по ролям
+            spawnCampaignWave(waveNumber) {
+                let budget = this.getCampaignEnemyBudget(waveNumber);
+                let comp = this.generateCampaignComposition(budget);
+                let scale = 1 + (waveNumber - 1) * 0.12;
+
+                comp.forEach(type => {
+                    let tpl = UNIT_TYPES[type];
+                    let role = UNIT_ROLES[type];
+                    // Танки/скирмишеры выдвигаются к линии фронта (ближе к нейтральной полосе), дальники/саппорты держатся в тылу, летуны — где угодно
+                    let rowRange = (role === 'ranged' || role === 'support')
+                        ? [0, Math.max(0, ENEMY_ZONE_END - 2)]
+                        : (role === 'flyer' ? [0, ENEMY_ZONE_END] : [Math.max(0, ENEMY_ZONE_END - 1), ENEMY_ZONE_END]);
+                    let placed = false;
+
+                    for (let attempts = 0; attempts < 60 && !placed; attempts++) {
+                        let ry = rowRange[0] + Math.floor(Math.random() * (rowRange[1] - rowRange[0] + 1));
+                        let rx = Math.floor(Math.random() * COLS);
+                        if (this.isCellFree(rx, ry, tpl.size)) {
+                            this.pushEnemyUnit(tpl, rx, ry, waveNumber, scale);
+                            placed = true;
                         }
                     }
-                }
+                    if (!placed) {
+                        outer:
+                        for (let ry = 0; ry <= ENEMY_ZONE_END; ry++) {
+                            for (let rx = 0; rx < COLS; rx++) {
+                                if (this.isCellFree(rx, ry, tpl.size)) {
+                                    this.pushEnemyUnit(tpl, rx, ry, waveNumber, scale);
+                                    placed = true;
+                                    break outer;
+                                }
+                            }
+                        }
+                    }
+                });
             }
 
             checkWaveProgression() {
-                if (!this.isWaveMode) return;
-
-                let enemiesAlive = this.units.some(u => u.team === 'enemy' && u.hp > 0);
-                if (!enemiesAlive) {
-                    this.currentWave++;
-                    alert(`🎉 Волна зачищена! Начинается ВОЛНА ${this.currentWave}!`);
-                    this.spawnWave(this.currentWave);
+                let playerAlive = this.units.some(u => u.team === 'player' && u.hp > 0);
+                if (!playerAlive) {
+                    this.gameOver = true;
+                    alert('💀 Поражение! Ваш отряд разбит. Кампания провалена.');
+                    return;
                 }
+                let enemiesAlive = this.units.some(u => u.team === 'enemy' && u.hp > 0);
+                if (!enemiesAlive && !this.awaitingWaveBonus) {
+                    if (this.campaignWave >= this.campaignTotalWaves) {
+                        this.gameOver = true;
+                        alert('🏆 Победа! Вы прошли всю Кампанию "Средневековье"!');
+                        return;
+                    }
+                    this.awaitingWaveBonus = true;
+                    this.showWaveBonusModal();
+                }
+            }
+
+            showWaveBonusModal() {
+                const pool = [...CAMPAIGN_BONUSES];
+                for (let i = pool.length - 1; i > 0; i--) {
+                    let j = Math.floor(Math.random() * (i + 1));
+                    [pool[i], pool[j]] = [pool[j], pool[i]];
+                }
+                const choices = pool.slice(0, 3);
+                const container = document.getElementById('wave-bonus-options');
+                container.innerHTML = '';
+
+                choices.forEach(bonus => {
+                    const btn = document.createElement('button');
+                    btn.className = 'success';
+                    btn.style.width = '100%';
+                    btn.style.padding = '8px';
+                    btn.innerHTML = `${bonus.name}<span style="font-size:11px;">${bonus.desc}</span>`;
+                    btn.onclick = () => this.applyCampaignBonus(bonus);
+                    container.appendChild(btn);
+                });
+
+                document.getElementById('wave-bonus-modal').classList.remove('hidden');
+            }
+
+            applyCampaignBonus(bonus) {
+                this.units.filter(u => u.team === 'player' && u.hp > 0).forEach(u => bonus.apply(u));
+                document.getElementById('wave-bonus-modal').classList.add('hidden');
+                this.awaitingWaveBonus = false;
+                this.campaignWave++;
+                this.renderGrid();
+
+                if (this.campaignWave > this.campaignTotalWaves) {
+                    this.gameOver = true;
+                    alert('🏆 Поздравляем! Кампания "Средневековье" полностью пройдена!');
+                    return;
+                }
+                this.spawnCampaignWave(this.campaignWave);
+                this.nextTurn();
             }
 
             applyGlobalAuras(simUnitsList = null) {
@@ -913,6 +1196,7 @@
 
             nextTurn() {
                 this.checkWaveProgression();
+                if (this.awaitingWaveBonus || this.gameOver) return;
                 this.applyGlobalAuras();
                 
                 let maxLoops = 2000;
@@ -1003,7 +1287,7 @@
                 this.renderGrid();
                 
                 let headerText = `Ходит: ${this.activeUnit.name} (${this.activeUnit.team === 'player' ? 'Игрок' : 'Враг'})`;
-                if (this.isWaveMode) headerText += ` | 🌊 Волна ${this.currentWave}`;
+                if (this.campaignWave) headerText += ` | 🏆 Волна ${this.campaignWave}/${this.campaignTotalWaves}`;
                 document.getElementById('unit-info-header').innerText = headerText;
                 
                 if (this.activeUnit.team === 'player') {
@@ -1071,8 +1355,10 @@
                     let btn = this.createBtn(panel, `Щит (+${amount})`, 'success', () => {
                         u.armor = (u.armor || 0) + amount;
                         u.maxArmor = Math.max(u.maxArmor || 0, u.armor);
-                        u.cooldowns['Armor'] = this.getAdjustedCooldown(2, wl);
-                        this.endTurn();
+                        u.cooldowns['Armor'] = this.getAdjustedCooldown(2, wl, u);
+                        this.playUnitAnim(u.uid, 'unit-anim-buff', 500);
+                        this.spawnFloatingText(u.x, u.y, `+${amount} 🛡️`, '#00bcd4');
+                        this.finishAction(340);
                     });
                     if (cd > 0) { btn.disabled = true; btn.innerText += ` (${cd})`; }
                 }
@@ -1090,7 +1376,8 @@
                 if (u.id === 'ballista') {
                     let btn = this.createBtn(panel, 'Подготовка', 'success', () => {
                         u.isPrepared = true;
-                        this.endTurn();
+                        this.playUnitAnim(u.uid, 'unit-anim-buff', 400);
+                        this.finishAction(260);
                     });
                     if (u.isPrepared) btn.disabled = true;
                 }
@@ -1101,8 +1388,10 @@
                     let btn = this.createBtn(panel, `Окаменение (+${amount})`, 'success', () => {
                         u.armor = (u.armor || 0) + amount;
                         u.maxArmor = Math.max(u.maxArmor || 0, u.armor);
-                        u.cooldowns['Petrify'] = this.getAdjustedCooldown(3, wl);
-                        this.endTurn();
+                        u.cooldowns['Petrify'] = this.getAdjustedCooldown(3, wl, u);
+                        this.playUnitAnim(u.uid, 'unit-anim-buff', 500);
+                        this.spawnFloatingText(u.x, u.y, `+${amount} 🛡️`, '#00bcd4');
+                        this.finishAction(340);
                     });
                     if (cd > 0) { btn.disabled = true; btn.innerText += ` (${cd})`; }
                 }
@@ -1146,6 +1435,38 @@
                 document.getElementById('damage-preview').classList.add('hidden');
             }
 
+            // Проигрывает CSS-анимацию на юните по его uid (перезапускает, если уже играет)
+            playUnitAnim(uid, animClass, duration = 400) {
+                const el = document.querySelector(`.unit[data-uid="${uid}"]`);
+                if (!el) return;
+                el.classList.remove(animClass);
+                void el.offsetWidth; // форсируем reflow для перезапуска анимации
+                el.classList.add(animClass);
+                setTimeout(() => { if (el) el.classList.remove(animClass); }, duration);
+            }
+
+            // Всплывающий текст (урон/лечение/баффы) над клеткой поля
+            spawnFloatingText(x, y, text, color = '#fff') {
+                const gridEl = document.getElementById('grid');
+                const cell = this.cells[y] && this.cells[y][x];
+                if (!cell || !gridEl) return;
+                const gridRect = gridEl.getBoundingClientRect();
+                const cellRect = cell.getBoundingClientRect();
+                const el = document.createElement('div');
+                el.className = 'floating-text';
+                el.style.color = color;
+                el.style.left = `${cellRect.left - gridRect.left + cellRect.width / 2}px`;
+                el.style.top = `${cellRect.top - gridRect.top + cellRect.height / 2}px`;
+                el.innerText = text;
+                gridEl.appendChild(el);
+                setTimeout(() => el.remove(), 850);
+            }
+
+            // Небольшая задержка перед завершением хода, чтобы анимация успела проиграться
+            finishAction(delayMs = 300) {
+                setTimeout(() => this.endTurn(), delayMs);
+            }
+
             processActionClick(x, y, targetUnit) {
                 const au = this.activeUnit;
                 const wl = au.waveLevel || 1;
@@ -1155,15 +1476,20 @@
                 if (this.selectedAction === 'move') {
                     if (this.canReachPosition(au, x, y)) {
                         au.x = x; au.y = y;
-                        this.endTurn();
+                        this.renderGrid();
+                        this.playUnitAnim(au.uid, 'unit-anim-spawn', 300);
+                        this.finishAction(260);
                     }
                 } 
                 else if (this.selectedAction === 'vampire_teleport') {
                     if (this.isCellFree(x, y, au.size, au)) {
                         au.x = x;
                         au.y = y;
-                        au.cooldowns['Teleport'] = this.getAdjustedCooldown(4, wl);
-                        this.endTurn();
+                        au.cooldowns['Teleport'] = this.getAdjustedCooldown(4, wl, au);
+                        this.renderGrid();
+                        this.playUnitAnim(au.uid, 'unit-anim-spawn', 300);
+                        this.spawnFloatingText(x, y, '🌀', '#e0aaff');
+                        this.finishAction(300);
                     }
                 }
                 else if (this.selectedAction === 'attack') {
@@ -1182,8 +1508,9 @@
                         let sDmg = Math.round(tpl.dmg * scale);
                         let sInit = Math.round(tpl.init * scale);
 
-                        this.units.push({
+                        const newUnit = {
                             ...tpl, x, y, team: au.team,
+                            uid: this.nextUid++,
                             waveLevel: wl,
                             hp: sHp, maxHp: sHp,
                             dmg: sDmg,
@@ -1194,33 +1521,45 @@
                             vampireDebuffs: 0, isDragonAuraAffected: false, isChronoAuraAffected: false,
                             isFrozen: false, chronoSlowTurns: 0, golemStacks: 0, isReborn: false,
                             lastPhoenixHp: sHp, lastPhoenixDmg: sDmg
-                        });
+                        };
+                        this.units.push(newUnit);
                         
                         let baseCd = (this.summonType === 'stone_golem') ? 2 : 20;
-                        au.cooldowns['summon_' + this.summonType] = this.getAdjustedCooldown(baseCd, wl);
-                        this.endTurn();
+                        au.cooldowns['summon_' + this.summonType] = this.getAdjustedCooldown(baseCd, wl, au);
+                        this.renderGrid();
+                        this.playUnitAnim(newUnit.uid, 'unit-anim-spawn', 380);
+                        this.spawnFloatingText(x, y, '✨', '#cc66ff');
+                        this.finishAction(340);
                     }
                 }
                 else if (this.selectedAction === 'heal') {
                     if (targetUnit && targetUnit.team === au.team && dist <= curRange) {
                         let healAmount = Math.round(40 * (1 + (wl - 1) * 0.10));
                         targetUnit.hp = Math.min(targetUnit.maxHp, targetUnit.hp + healAmount);
-                        this.endTurn();
+                        this.playUnitAnim(au.uid, 'unit-anim-attack', 260);
+                        this.playUnitAnim(targetUnit.uid, 'unit-anim-buff', 500);
+                        this.spawnFloatingText(targetUnit.x, targetUnit.y, `+${healAmount}`, '#00ff88');
+                        this.finishAction(340);
                     }
                 }
                 else if (this.selectedAction === 'chrono_slow') {
                     if (targetUnit && targetUnit.team !== au.team && dist <= 3) {
                         targetUnit.actionPoints = Math.max(0, targetUnit.actionPoints - 30);
                         targetUnit.chronoSlowTurns = 2;
-                        au.cooldowns['Slow'] = this.getAdjustedCooldown(3, wl);
-                        this.endTurn();
+                        au.cooldowns['Slow'] = this.getAdjustedCooldown(3, wl, au);
+                        this.playUnitAnim(au.uid, 'unit-anim-attack', 260);
+                        this.playUnitAnim(targetUnit.uid, 'unit-anim-hit', 400);
+                        this.spawnFloatingText(targetUnit.x, targetUnit.y, '⏳ Замедление', '#ff99cc');
+                        this.finishAction(340);
                     }
                 }
                 else if (this.selectedAction === 'chrono_boost') {
                     if (targetUnit && targetUnit.team === au.team && dist <= 3) {
                         targetUnit.actionPoints += 100;
-                        au.cooldowns['Boost'] = this.getAdjustedCooldown(4, wl);
-                        this.endTurn();
+                        au.cooldowns['Boost'] = this.getAdjustedCooldown(4, wl, au);
+                        this.playUnitAnim(targetUnit.uid, 'unit-anim-buff', 500);
+                        this.spawnFloatingText(targetUnit.x, targetUnit.y, '⚡ Ход!', '#ffd700');
+                        this.finishAction(340);
                     }
                 }
             }
@@ -1229,7 +1568,7 @@
                 if (this.actionTarget && this.actionTarget.x === clickX && this.actionTarget.y === clickY) {
                     this.executeAttack(this.activeUnit, defender);
                     this.resetTarget();
-                    this.endTurn();
+                    this.finishAction(380);
                 } else {
                     this.actionTarget = {x: clickX, y: clickY};
                     let dmgInfo = this.calculateDamage(this.activeUnit, defender);
@@ -1337,6 +1676,7 @@
 
             executeAttack(attacker, defender) {
                 if (attacker.id === 'ballista') attacker.isPrepared = false;
+                this.playUnitAnim(attacker.uid, 'unit-anim-attack', 300);
 
                 if (attacker.id === 'ent') {
                     this.units.forEach(u => {
@@ -1353,6 +1693,8 @@
                             if (u.id === 'specter') dmg = 0;
 
                             this.applyDamageToUnit(attacker, u, dmg);
+                            this.playUnitAnim(u.uid, 'unit-anim-hit', 380);
+                            this.spawnFloatingText(u.x, u.y, `-${dmg}`, '#ff5555');
                             this.checkCounterAttack(u, attacker, dmg, dist);
                         }
                     });
@@ -1362,9 +1704,12 @@
                     
                     if (typeof dmg !== 'number') dmg = this.getActualDmg(attacker, defender);
                     this.applyDamageToUnit(attacker, defender, dmg);
+                    this.playUnitAnim(defender.uid, 'unit-anim-hit', 380);
+                    this.spawnFloatingText(defender.x, defender.y, `-${dmg}`, '#ff5555');
 
                     if (attacker.id === 'frost_mage' && defender.hp > 0) {
                         defender.isFrozen = true;
+                        this.spawnFloatingText(defender.x, defender.y, '🧊', '#66e0ff');
                     }
 
                     this.checkCounterAttack(defender, attacker, dmg, dist);
@@ -1373,6 +1718,7 @@
                         attacker.hp = Math.min(attacker.maxHp, attacker.hp + (typeof dmg === 'number' ? dmg : 1));
                         let scale = 1 + ((attacker.waveLevel || 1) - 1) * 0.10;
                         attacker.vampireDebuffs = (attacker.vampireDebuffs || 0) + Math.round(1 * scale);
+                        this.spawnFloatingText(attacker.x, attacker.y, `+${typeof dmg === 'number' ? dmg : 1}`, '#00ff88');
                     }
                 }
             }
@@ -1387,7 +1733,10 @@
                     if (reflectDmg > 0) {
                         let finalReflectDmg = (attacker.id === 'ent') ? Math.floor(reflectDmg * 0.2) : reflectDmg;
                         if (attacker.id === 'specter') finalReflectDmg = 0;
-                        this.applyDamageToUnit(defender, attacker, Math.max(1, finalReflectDmg));
+                        finalReflectDmg = Math.max(1, finalReflectDmg);
+                        this.applyDamageToUnit(defender, attacker, finalReflectDmg);
+                        this.playUnitAnim(attacker.uid, 'unit-anim-hit', 380);
+                        this.spawnFloatingText(attacker.x, attacker.y, `-${finalReflectDmg}`, '#ff9955');
                     }
                 }
             }
@@ -1399,6 +1748,7 @@
                         let armorRestore = Math.round(40 * scale);
                         this.activeUnit.armor = (this.activeUnit.armor || 0) + armorRestore;
                         this.activeUnit.maxArmor = Math.max(this.activeUnit.maxArmor || 0, this.activeUnit.armor);
+                        this.spawnFloatingText(this.activeUnit.x, this.activeUnit.y, `+${armorRestore} 🛡️`, '#00bcd4');
                     }
                     if (this.activeUnit.isFrozen) {
                         this.activeUnit.isFrozen = false;
@@ -1448,8 +1798,9 @@
                                 let sDmg = Math.round(tpl.dmg * scale);
                                 let sInit = Math.round(tpl.init * scale);
 
-                                this.units.push({
+                                const newUnit = {
                                     ...tpl, x: freePos.x, y: freePos.y, team: me.team,
+                                    uid: this.nextUid++,
                                     waveLevel: wl,
                                     hp: sHp, maxHp: sHp,
                                     dmg: sDmg,
@@ -1459,11 +1810,15 @@
                                     vampireDebuffs: 0, isDragonAuraAffected: false, isChronoAuraAffected: false,
                                     isFrozen: false, chronoSlowTurns: 0, golemStacks: 0, isReborn: false,
                                     lastPhoenixHp: sHp, lastPhoenixDmg: sDmg
-                                });
+                                };
+                                this.units.push(newUnit);
                                 
                                 let baseCd = (type === 'stone_golem') ? 2 : 20;
-                                me.cooldowns['summon_' + type] = this.getAdjustedCooldown(baseCd, wl);
-                                return this.endTurn();
+                                me.cooldowns['summon_' + type] = this.getAdjustedCooldown(baseCd, wl, me);
+                                this.renderGrid();
+                                this.playUnitAnim(newUnit.uid, 'unit-anim-spawn', 380);
+                                this.spawnFloatingText(freePos.x, freePos.y, '✨', '#cc66ff');
+                                return this.finishAction(340);
                             }
                         }
                     }
@@ -1478,7 +1833,8 @@
 
                 if (me.id === 'ballista' && !me.isPrepared) {
                     me.isPrepared = true;
-                    return this.endTurn();
+                    this.playUnitAnim(me.uid, 'unit-anim-buff', 400);
+                    return this.finishAction(260);
                 }
 
                 if (me.id === 'chronomancer') {
@@ -1488,16 +1844,21 @@
                         if (slowTarget) {
                             slowTarget.actionPoints = Math.max(0, slowTarget.actionPoints - 30);
                             slowTarget.chronoSlowTurns = 2;
-                            me.cooldowns['Slow'] = this.getAdjustedCooldown(3, wl);
-                            return this.endTurn();
+                            me.cooldowns['Slow'] = this.getAdjustedCooldown(3, wl, me);
+                            this.playUnitAnim(me.uid, 'unit-anim-attack', 260);
+                            this.playUnitAnim(slowTarget.uid, 'unit-anim-hit', 400);
+                            this.spawnFloatingText(slowTarget.x, slowTarget.y, '⏳ Замедление', '#ff99cc');
+                            return this.finishAction(340);
                         }
                     }
                     if ((me.cooldowns['Boost'] || 0) === 0) {
                         let boostTarget = allies.find(a => a !== me && this.getDistance(me, a.x, a.y, a.size) <= 3);
                         if (boostTarget) {
                             boostTarget.actionPoints += 100;
-                            me.cooldowns['Boost'] = this.getAdjustedCooldown(4, wl);
-                            return this.endTurn();
+                            me.cooldowns['Boost'] = this.getAdjustedCooldown(4, wl, me);
+                            this.playUnitAnim(boostTarget.uid, 'unit-anim-buff', 500);
+                            this.spawnFloatingText(boostTarget.x, boostTarget.y, '⚡ Ход!', '#ffd700');
+                            return this.finishAction(340);
                         }
                     }
                 }
@@ -1515,7 +1876,7 @@
                     });
 
                     this.executeAttack(me, targetsInRange[0]);
-                    return this.endTurn();
+                    return this.finishAction(380);
                 }
 
                 let closestEnemy = enemies.sort((a,b) => this.getDistance(me, a.x, a.y, a.size) - this.getDistance(me, b.x, b.y, b.size))[0];
@@ -1546,8 +1907,11 @@
                         if (bestTeleportPos) {
                             me.x = bestTeleportPos.x;
                             me.y = bestTeleportPos.y;
-                            me.cooldowns['Teleport'] = this.getAdjustedCooldown(4, me.waveLevel || 1);
-                            return this.endTurn();
+                            me.cooldowns['Teleport'] = this.getAdjustedCooldown(4, me.waveLevel || 1, me);
+                            this.renderGrid();
+                            this.playUnitAnim(me.uid, 'unit-anim-spawn', 300);
+                            this.spawnFloatingText(me.x, me.y, '🌀', '#e0aaff');
+                            return this.finishAction(300);
                         }
                     }
                 }
@@ -1580,7 +1944,9 @@
                     if (bestPos) {
                         me.x = bestPos.x; 
                         me.y = bestPos.y;
-                        return this.endTurn();
+                        this.renderGrid();
+                        this.playUnitAnim(me.uid, 'unit-anim-spawn', 260);
+                        return this.finishAction(230);
                     }
                 }
                 
@@ -1717,6 +2083,7 @@
                     
                     const uDiv = document.createElement('div');
                     uDiv.className = `unit ${u.team} ${u.id}`;
+                    uDiv.dataset.uid = u.uid;
                     if (u.size === 2) uDiv.classList.add('size-2');
                     uDiv.innerText = u.icon;
                     
