@@ -232,6 +232,12 @@
             0%, 100% { box-shadow: 0 3px 8px rgba(0,0,0,0.8), 0 0 16px 3px rgba(255,59,59,0.6), inset 0 2px 3px rgba(255,255,255,0.2), inset 0 -3px 5px rgba(0,0,0,0.4); }
             50% { box-shadow: 0 3px 8px rgba(0,0,0,0.8), 0 0 26px 7px rgba(255,59,59,0.9), inset 0 2px 3px rgba(255,255,255,0.2), inset 0 -3px 5px rgba(0,0,0,0.4); }
         }
+        .unit.elite {
+            border: 3px solid #ffb347;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.8), 0 0 14px 3px rgba(255,179,71,0.65), inset 0 2px 3px rgba(255,255,255,0.2), inset 0 -3px 5px rgba(0,0,0,0.4);
+            z-index: 12;
+        }
+
         .unit.hero {
             border: 3px solid var(--gold-bright);
             box-shadow: 0 3px 8px rgba(0,0,0,0.8), 0 0 16px 3px rgba(255,217,119,0.7), inset 0 2px 3px rgba(255,255,255,0.25), inset 0 -3px 5px rgba(0,0,0,0.4);
@@ -413,7 +419,7 @@
         }
 
         #modal-backdrop {
-            position: absolute;
+            position: fixed;
             inset: 0;
             background: rgba(0,0,0,0.6);
             z-index: 900;
@@ -427,7 +433,7 @@
         }
 
         #info-modal {
-            position: absolute;
+            position: fixed;
             top: 50%; left: 50%;
             transform: translate(-50%, -50%);
             background: linear-gradient(180deg, rgba(28,28,32,0.98), rgba(16,16,19,0.98));
@@ -437,6 +443,8 @@
             z-index: 1000;
             width: 88%;
             max-width: 320px;
+            max-height: 86vh;
+            overflow-y: auto;
             color: white;
             box-shadow: 0 20px 50px rgba(0,0,0,0.75), 0 0 24px rgba(94,179,255,0.2);
             animation: modalPopIn 0.22s ease-out;
@@ -446,7 +454,7 @@
         #close-info { width: 100%; margin-top: 12px; padding: 9px; background: linear-gradient(180deg, #2f7fdb, #0d4c96); border: 1px solid var(--player-glow); border-radius: 7px; color: white; font-weight: 700; }
 
         #wave-bonus-modal {
-            position: absolute;
+            position: fixed;
             top: 50%; left: 50%;
             transform: translate(-50%, -50%);
             background: linear-gradient(180deg, rgba(28,28,32,0.98), rgba(16,16,19,0.98));
@@ -456,6 +464,8 @@
             z-index: 1000;
             width: 90%;
             max-width: 340px;
+            max-height: 86vh;
+            overflow-y: auto;
             color: white;
             box-shadow: 0 20px 50px rgba(0,0,0,0.75), 0 0 30px rgba(212,175,55,0.3);
             animation: modalPopIn 0.22s ease-out;
@@ -465,7 +475,7 @@
         #wave-bonus-options button span { display: block; color: #cde; font-weight: 400; }
 
         #armory-modal {
-            position: absolute;
+            position: fixed;
             top: 50%; left: 50%;
             transform: translate(-50%, -50%);
             background: linear-gradient(180deg, rgba(28,28,32,0.98), rgba(16,16,19,0.98));
@@ -475,6 +485,8 @@
             z-index: 1000;
             width: 92%;
             max-width: 360px;
+            max-height: 86vh;
+            overflow-y: auto;
             color: white;
             box-shadow: 0 20px 50px rgba(0,0,0,0.75), 0 0 30px rgba(212,175,55,0.3);
             animation: modalPopIn 0.22s ease-out;
@@ -496,7 +508,7 @@
         .armory-buy-btn { flex-grow: 0; padding: 6px 12px; font-size: 11px; min-width: 76px; }
 
         #hero-modal {
-            position: absolute;
+            position: fixed;
             top: 50%; left: 50%;
             transform: translate(-50%, -50%);
             background: linear-gradient(180deg, rgba(28,28,32,0.98), rgba(16,16,19,0.98));
@@ -506,6 +518,8 @@
             z-index: 1000;
             width: 92%;
             max-width: 360px;
+            max-height: 86vh;
+            overflow-y: auto;
             color: white;
             box-shadow: 0 20px 50px rgba(0,0,0,0.75), 0 0 30px rgba(212,175,55,0.3);
             animation: modalPopIn 0.22s ease-out;
@@ -633,7 +647,7 @@
                 <h3>🏛️ Арсенал</h3>
                 <p style="font-size: 11px; color: #aaa; text-align: center; margin-bottom: 8px;">Постоянные улучшения за Славу, накопленную за прошлые походы.</p>
                 <p style="font-size: 13px; text-align: center; margin-bottom: 10px; color: var(--gold-bright); font-family: 'Cinzel', serif;">⭐ Слава: <span id="armory-glory-display">0</span></p>
-                <div id="armory-options" style="display: flex; flex-direction: column; gap: 8px; max-height: 44vh; overflow-y: auto;"></div>
+                <div id="armory-options" style="display: flex; flex-direction: column; gap: 8px;"></div>
                 <button id="close-armory" style="width: 100%; margin-top: 12px; padding: 9px; background: linear-gradient(180deg, #2f7fdb, #0d4c96); border: 1px solid var(--player-glow); border-radius: 7px; color: white; font-weight: 700;">Закрыть</button>
             </div>
 
@@ -641,7 +655,7 @@
                 <h3>🦸 Герой похода</h3>
                 <p style="font-size: 11px; color: #aaa; text-align: center; margin-bottom: 8px;">Выбранный герой растёт между походами и встаёт в строй бесплатно, вне бюджета.</p>
                 <p style="font-size: 13px; text-align: center; margin-bottom: 10px; color: var(--gold-bright); font-family: 'Cinzel', serif;">⭐ Слава: <span id="hero-glory-display">0</span></p>
-                <div id="hero-options" style="display: flex; flex-direction: column; gap: 8px; max-height: 44vh; overflow-y: auto;"></div>
+                <div id="hero-options" style="display: flex; flex-direction: column; gap: 8px;"></div>
                 <button id="close-hero" style="width: 100%; margin-top: 12px; padding: 9px; background: linear-gradient(180deg, #2f7fdb, #0d4c96); border: 1px solid var(--player-glow); border-radius: 7px; color: white; font-weight: 700;">Закрыть</button>
             </div>
         </div>
@@ -698,7 +712,7 @@
 
                     <div id="campaign-budget-row" class="setup-row" style="align-items: center; justify-content: space-between; margin-top: 2px;">
                         <span style="font-size: 11px; color: #ffd700;">💰 Бюджет: <b id="campaign-budget-display">0/0</b></span>
-                        <span style="font-size: 11px; color: #aaa;">🌊 Волн: <b id="campaign-waves-display">8</b></span>
+                        <span style="font-size: 11px; color: #aaa;">🌊 Волн: <b id="campaign-waves-display">16</b></span>
                         <span id="biome-display" style="font-size: 11px; color: #9fd8a0;"></span>
                     </div>
                 </div>
@@ -872,7 +886,13 @@
                 passive: 'Меткий Глаз: +15% шанс критического удара x1.5. Не теряет дальность рядом с врагами.' },
             warlock: { id: 'warlock', name: 'Тёмный Маг', icon: '💀', unlockCost: 150,
                 baseHp: 85, baseArmor: 0, baseDmg: 22, dmgType: 'Магия', baseInit: 13, move: 2, range: 3, size: 1,
-                passive: 'Тёмный Взрыв: атака дополнительно наносит 40% урона всем врагам рядом с целью.' }
+                passive: 'Тёмный Взрыв: атака дополнительно наносит 40% урона всем врагам рядом с целью.' },
+            jarl: { id: 'jarl', name: 'Ярл', icon: '🪓', unlockCost: 200,
+                baseHp: 220, baseArmor: 20, baseDmg: 16, dmgType: 'Физ', baseInit: 9, move: 2, range: 1, size: 1,
+                passive: 'Боевая Ярость: за каждые потерянные 10% HP наносит +6% урона (макс. +54%).' },
+            druid: { id: 'druid', name: 'Друид', icon: '🌿', unlockCost: 220,
+                baseHp: 100, baseArmor: 0, baseDmg: 14, dmgType: 'Магия', baseInit: 12, move: 2, range: 2, size: 1,
+                passive: 'Дух Природы: в конце своего хода лечит ближайшего раненого союзника на 18 HP.' }
         };
 
         // Общий пул талантов героя — при повышении уровня выдаётся выбор из 2 случайных (без повторов)
@@ -901,8 +921,14 @@
         // ---- Боссы: усиленный именной враг на переломных волнах похода ----
         const BOSS_WAVES = {
             4: { baseType: 'ent', name: '👹 Древний Страж', mult: 1.7 },
-            8: { baseType: 'dragon', name: '🐲 Король Драконов', mult: 1.9 }
+            8: { baseType: 'stone_golem', name: '🪨 Несокрушимый Голем', mult: 1.9 },
+            12: { baseType: 'vampire', name: '🦇 Повелитель Тьмы', mult: 2.1 },
+            16: { baseType: 'dragon', name: '🐲 Король Драконов', mult: 2.4 }
         };
+
+        // ---- Элитные волны: один из обычных врагов волны усиливается (без полноценного босса) ----
+        const ELITE_WAVES = [2, 6, 10, 14];
+        const ELITE_MULT = 1.45;
 
         // ---- Реликвии: один раз выбираются перед стартом похода, действуют на весь забег ----
         const RELICS = [
@@ -937,7 +963,7 @@
                 
                 // Кампания
                 this.campaignWave = 1;
-                this.campaignTotalWaves = 8;
+                this.campaignTotalWaves = 16;
                 this.awaitingWaveBonus = false;
                 this.gameOver = false;
                 this.nextUid = 1;
@@ -979,19 +1005,28 @@
             }
             defaultHeroSave() {
                 return {
-                    unlocked: { paladin: true, ranger: false, warlock: false },
+                    unlocked: { paladin: true, ranger: false, warlock: false, jarl: false, druid: false },
                     active: 'paladin',
                     heroes: {
                         paladin: { level: 1, xp: 0, talents: [] },
                         ranger: { level: 1, xp: 0, talents: [] },
-                        warlock: { level: 1, xp: 0, talents: [] }
+                        warlock: { level: 1, xp: 0, talents: [] },
+                        jarl: { level: 1, xp: 0, talents: [] },
+                        druid: { level: 1, xp: 0, talents: [] }
                     }
                 };
             }
             loadHeroSave() {
                 try {
                     let raw = JSON.parse(localStorage.getItem(META_SAVE_KEY_HEROES) || 'null');
-                    if (raw && raw.heroes) return raw;
+                    if (raw && raw.heroes) {
+                        // На случай старого сохранения без новых героев — дополняем недостающие записи
+                        Object.keys(HERO_TYPES).forEach(id => {
+                            if (!raw.heroes[id]) raw.heroes[id] = { level: 1, xp: 0, talents: [] };
+                            if (raw.unlocked[id] === undefined) raw.unlocked[id] = false;
+                        });
+                        return raw;
+                    }
                 } catch (e) { /* хранилище недоступно */ }
                 return this.defaultHeroSave();
             }
@@ -1688,6 +1723,11 @@
                     dmg += Math.round(missingPct * 5 * scale);
                 }
 
+                if (unit.id === 'jarl') {
+                    let missingTenths = Math.floor((1 - (unit.hp / unit.maxHp)) * 10);
+                    dmg = Math.round(dmg * (1 + Math.min(9, missingTenths) * 0.06));
+                }
+
                 if (unit.isDragonAuraAffected) {
                     dmg = Math.floor(dmg * 0.3);
                 }
@@ -1881,6 +1921,7 @@
                 let budget = this.getCampaignEnemyBudget(waveNumber);
                 let comp = this.generateCampaignComposition(budget);
                 let scale = 1 + (waveNumber - 1) * 0.12;
+                let spawnedThisWave = [];
 
                 this.spawnBossIfNeeded(waveNumber, scale);
 
@@ -1897,7 +1938,7 @@
                         let ry = rowRange[0] + Math.floor(Math.random() * (rowRange[1] - rowRange[0] + 1));
                         let rx = Math.floor(Math.random() * COLS);
                         if (this.isCellFree(rx, ry, tpl.size)) {
-                            this.pushEnemyUnit(tpl, rx, ry, waveNumber, scale);
+                            spawnedThisWave.push(this.pushEnemyUnit(tpl, rx, ry, waveNumber, scale));
                             placed = true;
                         }
                     }
@@ -1906,7 +1947,7 @@
                         for (let ry = 0; ry <= ENEMY_ZONE_END; ry++) {
                             for (let rx = 0; rx < COLS; rx++) {
                                 if (this.isCellFree(rx, ry, tpl.size)) {
-                                    this.pushEnemyUnit(tpl, rx, ry, waveNumber, scale);
+                                    spawnedThisWave.push(this.pushEnemyUnit(tpl, rx, ry, waveNumber, scale));
                                     placed = true;
                                     break outer;
                                 }
@@ -1914,6 +1955,16 @@
                         }
                     }
                 });
+
+                if (ELITE_WAVES.includes(waveNumber) && spawnedThisWave.length > 0) {
+                    const elite = spawnedThisWave[Math.floor(Math.random() * spawnedThisWave.length)];
+                    elite.maxHp = Math.round(elite.maxHp * ELITE_MULT);
+                    elite.hp = elite.maxHp;
+                    elite.dmg = Math.round(elite.dmg * ELITE_MULT);
+                    elite.name = '⭐ Элитный ' + elite.name;
+                    elite.isElite = true;
+                    this.spawnFloatingText(elite.x, elite.y, '⭐ ЭЛИТА', '#ffb347');
+                }
             }
 
             checkWaveProgression() {
@@ -2594,6 +2645,18 @@
                             attacker.hp = Math.min(attacker.maxHp, attacker.hp + healAmt);
                             this.spawnFloatingText(attacker.x, attacker.y, `+${healAmt} 🩸`, '#ff6666');
                         }
+                        // Трофей босса: гибель именного босса даёт всему отряду мгновенный бафф и доп. Славу
+                        if (defender.isBoss) {
+                            this.awardGlory(20);
+                            this.units.filter(u => u.team === 'player' && u.hp > 0).forEach(u => {
+                                u.dmg = Math.round(u.dmg * 1.10);
+                                if (u.id !== 'necromancer') {
+                                    u.armor = (u.armor || 0) + 15;
+                                    u.maxArmor = Math.max(u.maxArmor || 0, u.armor);
+                                }
+                            });
+                            this.spawnFloatingText(defender.x, defender.y, '🏆 ТРОФЕЙ БОССА!', '#ffb347');
+                        }
                         this.triggerHarvestOnDeath();
                     }
                 }
@@ -2753,6 +2816,15 @@
                     }
                     if (this.activeUnit.isFrozen) {
                         this.activeUnit.isFrozen = false;
+                    }
+                    if (this.activeUnit.id === 'druid') {
+                        const wounded = this.units
+                            .filter(u => u.team === 'player' && u.hp > 0 && u.hp < u.maxHp && u !== this.activeUnit && u.id !== 'necromancer')
+                            .sort((a, b) => this.getDistance(this.activeUnit, a.x, a.y, a.size) - this.getDistance(this.activeUnit, b.x, b.y, b.size))[0];
+                        if (wounded) {
+                            wounded.hp = Math.min(wounded.maxHp, wounded.hp + 18);
+                            this.spawnFloatingText(wounded.x, wounded.y, '+18 🌿', '#8fce4a');
+                        }
                     }
                 }
 
@@ -3088,6 +3160,7 @@
                     uDiv.dataset.uid = u.uid;
                     if (u.size === 2) uDiv.classList.add('size-2');
                     if (u.isBoss) uDiv.classList.add('boss');
+                    if (u.isElite) uDiv.classList.add('elite');
                     if (u.isHero) uDiv.classList.add('hero');
                     uDiv.innerText = u.icon;
                     
