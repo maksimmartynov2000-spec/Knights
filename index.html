@@ -558,7 +558,7 @@
                     <div id="unit-select-row" class="setup-row" style="align-items: center;">
                         <select id="setup-type">
                             <option value="dragon">🐉 Дракон (2x2) — 14</option>
-                            <option value="necromancer">🧙‍♂️ Некромант — 9</option>
+                            <option value="necromancer">🧙‍♂️ Некромант — 24</option>
                             <option value="knight">⚔️ Рыцарь — 6</option>
                             <option value="crossbow">🏹 Арбалетчик — 5</option>
                             <option value="ballista">🏗️ Балиста — 7</option>
@@ -631,7 +631,7 @@
         // ---- Режим "Кампания" ----
         // Стоимость юнитов для бюджетной расстановки
         const UNIT_COST = {
-            necromancer: 9, knight: 6, crossbow: 5, ballista: 7, ent: 9,
+            necromancer: 24, knight: 6, crossbow: 5, ballista: 7, ent: 9,
             dragon: 14, vampire: 7, stone_golem: 7, chronomancer: 7,
             berserker: 6, sniper: 6, frost_mage: 5, specter: 6, phoenix: 8
         };
@@ -645,14 +645,77 @@
             dragon: 'flyer', phoenix: 'flyer', specter: 'flyer'
         };
 
-        // Бонусы, выдаваемые игроку после зачистки волны в Кампании
+        // Бонусы, выдаваемые игроку после зачистки волны в Кампании.
+        // Часть бонусов применяется к каждому живому юниту (apply), часть — один раз на всю армию (applyOnce),
+        // некоторые доступны только при определённых условиях (isAvailable).
         const CAMPAIGN_BONUSES = [
+            // --- Прямые усиления характеристик ---
             { id: 'dmg', name: '💪 Мощь', desc: '+15% урона всем юнитам отряда', apply: (u) => { u.dmg = Math.max(1, Math.round(u.dmg * 1.15)); } },
             { id: 'hp', name: '❤️ Живучесть', desc: '+20% макс. HP, полное исцеление', apply: (u) => { u.maxHp = Math.round(u.maxHp * 1.2); u.hp = u.maxHp; } },
             { id: 'armor', name: '🛡️ Броня', desc: '+50 брони (и макс. брони) всем юнитам', apply: (u) => { u.armor = (u.armor || 0) + 50; u.maxArmor = Math.max(u.maxArmor || 0, u.armor); } },
             { id: 'init', name: '⚡ Скорость', desc: '+5 к Инициативе всем юнитам', apply: (u) => { u.baseInitStat = (u.baseInitStat || u.init) + 5; u.init = u.baseInitStat; } },
             { id: 'heal', name: '✨ Восстановление', desc: 'Полностью восстановить HP и Броню всем юнитам', apply: (u) => { u.hp = u.maxHp; if (u.maxArmor) u.armor = u.maxArmor; } },
-            { id: 'cd', name: '🔄 Мастерство', desc: '-20% времени восстановления способностей (макс. -60%)', apply: (u) => { u.cdReductionCampaign = Math.min(0.6, (u.cdReductionCampaign || 0) + 0.2); } }
+            { id: 'cd', name: '🔄 Мастерство', desc: '-20% времени восстановления способностей (макс. -60%)', apply: (u) => { u.cdReductionCampaign = Math.min(0.6, (u.cdReductionCampaign || 0) + 0.2); } },
+            { id: 'range', name: '🏹 Меткость', desc: '+1 к дальности атаки всем юнитам', apply: (u) => { u.range += 1; } },
+            { id: 'move', name: '🐎 Прыткость', desc: '+1 к дальности хода всем юнитам', apply: (u) => { u.move += 1; } },
+            { id: 'ap', name: '⏱️ Внезапность', desc: 'Все юниты получают +50 очков хода (раньше поднимутся в очереди)', apply: (u) => { u.actionPoints = (u.actionPoints || 0) + 50; } },
+
+            // --- Новые тактические механики ---
+            { id: 'lifesteal', name: '🩸 Кровожадность', desc: '+15% похищения здоровья от нанесённого урона', apply: (u) => { u.lifestealPct = Math.min(0.6, (u.lifestealPct || 0) + 0.15); } },
+            { id: 'thorns', name: '🌵 Шипы', desc: 'При ударе в ближнем бою отражает 20% урона атакующему', apply: (u) => { u.thornsPct = Math.min(0.8, (u.thornsPct || 0) + 0.2); } },
+            { id: 'reduction', name: '🪨 Стойкость', desc: '-10% получаемого урона (складывается)', apply: (u) => { u.dmgReductionPct = Math.min(0.5, (u.dmgReductionPct || 0) + 0.1); } },
+            { id: 'dodge', name: '🌙 Уклонение', desc: '+15% шанс полностью избежать урона от атаки', apply: (u) => { u.dodgeChance = Math.min(0.6, (u.dodgeChance || 0) + 0.15); } },
+            { id: 'crit', name: '💥 Критический удар', desc: '+20% шанс нанести x1.5 урона при атаке', apply: (u) => { u.critChance = Math.min(0.75, (u.critChance || 0) + 0.2); } },
+            { id: 'laststand', name: '🕯️ Стойкий Дух', desc: 'При смертельном ударе выживает с 1 HP (один раз на юнита)', apply: (u) => { u.lastStandCharges = (u.lastStandCharges || 0) + 1; } },
+            { id: 'armorregen', name: '🔧 Саморемонт', desc: '+15 брони в конце каждого своего хода', apply: (u) => { u.armorRegenPerTurn = (u.armorRegenPerTurn || 0) + 15; } },
+
+            // --- Особые одноразовые эффекты на весь отряд ---
+            {
+                id: 'revive', name: '🌟 Благословение', desc: 'Воскрешает случайного павшего союзника с 50% HP',
+                isAvailable: (engine) => engine.units.some(u => u.team === 'player' && u.hp <= 0),
+                applyOnce: (engine) => {
+                    let fallen = engine.units.filter(u => u.team === 'player' && u.hp <= 0);
+                    if (fallen.length === 0) return;
+                    let unit = fallen[Math.floor(Math.random() * fallen.length)];
+                    unit.hp = Math.max(1, Math.round(unit.maxHp * 0.5));
+                    unit.armor = 0;
+                    if (!engine.isCellFree(unit.x, unit.y, unit.size)) {
+                        let spot = engine.findFreePlayerCell(unit.size);
+                        if (spot) { unit.x = spot.x; unit.y = spot.y; }
+                    }
+                    engine.spawnFloatingText(unit.x, unit.y, '🌟 Воскрешение!', '#ffe066');
+                }
+            },
+            {
+                id: 'reinforcement', name: '🐲 Подкрепление', desc: 'В отряд вступает бесплатный случайный союзник',
+                isAvailable: (engine) => !!engine.findFreePlayerCell(1),
+                applyOnce: (engine) => {
+                    let spot = engine.findFreePlayerCell(1);
+                    if (!spot) return;
+                    let types = Object.keys(UNIT_COST).filter(t => UNIT_COST[t] <= 10);
+                    let type = types[Math.floor(Math.random() * types.length)];
+                    const tpl = UNIT_TYPES[type];
+                    let wl = engine.campaignWave || 1;
+                    let scale = 1 + (wl - 1) * 0.10;
+                    let sHp = Math.round(tpl.hp * scale);
+                    let sDmg = Math.round(tpl.dmg * scale);
+                    let sInit = Math.round(tpl.init * scale);
+                    const newUnit = {
+                        ...tpl, x: spot.x, y: spot.y, team: 'player',
+                        uid: engine.nextUid++,
+                        waveLevel: wl,
+                        hp: sHp, maxHp: sHp, dmg: sDmg,
+                        baseInitStat: sInit, init: sInit,
+                        maxArmor: tpl.armor, armor: tpl.armor,
+                        bonusDmg: 0, bonusInit: 0, actionPoints: 0, isPrepared: false, cooldowns: {},
+                        vampireDebuffs: 0, isDragonAuraAffected: false, isChronoAuraAffected: false,
+                        isFrozen: false, chronoSlowTurns: 0, golemStacks: 0, isReborn: false,
+                        lastPhoenixHp: sHp, lastPhoenixDmg: sDmg
+                    };
+                    engine.units.push(newUnit);
+                    engine.spawnFloatingText(spot.x, spot.y, '✨ Подкрепление!', '#cc66ff');
+                }
+            }
         ];
 
         class GameEngine {
@@ -1026,6 +1089,14 @@
                 if (unit.id === 'stone_golem' && unit.golemStacks > 0) buffs.push(`🪨 Закалка (+${unit.golemStacks * 10}% защиты)`);
                 if (unit.isReborn) buffs.push("🌟 Перерожден (x2 HP/Урон)");
                 if (unit.waveLevel && unit.waveLevel > 1) buffs.push(`🌊 Усиление Волны +${Math.round((unit.waveLevel - 1) * 10)}%`);
+                if (unit.lifestealPct) buffs.push(`🩸 Кровожадность +${Math.round(unit.lifestealPct * 100)}%`);
+                if (unit.thornsPct) buffs.push(`🌵 Шипы +${Math.round(unit.thornsPct * 100)}%`);
+                if (unit.dmgReductionPct) buffs.push(`🪨 Стойкость -${Math.round(unit.dmgReductionPct * 100)}% урона`);
+                if (unit.dodgeChance) buffs.push(`🌙 Уклонение ${Math.round(unit.dodgeChance * 100)}%`);
+                if (unit.critChance) buffs.push(`💥 Крит ${Math.round(unit.critChance * 100)}%`);
+                if (unit.lastStandCharges) buffs.push(`🕯️ Стойкий Дух x${unit.lastStandCharges}`);
+                if (unit.armorRegenPerTurn) buffs.push(`🔧 Саморемонт +${unit.armorRegenPerTurn}/ход`);
+                if (unit.cdReductionCampaign) buffs.push(`🔄 Мастерство -${Math.round(unit.cdReductionCampaign * 100)}% КД`);
 
                 document.getElementById('info-buffs').innerText = buffs.length > 0 ? "Статусы: " + buffs.join(', ') : "";
 
@@ -1223,7 +1294,7 @@
             }
 
             showWaveBonusModal() {
-                const pool = [...CAMPAIGN_BONUSES];
+                const pool = CAMPAIGN_BONUSES.filter(b => !b.isAvailable || b.isAvailable(this));
                 for (let i = pool.length - 1; i > 0; i--) {
                     let j = Math.floor(Math.random() * (i + 1));
                     [pool[i], pool[j]] = [pool[j], pool[i]];
@@ -1246,8 +1317,22 @@
                 document.getElementById('modal-backdrop').classList.remove('hidden');
             }
 
+            // Ищет свободную клетку в зоне игрока для подкрепления/воскрешения
+            findFreePlayerCell(size) {
+                for (let y = PLAYER_ZONE_START; y <= ROWS - size; y++) {
+                    for (let x = 0; x <= COLS - size; x++) {
+                        if (this.isCellFree(x, y, size)) return { x, y };
+                    }
+                }
+                return null;
+            }
+
             applyCampaignBonus(bonus) {
-                this.units.filter(u => u.team === 'player' && u.hp > 0).forEach(u => bonus.apply(u));
+                if (bonus.applyOnce) {
+                    bonus.applyOnce(this);
+                } else {
+                    this.units.filter(u => u.team === 'player' && u.hp > 0).forEach(u => bonus.apply(u));
+                }
                 document.getElementById('wave-bonus-modal').classList.add('hidden');
                 document.getElementById('modal-backdrop').classList.add('hidden');
                 this.awaitingWaveBonus = false;
@@ -1735,6 +1820,15 @@
             applyDamageToUnit(attacker, defender, rawDmg) {
                 if (rawDmg <= 0) return;
 
+                if (defender.dodgeChance && Math.random() < defender.dodgeChance) {
+                    this.spawnFloatingText(defender.x, defender.y, 'УКЛОНЕНИЕ!', '#8ab4ff');
+                    return;
+                }
+
+                if (defender.dmgReductionPct) {
+                    rawDmg = Math.max(1, Math.round(rawDmg * (1 - defender.dmgReductionPct)));
+                }
+
                 if (defender.id === 'stone_golem') {
                     defender.golemStacks = Math.min(9, (defender.golemStacks || 0) + 1);
                 }
@@ -1754,6 +1848,13 @@
                     } else {
                         defender.hp -= rawDmg;
                     }
+                }
+
+                if (defender.hp <= 0 && (defender.lastStandCharges || 0) > 0) {
+                    defender.lastStandCharges--;
+                    defender.hp = 1;
+                    this.spawnFloatingText(defender.x, defender.y, '🕯️ СТОЙКИЙ ДУХ!', '#ffe066');
+                    return;
                 }
 
                 if (defender.hp <= 0) {
@@ -1810,10 +1911,21 @@
                             }
                             if (u.id === 'specter') dmg = 0;
 
+                            let isCrit = attacker.critChance && Math.random() < attacker.critChance;
+                            if (isCrit) dmg = Math.round(dmg * 1.5);
+
                             this.applyDamageToUnit(attacker, u, dmg);
                             this.playUnitAnim(u.uid, 'unit-anim-hit', 380);
-                            this.spawnFloatingText(u.x, u.y, `-${dmg}`, '#ff5555');
+                            this.spawnFloatingText(u.x, u.y, `-${dmg}${isCrit ? ' 💥' : ''}`, isCrit ? '#ffd700' : '#ff5555');
                             this.checkCounterAttack(u, attacker, dmg, dist);
+
+                            if (attacker.lifestealPct) {
+                                let healAmount = Math.floor(dmg * attacker.lifestealPct);
+                                if (healAmount > 0) {
+                                    attacker.hp = Math.min(attacker.maxHp, attacker.hp + healAmount);
+                                    this.spawnFloatingText(attacker.x, attacker.y, `+${healAmount}`, '#00ff88');
+                                }
+                            }
                         }
                     });
                 } else {
@@ -1821,9 +1933,13 @@
                     let dmg = this.calculateDamage(attacker, defender);
                     
                     if (typeof dmg !== 'number') dmg = this.getActualDmg(attacker, defender);
+
+                    let isCrit = attacker.critChance && Math.random() < attacker.critChance;
+                    if (isCrit) dmg = Math.round(dmg * 1.5);
+
                     this.applyDamageToUnit(attacker, defender, dmg);
                     this.playUnitAnim(defender.uid, 'unit-anim-hit', 380);
-                    this.spawnFloatingText(defender.x, defender.y, `-${dmg}`, '#ff5555');
+                    this.spawnFloatingText(defender.x, defender.y, `-${dmg}${isCrit ? ' 💥' : ''}`, isCrit ? '#ffd700' : '#ff5555');
 
                     if (attacker.id === 'frost_mage' && defender.hp > 0) {
                         defender.isFrozen = true;
@@ -1837,6 +1953,12 @@
                         let scale = 1 + ((attacker.waveLevel || 1) - 1) * 0.10;
                         attacker.vampireDebuffs = (attacker.vampireDebuffs || 0) + Math.round(1 * scale);
                         this.spawnFloatingText(attacker.x, attacker.y, `+${typeof dmg === 'number' ? dmg : 1}`, '#00ff88');
+                    } else if (attacker.lifestealPct) {
+                        let healAmount = Math.floor((typeof dmg === 'number' ? dmg : 0) * attacker.lifestealPct);
+                        if (healAmount > 0) {
+                            attacker.hp = Math.min(attacker.maxHp, attacker.hp + healAmount);
+                            this.spawnFloatingText(attacker.x, attacker.y, `+${healAmount}`, '#00ff88');
+                        }
                     }
                 }
             }
@@ -1857,6 +1979,13 @@
                         this.spawnFloatingText(attacker.x, attacker.y, `-${finalReflectDmg}`, '#ff9955');
                     }
                 }
+
+                if (defender.thornsPct && attacker.hp > 0) {
+                    let thornsDmg = Math.max(1, Math.floor(dmg * defender.thornsPct));
+                    this.applyDamageToUnit(defender, attacker, thornsDmg);
+                    this.playUnitAnim(attacker.uid, 'unit-anim-hit', 380);
+                    this.spawnFloatingText(attacker.x, attacker.y, `-${thornsDmg} 🌵`, '#8fce4a');
+                }
             }
 
             endTurn() {
@@ -1867,6 +1996,11 @@
                         this.activeUnit.armor = (this.activeUnit.armor || 0) + armorRestore;
                         this.activeUnit.maxArmor = Math.max(this.activeUnit.maxArmor || 0, this.activeUnit.armor);
                         this.spawnFloatingText(this.activeUnit.x, this.activeUnit.y, `+${armorRestore} 🛡️`, '#00bcd4');
+                    }
+                    if (this.activeUnit.armorRegenPerTurn) {
+                        this.activeUnit.armor = (this.activeUnit.armor || 0) + this.activeUnit.armorRegenPerTurn;
+                        this.activeUnit.maxArmor = Math.max(this.activeUnit.maxArmor || 0, this.activeUnit.armor);
+                        this.spawnFloatingText(this.activeUnit.x, this.activeUnit.y, `+${this.activeUnit.armorRegenPerTurn} 🔧`, '#00bcd4');
                     }
                     if (this.activeUnit.isFrozen) {
                         this.activeUnit.isFrozen = false;
