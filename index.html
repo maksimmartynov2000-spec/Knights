@@ -222,6 +222,31 @@
             border: 2px solid var(--enemy-glow);
             box-shadow: 0 3px 6px rgba(0,0,0,0.75), 0 0 12px rgba(255,107,107,0.4), inset 0 2px 3px rgba(255,255,255,0.18), inset 0 -3px 5px rgba(0,0,0,0.4);
         }
+        .unit.boss {
+            border: 3px solid #ff3b3b;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.8), 0 0 20px 4px rgba(255,59,59,0.7), inset 0 2px 3px rgba(255,255,255,0.2), inset 0 -3px 5px rgba(0,0,0,0.4);
+            animation: bossPulse 1.6s ease-in-out infinite;
+            z-index: 13;
+        }
+        @keyframes bossPulse {
+            0%, 100% { box-shadow: 0 3px 8px rgba(0,0,0,0.8), 0 0 16px 3px rgba(255,59,59,0.6), inset 0 2px 3px rgba(255,255,255,0.2), inset 0 -3px 5px rgba(0,0,0,0.4); }
+            50% { box-shadow: 0 3px 8px rgba(0,0,0,0.8), 0 0 26px 7px rgba(255,59,59,0.9), inset 0 2px 3px rgba(255,255,255,0.2), inset 0 -3px 5px rgba(0,0,0,0.4); }
+        }
+        .unit.hero {
+            border: 3px solid var(--gold-bright);
+            box-shadow: 0 3px 8px rgba(0,0,0,0.8), 0 0 16px 3px rgba(255,217,119,0.7), inset 0 2px 3px rgba(255,255,255,0.25), inset 0 -3px 5px rgba(0,0,0,0.4);
+            z-index: 13;
+        }
+        .unit.hero::before {
+            content: '★';
+            position: absolute;
+            top: -9px; left: 50%;
+            transform: translateX(-50%);
+            font-size: 10px;
+            color: var(--gold-bright);
+            text-shadow: 0 1px 2px rgba(0,0,0,0.9);
+            z-index: 16;
+        }
 
         .hp-bar {
             position: absolute;
@@ -470,6 +495,39 @@
         .armory-item-levels { font-size: 10px; color: var(--gold-bright); letter-spacing: 1px; }
         .armory-buy-btn { flex-grow: 0; padding: 6px 12px; font-size: 11px; min-width: 76px; }
 
+        #hero-modal {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(180deg, rgba(28,28,32,0.98), rgba(16,16,19,0.98));
+            padding: 18px;
+            border-radius: 14px;
+            border: 2px solid var(--gold);
+            z-index: 1000;
+            width: 92%;
+            max-width: 360px;
+            color: white;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.75), 0 0 30px rgba(212,175,55,0.3);
+            animation: modalPopIn 0.22s ease-out;
+        }
+        #hero-modal h3 { font-family: 'Cinzel', serif; color: var(--gold-bright); text-align: center; margin-bottom: 4px; }
+        .hero-card {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            background: rgba(255,255,255,0.03);
+            border: 2px solid rgba(255,255,255,0.08);
+            border-radius: 10px;
+            padding: 9px 10px;
+        }
+        .hero-card.active { border-color: var(--gold-bright); box-shadow: 0 0 12px rgba(255,217,119,0.35); }
+        .hero-card-top { display: flex; justify-content: space-between; align-items: center; gap: 6px; }
+        .hero-card-name { font-weight: 700; font-size: 14px; }
+        .hero-card-desc { font-size: 11px; color: #bbb; }
+        .hero-card-meta { font-size: 10px; color: var(--gold-bright); }
+        .hero-card-xpbar { height: 5px; border-radius: 3px; background: rgba(0,0,0,0.5); overflow: hidden; border: 1px solid rgba(0,0,0,0.7); }
+        .hero-card-xpfill { height: 100%; background: linear-gradient(90deg, #ffd977, #d4af37); }
+
         #campaign-budget-row span b { color: #fff; }
 
         #damage-preview {
@@ -578,6 +636,14 @@
                 <div id="armory-options" style="display: flex; flex-direction: column; gap: 8px; max-height: 44vh; overflow-y: auto;"></div>
                 <button id="close-armory" style="width: 100%; margin-top: 12px; padding: 9px; background: linear-gradient(180deg, #2f7fdb, #0d4c96); border: 1px solid var(--player-glow); border-radius: 7px; color: white; font-weight: 700;">Закрыть</button>
             </div>
+
+            <div id="hero-modal" class="hidden">
+                <h3>🦸 Герой похода</h3>
+                <p style="font-size: 11px; color: #aaa; text-align: center; margin-bottom: 8px;">Выбранный герой растёт между походами и встаёт в строй бесплатно, вне бюджета.</p>
+                <p style="font-size: 13px; text-align: center; margin-bottom: 10px; color: var(--gold-bright); font-family: 'Cinzel', serif;">⭐ Слава: <span id="hero-glory-display">0</span></p>
+                <div id="hero-options" style="display: flex; flex-direction: column; gap: 8px; max-height: 44vh; overflow-y: auto;"></div>
+                <button id="close-hero" style="width: 100%; margin-top: 12px; padding: 9px; background: linear-gradient(180deg, #2f7fdb, #0d4c96); border: 1px solid var(--player-glow); border-radius: 7px; color: white; font-weight: 700;">Закрыть</button>
+            </div>
         </div>
 
         <div id="action-panel">
@@ -586,6 +652,7 @@
             <div id="setup-ui">
                 <div class="setup-row" style="align-items: center; justify-content: space-between; margin-bottom: 5px; padding: 0 2px;">
                     <span style="font-family: 'Cinzel', serif; font-size: 13px; color: var(--gold-bright); font-weight: 700;">⭐ Слава: <span id="glory-display">0</span></span>
+                    <button id="open-hero-btn" class="secondary" style="padding: 5px 10px; font-size: 11px; flex-grow: 0;">🦸 Герой</button>
                     <button id="open-armory-btn" class="secondary" style="padding: 5px 10px; font-size: 11px; flex-grow: 0;">🏛️ Арсенал</button>
                 </div>
 
@@ -631,7 +698,8 @@
 
                     <div id="campaign-budget-row" class="setup-row" style="align-items: center; justify-content: space-between; margin-top: 2px;">
                         <span style="font-size: 11px; color: #ffd700;">💰 Бюджет: <b id="campaign-budget-display">0/0</b></span>
-                        <span style="font-size: 11px; color: #aaa;">🌊 Волн в кампании: <b id="campaign-waves-display">8</b></span>
+                        <span style="font-size: 11px; color: #aaa;">🌊 Волн: <b id="campaign-waves-display">8</b></span>
+                        <span id="biome-display" style="font-size: 11px; color: #9fd8a0;"></span>
                     </div>
                 </div>
 
@@ -791,6 +859,72 @@
             { category: '✨ Особые', id: 'continueCharges', name: '⏳ Второе дыхание', desc: 'Заряд: при разгроме отряд автоматически воскресает с 25% HP и бой продолжается (расходуется за поход)', maxLevel: 3, costs: [150, 220, 300] }
         ];
 
+        const META_SAVE_KEY_HEROES = 'medieval_meta_heroes_v1';
+        const HERO_XP_PER_WAVE = 15;
+
+        // ---- Герои: персонажи, растущие МЕЖДУ походами (не сбрасываются) ----
+        const HERO_TYPES = {
+            paladin: { id: 'paladin', name: 'Паладин', icon: '🎖️', unlockCost: 0,
+                baseHp: 140, baseArmor: 30, baseDmg: 18, dmgType: 'Физ', baseInit: 11, move: 2, range: 1, size: 1,
+                passive: 'Аура Защитника: союзники в радиусе 2 получают на 15% меньше урона. Сам получает на 10% меньше урона.' },
+            ranger: { id: 'ranger', name: 'Следопыт', icon: '🧭', unlockCost: 100,
+                baseHp: 75, baseArmor: 0, baseDmg: 24, dmgType: 'Стрела', baseInit: 20, move: 3, range: 4, size: 1,
+                passive: 'Меткий Глаз: +15% шанс критического удара x1.5. Не теряет дальность рядом с врагами.' },
+            warlock: { id: 'warlock', name: 'Тёмный Маг', icon: '💀', unlockCost: 150,
+                baseHp: 85, baseArmor: 0, baseDmg: 22, dmgType: 'Магия', baseInit: 13, move: 2, range: 3, size: 1,
+                passive: 'Тёмный Взрыв: атака дополнительно наносит 40% урона всем врагам рядом с целью.' }
+        };
+
+        // Общий пул талантов героя — при повышении уровня выдаётся выбор из 2 случайных (без повторов)
+        const HERO_TALENTS = [
+            { id: 'h_hp', name: '❤️ Стойкость', desc: '+15% макс. HP', apply: h => { h.maxHp = Math.round(h.maxHp * 1.15); h.hp = h.maxHp; } },
+            { id: 'h_dmg', name: '⚔️ Сила', desc: '+12% урона', apply: h => { h.dmg = Math.round(h.dmg * 1.12); } },
+            { id: 'h_armor', name: '🛡️ Броня', desc: '+25 брони', apply: h => { h.armor = (h.armor || 0) + 25; h.maxArmor = Math.max(h.maxArmor || 0, h.armor); } },
+            { id: 'h_init', name: '⚡ Скорость', desc: '+4 к Инициативе', apply: h => { h.baseInitStat = (h.baseInitStat || h.init) + 4; h.init = h.baseInitStat; } },
+            { id: 'h_crit', name: '💥 Смертельный удар', desc: '+15% шанс крита x1.5', apply: h => { h.critChance = Math.min(0.75, (h.critChance || 0) + 0.15); } },
+            { id: 'h_dodge', name: '🌙 Ловкость', desc: '+12% уклонение от урона', apply: h => { h.dodgeChance = Math.min(0.6, (h.dodgeChance || 0) + 0.12); } },
+            { id: 'h_lifesteal', name: '🩸 Вампиризм', desc: '+15% похищения здоровья', apply: h => { h.lifestealPct = Math.min(0.6, (h.lifestealPct || 0) + 0.15); } },
+            { id: 'h_thorns', name: '🌵 Шипы', desc: '+20% отражения урона в ближнем бою', apply: h => { h.thornsPct = Math.min(0.8, (h.thornsPct || 0) + 0.2); } },
+            { id: 'h_reduction', name: '🪨 Несгибаемость', desc: '-10% получаемого урона', apply: h => { h.dmgReductionPct = Math.min(0.5, (h.dmgReductionPct || 0) + 0.1); } },
+            { id: 'h_move', name: '🐎 Прыткость', desc: '+1 к дальности хода', apply: h => { h.move += 1; } },
+            { id: 'h_range', name: '🏹 Прицел', desc: '+1 к дальности атаки', apply: h => { h.range += 1; } }
+        ];
+
+        // ---- Биомы: визуальные темы рельефа, один случайно выбирается на поход ----
+        const BIOMES = [
+            { id: 'forest', name: '🌲 Дремучий Лес', icons: ['🌲', '🌳', '🪨', '🍄'] },
+            { id: 'winter', name: '❄️ Ледяные Пустоши', icons: ['❄️', '🧊', '⛄', '🌨️'] },
+            { id: 'ruins', name: '🏛️ Древние Руины', icons: ['🏛️', '🗿', '⚱️', '🕳️'] },
+            { id: 'swamp', name: '🐸 Гиблое Болото', icons: ['🪵', '🍂', '🐍', '🌾'] }
+        ];
+
+        // ---- Боссы: усиленный именной враг на переломных волнах похода ----
+        const BOSS_WAVES = {
+            4: { baseType: 'ent', name: '👹 Древний Страж', mult: 1.7 },
+            8: { baseType: 'dragon', name: '🐲 Король Драконов', mult: 1.9 }
+        };
+
+        // ---- Реликвии: один раз выбираются перед стартом похода, действуют на весь забег ----
+        const RELICS = [
+            { id: 'bloodaltar', name: '🩸 Кровавый Алтарь', desc: 'Юнит, добивающий врага, восстанавливает 20% своего макс. HP', apply: (engine) => {} },
+            { id: 'warforge', name: '⚔️ Наковальня Войны', desc: '+25% урона всем юнитам, но -15% макс. HP', apply: (engine) => {
+                engine.units.filter(u => u.team === 'player').forEach(u => { u.dmg = Math.round(u.dmg * 1.25); if (u.id !== 'necromancer') { u.maxHp = Math.max(1, Math.round(u.maxHp * 0.85)); u.hp = Math.min(u.hp, u.maxHp); } });
+            } },
+            { id: 'wall', name: '🛡️ Несокрушимая Стена', desc: '+40 брони всем юнитам, но -1 к дальности хода', apply: (engine) => {
+                engine.units.filter(u => u.team === 'player').forEach(u => { u.move = Math.max(1, u.move - 1); if (u.id !== 'necromancer') { u.armor = (u.armor || 0) + 40; u.maxArmor = Math.max(u.maxArmor || 0, u.armor); } });
+            } },
+            { id: 'fury', name: '🌪️ Вихрь Ярости', desc: '+8 к Инициативе всем юнитам, но -10% урона', apply: (engine) => {
+                engine.units.filter(u => u.team === 'player').forEach(u => { u.dmg = Math.max(1, Math.round(u.dmg * 0.9)); u.baseInitStat = (u.baseInitStat || u.init) + 8; u.init = u.baseInitStat; });
+            } },
+            { id: 'phoenixblessing', name: '🌟 Благословение Феникса', desc: 'Первая смерть любого юниона (кроме Некроманта) за поход отменяется — он оживает с 50% HP', apply: (engine) => {} },
+            { id: 'shadow', name: '🌙 Тень Отступника', desc: '+20% уклонение всем юнитам, но -15 брони', apply: (engine) => {
+                engine.units.filter(u => u.team === 'player').forEach(u => { u.dodgeChance = Math.min(0.6, (u.dodgeChance || 0) + 0.2); if (u.id !== 'necromancer') u.armor = Math.max(0, (u.armor || 0) - 15); });
+            } },
+            { id: 'hunter', name: '🏹 Охотничий Азарт', desc: '+25% шанс крита x1.5 всем юнитам, но -20% макс. HP', apply: (engine) => {
+                engine.units.filter(u => u.team === 'player').forEach(u => { u.critChance = Math.min(0.85, (u.critChance || 0) + 0.25); if (u.id !== 'necromancer') { u.maxHp = Math.max(1, Math.round(u.maxHp * 0.8)); u.hp = Math.min(u.hp, u.maxHp); } });
+            } }
+        ];
+
         class GameEngine {
             constructor() {
                 this.units = [];
@@ -811,8 +945,15 @@
                 // Прогресс между забегами
                 this.metaGlory = this.loadGlory();
                 this.metaUpgrades = this.loadUpgrades();
+                this.heroSave = this.loadHeroSave();
                 this.glorySessionEarned = 0;
                 this.campaignPlayerBudget = 45 + 5 * (this.metaUpgrades.budget || 0);
+                this.pendingHeroLevelUp = false;
+
+                // Биом, реликвия, боссы похода
+                this.currentBiome = BIOMES[Math.floor(Math.random() * BIOMES.length)];
+                this.activeRelic = null;
+                this.phoenixBlessingUsed = false;
                 
                 this.initDOM();
                 this.generateSmartTerrain();
@@ -835,6 +976,43 @@
             saveUpgrades() {
                 try { localStorage.setItem(META_SAVE_KEY_UPGRADES, JSON.stringify(this.metaUpgrades)); }
                 catch (e) { /* хранилище недоступно */ }
+            }
+            defaultHeroSave() {
+                return {
+                    unlocked: { paladin: true, ranger: false, warlock: false },
+                    active: 'paladin',
+                    heroes: {
+                        paladin: { level: 1, xp: 0, talents: [] },
+                        ranger: { level: 1, xp: 0, talents: [] },
+                        warlock: { level: 1, xp: 0, talents: [] }
+                    }
+                };
+            }
+            loadHeroSave() {
+                try {
+                    let raw = JSON.parse(localStorage.getItem(META_SAVE_KEY_HEROES) || 'null');
+                    if (raw && raw.heroes) return raw;
+                } catch (e) { /* хранилище недоступно */ }
+                return this.defaultHeroSave();
+            }
+            saveHeroSave() {
+                try { localStorage.setItem(META_SAVE_KEY_HEROES, JSON.stringify(this.heroSave)); }
+                catch (e) { /* хранилище недоступно */ }
+            }
+            heroXpToNextLevel(level) {
+                return 40 + level * 25;
+            }
+            // Начисляет опыт активному герою и отмечает, если он повысил уровень (обрабатывается после волны)
+            awardHeroXP(amount) {
+                const hero = this.heroSave.heroes[this.heroSave.active];
+                if (!hero) return;
+                hero.xp += amount;
+                if (hero.xp >= this.heroXpToNextLevel(hero.level)) {
+                    hero.xp -= this.heroXpToNextLevel(hero.level);
+                    hero.level += 1;
+                    this.pendingHeroLevelUp = true;
+                }
+                this.saveHeroSave();
             }
             awardGlory(amount) {
                 this.metaGlory += amount;
@@ -919,6 +1097,19 @@
                     document.getElementById('armory-modal').classList.add('hidden');
                     document.getElementById('modal-backdrop').classList.add('hidden');
                 });
+
+                document.getElementById('open-hero-btn').addEventListener('click', () => {
+                    this.renderHeroModal();
+                    document.getElementById('hero-modal').classList.remove('hidden');
+                    document.getElementById('modal-backdrop').classList.remove('hidden');
+                });
+                document.getElementById('close-hero').addEventListener('click', () => {
+                    document.getElementById('hero-modal').classList.add('hidden');
+                    document.getElementById('modal-backdrop').classList.add('hidden');
+                });
+
+                const biomeEl = document.getElementById('biome-display');
+                if (biomeEl && this.currentBiome) biomeEl.innerText = this.currentBiome.name;
 
                 this.updateGloryDisplay();
                 this.updateCampaignBudgetUI();
@@ -1038,12 +1229,170 @@
                 });
             }
 
+            // Отрисовывает карточки героев: активный/заблокированные/уровень/опыт
+            renderHeroModal() {
+                document.getElementById('hero-glory-display').innerText = this.metaGlory;
+                const container = document.getElementById('hero-options');
+                container.innerHTML = '';
+
+                Object.keys(HERO_TYPES).forEach(id => {
+                    const tpl = HERO_TYPES[id];
+                    const save = this.heroSave.heroes[id];
+                    const unlocked = !!this.heroSave.unlocked[id];
+                    const isActive = this.heroSave.active === id;
+
+                    const card = document.createElement('div');
+                    card.className = `hero-card ${isActive ? 'active' : ''}`;
+
+                    const top = document.createElement('div');
+                    top.className = 'hero-card-top';
+                    top.innerHTML = `<span class="hero-card-name">${tpl.icon} ${tpl.name}</span>`;
+
+                    const btn = document.createElement('button');
+                    if (!unlocked) {
+                        btn.className = 'armory-buy-btn success';
+                        btn.innerText = `💰 ${tpl.unlockCost}`;
+                        btn.disabled = this.metaGlory < tpl.unlockCost;
+                        btn.onclick = () => this.unlockHero(id);
+                    } else if (isActive) {
+                        btn.className = 'armory-buy-btn secondary';
+                        btn.innerText = 'В строю';
+                        btn.disabled = true;
+                    } else {
+                        btn.className = 'armory-buy-btn primary';
+                        btn.innerText = 'Выбрать';
+                        btn.onclick = () => this.selectHero(id);
+                    }
+                    top.appendChild(btn);
+
+                    const desc = document.createElement('div');
+                    desc.className = 'hero-card-desc';
+                    desc.innerText = tpl.passive;
+
+                    const meta = document.createElement('div');
+                    meta.className = 'hero-card-meta';
+                    meta.innerText = unlocked ? `Уровень ${save.level} • Талантов: ${save.talents.length}` : 'Заблокирован';
+
+                    card.appendChild(top);
+                    card.appendChild(desc);
+                    card.appendChild(meta);
+
+                    if (unlocked) {
+                        const xpBar = document.createElement('div');
+                        xpBar.className = 'hero-card-xpbar';
+                        const xpFill = document.createElement('div');
+                        xpFill.className = 'hero-card-xpfill';
+                        xpFill.style.width = `${Math.min(100, Math.round((save.xp / this.heroXpToNextLevel(save.level)) * 100))}%`;
+                        xpBar.appendChild(xpFill);
+                        card.appendChild(xpBar);
+                    }
+
+                    container.appendChild(card);
+                });
+            }
+
+            unlockHero(id) {
+                const tpl = HERO_TYPES[id];
+                if (!tpl || this.heroSave.unlocked[id] || this.metaGlory < tpl.unlockCost) return;
+                this.metaGlory -= tpl.unlockCost;
+                this.heroSave.unlocked[id] = true;
+                this.saveGlory();
+                this.saveHeroSave();
+                this.updateGloryDisplay();
+                this.renderHeroModal();
+            }
+
+            selectHero(id) {
+                if (!this.heroSave.unlocked[id]) return;
+                this.heroSave.active = id;
+                this.saveHeroSave();
+                this.renderHeroModal();
+            }
+
+            // Создаёт юнита героя для боя: база + рост от уровня + все выбранные таланты, размещает бесплатно (вне бюджета)
+            spawnHero() {
+                const id = this.heroSave.active;
+                const tpl = HERO_TYPES[id];
+                const save = this.heroSave.heroes[id];
+                if (!tpl || !save) return;
+
+                const spot = this.findFreePlayerCell(1);
+                if (!spot) return; // зона игрока переполнена — герой в этот раз не поместится
+
+                const levelScale = 1 + (save.level - 1) * 0.04;
+                const hero = {
+                    id: tpl.id, name: tpl.name, icon: tpl.icon, dmgType: tpl.dmgType, size: 1,
+                    x: spot.x, y: spot.y, team: 'player',
+                    uid: this.nextUid++,
+                    isHero: true,
+                    waveLevel: 1,
+                    hp: Math.round(tpl.baseHp * levelScale), maxHp: Math.round(tpl.baseHp * levelScale),
+                    dmg: Math.round(tpl.baseDmg * levelScale),
+                    baseInitStat: tpl.baseInit, init: tpl.baseInit,
+                    move: tpl.move, range: tpl.range,
+                    maxArmor: tpl.baseArmor, armor: tpl.baseArmor,
+                    bonusDmg: 0, bonusInit: 0, actionPoints: 0, isPrepared: false, cooldowns: {},
+                    vampireDebuffs: 0, isDragonAuraAffected: false, isChronoAuraAffected: false,
+                    isFrozen: false, chronoSlowTurns: 0, golemStacks: 0, isReborn: false,
+                    lastPhoenixHp: 0, lastPhoenixDmg: 0,
+                    passive: tpl.passive
+                };
+                if (id === 'ranger') hero.critChance = 0.15;
+                if (id === 'paladin') hero.dmgReductionPct = 0.10;
+
+                save.talents.forEach(talentId => {
+                    const talent = HERO_TALENTS.find(t => t.id === talentId);
+                    if (talent) talent.apply(hero);
+                });
+
+                this.units.push(hero);
+            }
+
+            // Показывает выбор таланта героя (2 случайных, без повторов) при повышении уровня
+            showHeroLevelUpModal(onDone) {
+                const save = this.heroSave.heroes[this.heroSave.active];
+                const tpl = HERO_TYPES[this.heroSave.active];
+                document.getElementById('wave-bonus-title').innerText = `🌟 ${tpl.name} повышен до ${save.level} уровня!`;
+
+                const available = HERO_TALENTS.filter(t => !save.talents.includes(t.id));
+                const pool = available.length > 0 ? available : HERO_TALENTS;
+                for (let i = pool.length - 1; i > 0; i--) {
+                    let j = Math.floor(Math.random() * (i + 1));
+                    [pool[i], pool[j]] = [pool[j], pool[i]];
+                }
+                const choices = pool.slice(0, 2);
+                const container = document.getElementById('wave-bonus-options');
+                container.innerHTML = '';
+
+                choices.forEach(talent => {
+                    const btn = document.createElement('button');
+                    btn.className = 'success';
+                    btn.style.width = '100%';
+                    btn.style.padding = '8px';
+                    btn.innerHTML = `${talent.name}<span style="font-size:11px;">${talent.desc}</span>`;
+                    btn.onclick = () => {
+                        save.talents.push(talent.id);
+                        this.saveHeroSave();
+                        const heroUnit = this.units.find(u => u.isHero && u.team === 'player' && u.hp > 0);
+                        if (heroUnit) talent.apply(heroUnit);
+                        document.getElementById('wave-bonus-modal').classList.add('hidden');
+                        document.getElementById('modal-backdrop').classList.add('hidden');
+                        this.pendingHeroLevelUp = false;
+                        onDone();
+                    };
+                    container.appendChild(btn);
+                });
+
+                document.getElementById('wave-bonus-modal').classList.remove('hidden');
+                document.getElementById('modal-backdrop').classList.remove('hidden');
+            }
+
             // Осмысленная (симметричная) генерация рельефа перед первой волной:
             // препятствия концентрируются в нейтральной полосе (создают тактические укрытия и чок-поинты),
             // немного заходят на края зон, и зеркалятся по горизонтали для честности обеим сторонам.
             generateSmartTerrain() {
                 this.obstacles = [];
-                const icons = ['⛰️', '🌲', '🏰', '🗿'];
+                const icons = this.currentBiome ? this.currentBiome.icons : ['⛰️', '🌲', '🏰', '🗿'];
                 const neutralStart = ENEMY_ZONE_END + 1;
                 const neutralEnd = PLAYER_ZONE_START - 1;
 
@@ -1153,7 +1502,7 @@
                 let baseRange = unit.range;
                 if (baseRange <= 1) return baseRange;
 
-                if (['dragon', 'phoenix', 'sniper'].includes(unit.id)) return baseRange;
+                if (['dragon', 'phoenix', 'sniper', 'ranger'].includes(unit.id)) return baseRange;
 
                 let enemyAdjacent = this.units.some(u => u.team !== unit.team && u.hp > 0 && this.getDistance(unit, u.x, u.y, u.size) === 1);
                 if (enemyAdjacent) {
@@ -1352,14 +1701,55 @@
             }
 
             startBattle() {
+                this.units = this.units.filter(u => u.team === 'player');
+                if (this.units.length === 0) return alert("Поставьте хотя бы одного синего юнита в рамках бюджета!");
+
+                this.clearHighlights();
+                this.showRelicChoiceModal(() => this._beginBattleAfterRelic());
+            }
+
+            // Показывает выбор реликвии похода (1 из 3), затем передаёт управление дальше
+            showRelicChoiceModal(onDone) {
+                document.getElementById('wave-bonus-title').innerText = '💎 Выберите реликвию похода';
+                const pool = [...RELICS];
+                for (let i = pool.length - 1; i > 0; i--) {
+                    let j = Math.floor(Math.random() * (i + 1));
+                    [pool[i], pool[j]] = [pool[j], pool[i]];
+                }
+                const choices = pool.slice(0, 3);
+                const container = document.getElementById('wave-bonus-options');
+                container.innerHTML = '';
+
+                choices.forEach(relic => {
+                    const btn = document.createElement('button');
+                    btn.className = 'success';
+                    btn.style.width = '100%';
+                    btn.style.padding = '8px';
+                    btn.innerHTML = `${relic.name}<span style="font-size:11px;">${relic.desc}</span>`;
+                    btn.onclick = () => {
+                        this.activeRelic = relic.id;
+                        relic.apply(this);
+                        document.getElementById('wave-bonus-modal').classList.add('hidden');
+                        document.getElementById('modal-backdrop').classList.add('hidden');
+                        onDone();
+                    };
+                    container.appendChild(btn);
+                });
+
+                this.renderGrid();
+                document.getElementById('wave-bonus-modal').classList.remove('hidden');
+                document.getElementById('modal-backdrop').classList.remove('hidden');
+            }
+
+            _beginBattleAfterRelic() {
                 this.campaignWave = 1;
                 this.gameOver = false;
                 this.awaitingWaveBonus = false;
                 this.glorySessionEarned = 0;
+                this.phoenixBlessingUsed = false;
 
-                this.units = this.units.filter(u => u.team === 'player');
-                if (this.units.length === 0) return alert("Поставьте хотя бы одного синего юнита в рамках бюджета!");
                 this.spawnCampaignWave(this.campaignWave);
+                this.spawnHero();
                 
                 this.units.forEach(u => {
                     u.actionPoints = 0;
@@ -1388,12 +1778,12 @@
             }
 
             // Создает вражеского юнита указанного типа на клетке (x,y) с масштабированием по волне
-            pushEnemyUnit(tpl, x, y, waveNumber, scale) {
+            pushEnemyUnit(tpl, x, y, waveNumber, scale, overrides = null) {
                 let scaledHp = Math.round(tpl.hp * scale);
                 let scaledDmg = Math.round(tpl.dmg * scale);
                 let scaledInit = Math.round(tpl.init * scale);
 
-                this.units.push({
+                const unit = {
                     ...tpl,
                     x, y,
                     team: 'enemy',
@@ -1420,7 +1810,28 @@
                     isReborn: false,
                     lastPhoenixHp: scaledHp,
                     lastPhoenixDmg: scaledDmg
-                });
+                };
+                if (overrides) Object.assign(unit, overrides);
+                this.units.push(unit);
+                return unit;
+            }
+
+            // Спавнит именного босса на переломных волнах (см. BOSS_WAVES), усиленный вариант базового юнита
+            spawnBossIfNeeded(waveNumber, scale) {
+                const boss = BOSS_WAVES[waveNumber];
+                if (!boss) return;
+                const tpl = UNIT_TYPES[boss.baseType];
+                // Ищем свободную клетку во вражеской зоне
+                for (let attempts = 0; attempts < 100; attempts++) {
+                    let ry = Math.floor(Math.random() * (ENEMY_ZONE_END + 1));
+                    let rx = Math.floor(Math.random() * COLS);
+                    if (this.isCellFree(rx, ry, tpl.size)) {
+                        this.pushEnemyUnit(tpl, rx, ry, waveNumber, scale * boss.mult, { name: boss.name, isBoss: true });
+                        this.spawnFloatingText(rx, ry, '⚠️ БОСС!', '#ff3b3b');
+                        alert(`⚠️ На этой волне появился могучий враг: ${boss.name}!`);
+                        return;
+                    }
+                }
             }
 
             // Бюджет врагов на волну N в Кампании (растет быстрее, чем у игрока)
@@ -1470,6 +1881,8 @@
                 let budget = this.getCampaignEnemyBudget(waveNumber);
                 let comp = this.generateCampaignComposition(budget);
                 let scale = 1 + (waveNumber - 1) * 0.12;
+
+                this.spawnBossIfNeeded(waveNumber, scale);
 
                 comp.forEach(type => {
                     let tpl = UNIT_TYPES[type];
@@ -1525,6 +1938,7 @@
                 let enemiesAlive = this.units.some(u => u.team === 'enemy' && u.hp > 0);
                 if (!enemiesAlive && !this.awaitingWaveBonus) {
                     this.awardGlory(GLORY_PER_WAVE);
+                    this.awardHeroXP(HERO_XP_PER_WAVE);
                     if (this.campaignWave >= this.campaignTotalWaves) {
                         this.gameOver = true;
                         this.awardGlory(GLORY_VICTORY_BONUS);
@@ -1532,7 +1946,11 @@
                         return;
                     }
                     this.awaitingWaveBonus = true;
-                    this.showWaveBonusModal();
+                    if (this.pendingHeroLevelUp) {
+                        this.showHeroLevelUpModal(() => this.showWaveBonusModal());
+                    } else {
+                        this.showWaveBonusModal();
+                    }
                 }
             }
 
@@ -2113,6 +2531,12 @@
                     rawDmg = Math.max(1, Math.round(rawDmg * (1 - defender.dmgReductionPct)));
                 }
 
+                // Аура Паладина: находящиеся рядом союзники получают доп. -15% урона
+                if (defender.team === 'player') {
+                    const paladinNearby = this.units.some(u => u.isHero && u.id === 'paladin' && u.team === 'player' && u.hp > 0 && u !== defender && this.getDistance(u, defender.x, defender.y, defender.size) <= 2);
+                    if (paladinNearby) rawDmg = Math.max(1, Math.round(rawDmg * 0.85));
+                }
+
                 if (defender.id === 'stone_golem') {
                     defender.golemStacks = Math.min(9, (defender.golemStacks || 0) + 1);
                 }
@@ -2141,6 +2565,14 @@
                     return;
                 }
 
+                // Реликвия "Благословение Феникса": первая смерть за поход отменяется
+                if (defender.hp <= 0 && this.activeRelic === 'phoenixblessing' && !this.phoenixBlessingUsed && defender.id !== 'necromancer') {
+                    this.phoenixBlessingUsed = true;
+                    defender.hp = Math.max(1, Math.round(defender.maxHp * 0.5));
+                    this.spawnFloatingText(defender.x, defender.y, '🌟 Благословение Феникса!', '#ffe066');
+                    return;
+                }
+
                 if (defender.hp <= 0) {
                     if (defender.id === 'phoenix') {
                         defender.id = 'phoenix_egg';
@@ -2156,6 +2588,12 @@
                         defender.range = 0;
                         defender.passive = UNIT_TYPES.phoenix_egg.passive;
                     } else {
+                        // Реликвия "Кровавый Алтарь": добивающий удар лечит атакующего
+                        if (this.activeRelic === 'bloodaltar' && attacker && attacker.team === 'player' && attacker.id !== 'necromancer' && attacker.hp > 0) {
+                            let healAmt = Math.round(attacker.maxHp * 0.2);
+                            attacker.hp = Math.min(attacker.maxHp, attacker.hp + healAmt);
+                            this.spawnFloatingText(attacker.x, attacker.y, `+${healAmt} 🩸`, '#ff6666');
+                        }
                         this.triggerHarvestOnDeath();
                     }
                 }
@@ -2257,6 +2695,19 @@
                             attacker.hp = Math.min(attacker.maxHp, attacker.hp + healAmount);
                             this.spawnFloatingText(attacker.x, attacker.y, `+${healAmount}`, '#00ff88');
                         }
+                    }
+
+                    // Тёмный Маг: доп. урон по площади вокруг цели
+                    if (attacker.id === 'warlock') {
+                        this.units.forEach(u => {
+                            if (u === defender || u.hp <= 0 || u.team === attacker.team) return;
+                            if (this.getDistance(defender, u.x, u.y, u.size) <= 1) {
+                                let splashDmg = Math.max(1, Math.round((typeof dmg === 'number' ? dmg : this.getActualDmg(attacker, u)) * 0.4));
+                                this.applyDamageToUnit(attacker, u, splashDmg);
+                                this.playUnitAnim(u.uid, 'unit-anim-hit', 320);
+                                this.spawnFloatingText(u.x, u.y, `-${splashDmg}`, '#c77dff');
+                            }
+                        });
                     }
                 }
             }
@@ -2636,6 +3087,8 @@
                     uDiv.className = `unit ${u.team} ${u.id}`;
                     uDiv.dataset.uid = u.uid;
                     if (u.size === 2) uDiv.classList.add('size-2');
+                    if (u.isBoss) uDiv.classList.add('boss');
+                    if (u.isHero) uDiv.classList.add('hero');
                     uDiv.innerText = u.icon;
                     
                     const hpBar = document.createElement('div');
