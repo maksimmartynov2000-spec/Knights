@@ -611,7 +611,7 @@
         // ряды 4-7 — нейтральная полоса, изначально никто не может там вставать
 
         const UNIT_TYPES = {
-            necromancer: { id: 'necromancer', name: 'Некромант', hp: 10, armor: 0, dmg: 5, dmgType: 'Магия', init: 10, move: 1, range: 2, icon: '🧙‍♂️', size: 1, passive: 'Пассивка "Призрачный Щит": Получает строго 1 ед. урона от ЛЮБОЙ атаки.\nАктивка: Умеет призывать союзников любого типа в радиусе 2.' },
+            necromancer: { id: 'necromancer', name: 'Некромант', hp: 10, armor: 0, dmg: 5, dmgType: 'Магия', init: 10, move: 1, range: 2, icon: '🧙‍♂️', size: 1, passive: 'Пассивка "Призрачный Щит": Получает строго 1 ед. урона от ЛЮБОЙ атаки. Не может получать HP/Броню и не может исцеляться никаким способом.\nАктивка: Умеет призывать союзников любого типа в радиусе 2, но теряет 1 HP за каждый призыв.' },
             knight: { id: 'knight', name: 'Рыцарь', hp: 100, armor: 0, dmg: 10, dmgType: 'Физ', init: 12, move: 2, range: 1, icon: '⚔️', size: 1, passive: 'Пассивка "Латы": Получает на -50% меньше урона от стрел. Возвращает 80% физ. урона в ближнем бою обратно атакующему.\nАктивка: "Щит" — моментально добавляет +120 к Броне (КД: 2х).' },
             crossbow: { id: 'crossbow', name: 'Арбалетчик', hp: 40, armor: 0, dmg: 50, dmgType: 'Стрела', init: 36, move: 3, range: 2, icon: '🏹', size: 1, passive: 'Пассивка: Высокая инициатива для быстрых дальних атак. Теряет дальность под угрозой врага в упор.\nАктивка: "Лечение" — восстанавливает +40 HP союзнику в радиусе 2.' },
             ballista: { id: 'ballista', name: 'Балиста', hp: 80, armor: 0, dmg: 80, dmgType: 'Физ', init: 10, move: 1, range: 4, icon: '🏗️', size: 1, passive: 'Пассивка "Осада": Наносит х5 урон по Энтам, х3 по Каменным Големам и х2 по Драконам. Теряет дальность под угрозой врага в упор. Иммунитет к Ауре Дракона.\nАктивка: "Подготовка" — необходимо активировать перед выстрелом.' },
@@ -651,30 +651,30 @@
         const CAMPAIGN_BONUSES = [
             // --- Прямые усиления характеристик ---
             { id: 'dmg', name: '💪 Мощь', desc: '+15% урона всем юнитам отряда', apply: (u) => { u.dmg = Math.max(1, Math.round(u.dmg * 1.15)); } },
-            { id: 'hp', name: '❤️ Живучесть', desc: '+20% макс. HP, полное исцеление', apply: (u) => { u.maxHp = Math.round(u.maxHp * 1.2); u.hp = u.maxHp; } },
-            { id: 'armor', name: '🛡️ Броня', desc: '+50 брони (и макс. брони) всем юнитам', apply: (u) => { u.armor = (u.armor || 0) + 50; u.maxArmor = Math.max(u.maxArmor || 0, u.armor); } },
+            { id: 'hp', name: '❤️ Живучесть', desc: '+20% макс. HP, полное исцеление (не влияет на Некроманта)', apply: (u) => { if (u.id === 'necromancer') return; u.maxHp = Math.round(u.maxHp * 1.2); u.hp = u.maxHp; } },
+            { id: 'armor', name: '🛡️ Броня', desc: '+50 брони (и макс. брони) всем юнитам (не влияет на Некроманта)', apply: (u) => { if (u.id === 'necromancer') return; u.armor = (u.armor || 0) + 50; u.maxArmor = Math.max(u.maxArmor || 0, u.armor); } },
             { id: 'init', name: '⚡ Скорость', desc: '+5 к Инициативе всем юнитам', apply: (u) => { u.baseInitStat = (u.baseInitStat || u.init) + 5; u.init = u.baseInitStat; } },
-            { id: 'heal', name: '✨ Восстановление', desc: 'Полностью восстановить HP и Броню всем юнитам', apply: (u) => { u.hp = u.maxHp; if (u.maxArmor) u.armor = u.maxArmor; } },
+            { id: 'heal', name: '✨ Восстановление', desc: 'Полностью восстановить HP и Броню всем юнитам (не влияет на Некроманта)', apply: (u) => { if (u.id === 'necromancer') return; u.hp = u.maxHp; if (u.maxArmor) u.armor = u.maxArmor; } },
             { id: 'cd', name: '🔄 Мастерство', desc: '-20% времени восстановления способностей (макс. -60%)', apply: (u) => { u.cdReductionCampaign = Math.min(0.6, (u.cdReductionCampaign || 0) + 0.2); } },
             { id: 'range', name: '🏹 Меткость', desc: '+1 к дальности атаки всем юнитам', apply: (u) => { u.range += 1; } },
             { id: 'move', name: '🐎 Прыткость', desc: '+1 к дальности хода всем юнитам', apply: (u) => { u.move += 1; } },
             { id: 'ap', name: '⏱️ Внезапность', desc: 'Все юниты получают +50 очков хода (раньше поднимутся в очереди)', apply: (u) => { u.actionPoints = (u.actionPoints || 0) + 50; } },
 
             // --- Новые тактические механики ---
-            { id: 'lifesteal', name: '🩸 Кровожадность', desc: '+15% похищения здоровья от нанесённого урона', apply: (u) => { u.lifestealPct = Math.min(0.6, (u.lifestealPct || 0) + 0.15); } },
+            { id: 'lifesteal', name: '🩸 Кровожадность', desc: '+15% похищения здоровья от нанесённого урона (не влияет на Некроманта)', apply: (u) => { if (u.id === 'necromancer') return; u.lifestealPct = Math.min(0.6, (u.lifestealPct || 0) + 0.15); } },
             { id: 'thorns', name: '🌵 Шипы', desc: 'При ударе в ближнем бою отражает 20% урона атакующему', apply: (u) => { u.thornsPct = Math.min(0.8, (u.thornsPct || 0) + 0.2); } },
             { id: 'reduction', name: '🪨 Стойкость', desc: '-10% получаемого урона (складывается)', apply: (u) => { u.dmgReductionPct = Math.min(0.5, (u.dmgReductionPct || 0) + 0.1); } },
             { id: 'dodge', name: '🌙 Уклонение', desc: '+15% шанс полностью избежать урона от атаки', apply: (u) => { u.dodgeChance = Math.min(0.6, (u.dodgeChance || 0) + 0.15); } },
             { id: 'crit', name: '💥 Критический удар', desc: '+20% шанс нанести x1.5 урона при атаке', apply: (u) => { u.critChance = Math.min(0.75, (u.critChance || 0) + 0.2); } },
             { id: 'laststand', name: '🕯️ Стойкий Дух', desc: 'При смертельном ударе выживает с 1 HP (один раз на юнита)', apply: (u) => { u.lastStandCharges = (u.lastStandCharges || 0) + 1; } },
-            { id: 'armorregen', name: '🔧 Саморемонт', desc: '+15 брони в конце каждого своего хода', apply: (u) => { u.armorRegenPerTurn = (u.armorRegenPerTurn || 0) + 15; } },
+            { id: 'armorregen', name: '🔧 Саморемонт', desc: '+15 брони в конце каждого своего хода (не влияет на Некроманта)', apply: (u) => { if (u.id === 'necromancer') return; u.armorRegenPerTurn = (u.armorRegenPerTurn || 0) + 15; } },
 
             // --- Особые одноразовые эффекты на весь отряд ---
             {
-                id: 'revive', name: '🌟 Благословение', desc: 'Воскрешает случайного павшего союзника с 50% HP',
-                isAvailable: (engine) => engine.units.some(u => u.team === 'player' && u.hp <= 0),
+                id: 'revive', name: '🌟 Благословение', desc: 'Воскрешает случайного павшего союзника с 50% HP (кроме Некроманта)',
+                isAvailable: (engine) => engine.units.some(u => u.team === 'player' && u.hp <= 0 && u.id !== 'necromancer'),
                 applyOnce: (engine) => {
-                    let fallen = engine.units.filter(u => u.team === 'player' && u.hp <= 0);
+                    let fallen = engine.units.filter(u => u.team === 'player' && u.hp <= 0 && u.id !== 'necromancer');
                     if (fallen.length === 0) return;
                     let unit = fallen[Math.floor(Math.random() * fallen.length)];
                     unit.hp = Math.max(1, Math.round(unit.maxHp * 0.5));
@@ -1729,6 +1729,7 @@
                         
                         let baseCd = (this.summonType === 'stone_golem') ? 2 : 20;
                         au.cooldowns['summon_' + this.summonType] = this.getAdjustedCooldown(baseCd, wl, au);
+                        this.applySummonSelfDamage(au);
                         this.renderGrid();
                         this.playUnitAnim(newUnit.uid, 'unit-anim-spawn', 380);
                         this.spawnFloatingText(x, y, '✨', '#cc66ff');
@@ -1736,7 +1737,10 @@
                     }
                 }
                 else if (this.selectedAction === 'heal') {
-                    if (targetUnit && targetUnit.team === au.team && dist <= curRange) {
+                    if (targetUnit && targetUnit.id === 'necromancer') {
+                        alert('Некромант защищён Призрачным Щитом и не может исцеляться!');
+                        this.resetTarget();
+                    } else if (targetUnit && targetUnit.team === au.team && dist <= curRange) {
                         let healAmount = Math.round(40 * (1 + (wl - 1) * 0.10));
                         targetUnit.hp = Math.min(targetUnit.maxHp, targetUnit.hp + healAmount);
                         this.playUnitAnim(au.uid, 'unit-anim-attack', 260);
@@ -1893,6 +1897,16 @@
                 });
             }
 
+            // Некромант расплачивается собственным здоровьем за каждый призыв — не может лечиться, поэтому этот ресурс конечен
+            applySummonSelfDamage(caster) {
+                if (caster.id !== 'necromancer') return;
+                caster.hp -= 1;
+                this.spawnFloatingText(caster.x, caster.y, '-1 🩸', '#ff8888');
+                if (caster.hp <= 0) {
+                    this.triggerHarvestOnDeath();
+                }
+            }
+
             executeAttack(attacker, defender) {
                 if (attacker.id === 'ballista') attacker.isPrepared = false;
                 this.playUnitAnim(attacker.uid, 'unit-anim-attack', 300);
@@ -1919,7 +1933,7 @@
                             this.spawnFloatingText(u.x, u.y, `-${dmg}${isCrit ? ' 💥' : ''}`, isCrit ? '#ffd700' : '#ff5555');
                             this.checkCounterAttack(u, attacker, dmg, dist);
 
-                            if (attacker.lifestealPct) {
+                            if (attacker.lifestealPct && attacker.id !== 'necromancer') {
                                 let healAmount = Math.floor(dmg * attacker.lifestealPct);
                                 if (healAmount > 0) {
                                     attacker.hp = Math.min(attacker.maxHp, attacker.hp + healAmount);
@@ -1953,7 +1967,7 @@
                         let scale = 1 + ((attacker.waveLevel || 1) - 1) * 0.10;
                         attacker.vampireDebuffs = (attacker.vampireDebuffs || 0) + Math.round(1 * scale);
                         this.spawnFloatingText(attacker.x, attacker.y, `+${typeof dmg === 'number' ? dmg : 1}`, '#00ff88');
-                    } else if (attacker.lifestealPct) {
+                    } else if (attacker.lifestealPct && attacker.id !== 'necromancer') {
                         let healAmount = Math.floor((typeof dmg === 'number' ? dmg : 0) * attacker.lifestealPct);
                         if (healAmount > 0) {
                             attacker.hp = Math.min(attacker.maxHp, attacker.hp + healAmount);
@@ -1997,7 +2011,7 @@
                         this.activeUnit.maxArmor = Math.max(this.activeUnit.maxArmor || 0, this.activeUnit.armor);
                         this.spawnFloatingText(this.activeUnit.x, this.activeUnit.y, `+${armorRestore} 🛡️`, '#00bcd4');
                     }
-                    if (this.activeUnit.armorRegenPerTurn) {
+                    if (this.activeUnit.armorRegenPerTurn && this.activeUnit.id !== 'necromancer') {
                         this.activeUnit.armor = (this.activeUnit.armor || 0) + this.activeUnit.armorRegenPerTurn;
                         this.activeUnit.maxArmor = Math.max(this.activeUnit.maxArmor || 0, this.activeUnit.armor);
                         this.spawnFloatingText(this.activeUnit.x, this.activeUnit.y, `+${this.activeUnit.armorRegenPerTurn} 🔧`, '#00bcd4');
@@ -2067,6 +2081,7 @@
                                 
                                 let baseCd = (type === 'stone_golem') ? 2 : 20;
                                 me.cooldowns['summon_' + type] = this.getAdjustedCooldown(baseCd, wl, me);
+                                this.applySummonSelfDamage(me);
                                 this.renderGrid();
                                 this.playUnitAnim(newUnit.uid, 'unit-anim-spawn', 380);
                                 this.spawnFloatingText(freePos.x, freePos.y, '✨', '#cc66ff');
