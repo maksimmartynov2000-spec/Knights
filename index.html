@@ -439,6 +439,37 @@
         #wave-bonus-options button { text-align: left; line-height: 1.4; }
         #wave-bonus-options button span { display: block; color: #cde; font-weight: 400; }
 
+        #armory-modal {
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(180deg, rgba(28,28,32,0.98), rgba(16,16,19,0.98));
+            padding: 18px;
+            border-radius: 14px;
+            border: 2px solid var(--gold);
+            z-index: 1000;
+            width: 92%;
+            max-width: 360px;
+            color: white;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.75), 0 0 30px rgba(212,175,55,0.3);
+            animation: modalPopIn 0.22s ease-out;
+        }
+        #armory-modal h3 { font-family: 'Cinzel', serif; color: var(--gold-bright); text-align: center; margin-bottom: 4px; }
+        .armory-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 9px;
+            padding: 8px 10px;
+        }
+        .armory-item-top { display: flex; justify-content: space-between; align-items: center; gap: 6px; }
+        .armory-item-name { font-weight: 700; font-size: 13px; }
+        .armory-item-desc { font-size: 11px; color: #bbb; }
+        .armory-item-levels { font-size: 10px; color: var(--gold-bright); letter-spacing: 1px; }
+        .armory-buy-btn { flex-grow: 0; padding: 6px 12px; font-size: 11px; min-width: 76px; }
+
         #campaign-budget-row span b { color: #fff; }
 
         #damage-preview {
@@ -539,12 +570,25 @@
                 <p style="font-size: 12px; color: #ccc; text-align: center; margin-bottom: 10px;">Выберите награду для своего отряда:</p>
                 <div id="wave-bonus-options" style="display: flex; flex-direction: column; gap: 8px;"></div>
             </div>
+
+            <div id="armory-modal" class="hidden">
+                <h3>🏛️ Арсенал</h3>
+                <p style="font-size: 11px; color: #aaa; text-align: center; margin-bottom: 8px;">Постоянные улучшения за Славу, накопленную за прошлые походы.</p>
+                <p style="font-size: 13px; text-align: center; margin-bottom: 10px; color: var(--gold-bright); font-family: 'Cinzel', serif;">⭐ Слава: <span id="armory-glory-display">0</span></p>
+                <div id="armory-options" style="display: flex; flex-direction: column; gap: 8px; max-height: 44vh; overflow-y: auto;"></div>
+                <button id="close-armory" style="width: 100%; margin-top: 12px; padding: 9px; background: linear-gradient(180deg, #2f7fdb, #0d4c96); border: 1px solid var(--player-glow); border-radius: 7px; color: white; font-weight: 700;">Закрыть</button>
+            </div>
         </div>
 
         <div id="action-panel">
             <div id="unit-info-header">⚔️ Средневековье — Режим расстановки</div>
             
             <div id="setup-ui">
+                <div class="setup-row" style="align-items: center; justify-content: space-between; margin-bottom: 5px; padding: 0 2px;">
+                    <span style="font-family: 'Cinzel', serif; font-size: 13px; color: var(--gold-bright); font-weight: 700;">⭐ Слава: <span id="glory-display">0</span></span>
+                    <button id="open-armory-btn" class="secondary" style="padding: 5px 10px; font-size: 11px; flex-grow: 0;">🏛️ Арсенал</button>
+                </div>
+
                 <div id="setup-controls">
                     <div class="setup-row">
                         <select id="setup-mode">
@@ -718,6 +762,22 @@
             }
         ];
 
+        // ---- Прогресс между забегами ("Арсенал") ----
+        const META_SAVE_KEY_GLORY = 'medieval_meta_glory_v1';
+        const META_SAVE_KEY_UPGRADES = 'medieval_meta_upgrades_v1';
+        const GLORY_PER_WAVE = 10;
+        const GLORY_VICTORY_BONUS = 50;
+
+        // Постоянные апгрейды, покупаемые за Славу между походами. Каждый уровень стоит дороже предыдущего.
+        const META_UPGRADES = [
+            { id: 'budget', name: '💰 Расширенный бюджет', desc: '+5 к стартовому бюджету расстановки за уровень', maxLevel: 4, costs: [30, 60, 100, 150] },
+            { id: 'hp', name: '❤️ Закалённые войска', desc: '+8% HP всем юнитам с начала похода (кроме Некроманта)', maxLevel: 4, costs: [40, 80, 130, 190] },
+            { id: 'dmg', name: '⚔️ Острые клинки', desc: '+5% урона всем юнитам с начала похода', maxLevel: 4, costs: [40, 80, 130, 190] },
+            { id: 'armor', name: '🛡️ Кованые латы', desc: '+10 брони всем юнитам с начала похода (кроме Некроманта)', maxLevel: 4, costs: [35, 70, 115, 170] },
+            { id: 'cd', name: '🔄 Древние знания', desc: '-5% времени восстановления способностей за уровень', maxLevel: 3, costs: [50, 100, 170] },
+            { id: 'extrachoice', name: '🔮 Дар Оракула', desc: 'После каждой волны предлагается на 1 вариант бонуса больше', maxLevel: 1, costs: [200] }
+        ];
+
         class GameEngine {
             constructor() {
                 this.units = [];
@@ -731,14 +791,47 @@
                 // Кампания
                 this.campaignWave = 1;
                 this.campaignTotalWaves = 8;
-                this.campaignPlayerBudget = 45;
                 this.awaitingWaveBonus = false;
                 this.gameOver = false;
                 this.nextUid = 1;
+
+                // Прогресс между забегами
+                this.metaGlory = this.loadGlory();
+                this.metaUpgrades = this.loadUpgrades();
+                this.glorySessionEarned = 0;
+                this.campaignPlayerBudget = 45 + 5 * (this.metaUpgrades.budget || 0);
                 
                 this.initDOM();
                 this.generateSmartTerrain();
                 this.renderGrid();
+            }
+
+            // --- Сохранение прогресса (localStorage; если недоступно — прогресс живёт только в рамках вкладки) ---
+            loadGlory() {
+                try { return parseInt(localStorage.getItem(META_SAVE_KEY_GLORY) || '0', 10) || 0; }
+                catch (e) { return 0; }
+            }
+            saveGlory() {
+                try { localStorage.setItem(META_SAVE_KEY_GLORY, String(this.metaGlory)); }
+                catch (e) { /* хранилище недоступно — прогресс не сохранится между сессиями */ }
+            }
+            loadUpgrades() {
+                try { return JSON.parse(localStorage.getItem(META_SAVE_KEY_UPGRADES) || '{}') || {}; }
+                catch (e) { return {}; }
+            }
+            saveUpgrades() {
+                try { localStorage.setItem(META_SAVE_KEY_UPGRADES, JSON.stringify(this.metaUpgrades)); }
+                catch (e) { /* хранилище недоступно */ }
+            }
+            awardGlory(amount) {
+                this.metaGlory += amount;
+                this.glorySessionEarned += amount;
+                this.saveGlory();
+                this.updateGloryDisplay();
+            }
+            updateGloryDisplay() {
+                const el = document.getElementById('glory-display');
+                if (el) el.innerText = this.metaGlory;
             }
 
             initDOM() {
@@ -804,6 +897,17 @@
                 typeSelect.addEventListener('change', updateCostDisplay);
                 updateCostDisplay();
 
+                document.getElementById('open-armory-btn').addEventListener('click', () => {
+                    this.renderArmoryModal();
+                    document.getElementById('armory-modal').classList.remove('hidden');
+                    document.getElementById('modal-backdrop').classList.remove('hidden');
+                });
+                document.getElementById('close-armory').addEventListener('click', () => {
+                    document.getElementById('armory-modal').classList.add('hidden');
+                    document.getElementById('modal-backdrop').classList.add('hidden');
+                });
+
+                this.updateGloryDisplay();
                 this.updateCampaignBudgetUI();
             }
 
@@ -815,6 +919,86 @@
                 if (displayEl) displayEl.innerText = `${used}/${this.campaignPlayerBudget}`;
                 const wavesEl = document.getElementById('campaign-waves-display');
                 if (wavesEl) wavesEl.innerText = this.campaignTotalWaves;
+            }
+
+            // Отрисовывает список апгрейдов в модалке Арсенала с актуальными уровнями/ценами
+            renderArmoryModal() {
+                document.getElementById('armory-glory-display').innerText = this.metaGlory;
+                const container = document.getElementById('armory-options');
+                container.innerHTML = '';
+
+                META_UPGRADES.forEach(upg => {
+                    const level = this.metaUpgrades[upg.id] || 0;
+                    const isMaxed = level >= upg.maxLevel;
+                    const cost = isMaxed ? null : upg.costs[level];
+                    const canAfford = !isMaxed && this.metaGlory >= cost;
+
+                    const item = document.createElement('div');
+                    item.className = 'armory-item';
+
+                    const dots = Array.from({ length: upg.maxLevel }, (_, i) => i < level ? '●' : '○').join(' ');
+
+                    const top = document.createElement('div');
+                    top.className = 'armory-item-top';
+                    top.innerHTML = `<span class="armory-item-name">${upg.name}</span>`;
+
+                    const btn = document.createElement('button');
+                    btn.className = `armory-buy-btn ${isMaxed ? 'secondary' : 'success'}`;
+                    btn.innerText = isMaxed ? 'Макс.' : `💰 ${cost}`;
+                    btn.disabled = isMaxed || !canAfford;
+                    btn.onclick = () => this.buyUpgrade(upg.id);
+                    top.appendChild(btn);
+
+                    const desc = document.createElement('div');
+                    desc.className = 'armory-item-desc';
+                    desc.innerText = upg.desc;
+
+                    const levels = document.createElement('div');
+                    levels.className = 'armory-item-levels';
+                    levels.innerText = dots;
+
+                    item.appendChild(top);
+                    item.appendChild(desc);
+                    item.appendChild(levels);
+                    container.appendChild(item);
+                });
+            }
+
+            buyUpgrade(id) {
+                const upg = META_UPGRADES.find(u => u.id === id);
+                if (!upg) return;
+                const level = this.metaUpgrades[id] || 0;
+                if (level >= upg.maxLevel) return;
+                const cost = upg.costs[level];
+                if (this.metaGlory < cost) return;
+
+                this.metaGlory -= cost;
+                this.metaUpgrades[id] = level + 1;
+                this.saveGlory();
+                this.saveUpgrades();
+
+                if (id === 'budget') {
+                    this.campaignPlayerBudget = 45 + 5 * (this.metaUpgrades.budget || 0);
+                    this.updateCampaignBudgetUI();
+                }
+
+                this.updateGloryDisplay();
+                this.renderArmoryModal();
+            }
+
+            // Применяет постоянные апгрейды Арсенала ко всем юнитам игрока в начале похода
+            applyMetaUpgrades() {
+                const lv = this.metaUpgrades;
+                const hpLv = lv.hp || 0, dmgLv = lv.dmg || 0, armorLv = lv.armor || 0, cdLv = lv.cd || 0;
+                if (!hpLv && !dmgLv && !armorLv && !cdLv) return;
+
+                this.units.filter(u => u.team === 'player').forEach(u => {
+                    if (dmgLv > 0) u.dmg = Math.round(u.dmg * (1 + 0.05 * dmgLv));
+                    if (cdLv > 0) u.cdReductionCampaign = Math.min(0.6, (u.cdReductionCampaign || 0) + 0.05 * cdLv);
+                    if (u.id === 'necromancer') return; // Некромант не получает HP/броню ни от чего
+                    if (hpLv > 0) { u.maxHp = Math.round(u.maxHp * (1 + 0.08 * hpLv)); u.hp = u.maxHp; }
+                    if (armorLv > 0) { u.armor = (u.armor || 0) + 10 * armorLv; u.maxArmor = Math.max(u.maxArmor || 0, u.armor); }
+                });
             }
 
             // Осмысленная (симметричная) генерация рельефа перед первой волной:
@@ -1134,6 +1318,7 @@
                 this.campaignWave = 1;
                 this.gameOver = false;
                 this.awaitingWaveBonus = false;
+                this.glorySessionEarned = 0;
 
                 this.units = this.units.filter(u => u.team === 'player');
                 if (this.units.length === 0) return alert("Поставьте хотя бы одного синего юнита в рамках бюджета!");
@@ -1150,6 +1335,7 @@
                     u.lastPhoenixHp = u.lastPhoenixHp || u.hp;
                     u.lastPhoenixDmg = u.lastPhoenixDmg || u.dmg;
                 });
+                this.applyMetaUpgrades();
 
                 this.state = 'BATTLE';
                 document.getElementById('setup-ui').classList.add('hidden');
@@ -1278,14 +1464,16 @@
                 let playerAlive = this.units.some(u => u.team === 'player' && u.hp > 0);
                 if (!playerAlive) {
                     this.gameOver = true;
-                    alert('💀 Поражение! Ваш отряд разбит. Кампания провалена.');
+                    alert(`💀 Поражение! Ваш отряд разбит на волне ${this.campaignWave}.\n\n⭐ Заработано Славы за поход: ${this.glorySessionEarned} (всего: ${this.metaGlory})\nПотратьте её в Арсенале перед следующей попыткой!`);
                     return;
                 }
                 let enemiesAlive = this.units.some(u => u.team === 'enemy' && u.hp > 0);
                 if (!enemiesAlive && !this.awaitingWaveBonus) {
+                    this.awardGlory(GLORY_PER_WAVE);
                     if (this.campaignWave >= this.campaignTotalWaves) {
                         this.gameOver = true;
-                        alert('🏆 Победа! Вы прошли всю Кампанию "Средневековье"!');
+                        this.awardGlory(GLORY_VICTORY_BONUS);
+                        alert(`🏆 Победа! Вы прошли всю Кампанию "Средневековье"!\n\n⭐ Заработано Славы за поход: ${this.glorySessionEarned} (всего: ${this.metaGlory})\nЗагляните в Арсенал — там уже есть, на что её потратить!`);
                         return;
                     }
                     this.awaitingWaveBonus = true;
@@ -1299,7 +1487,7 @@
                     let j = Math.floor(Math.random() * (i + 1));
                     [pool[i], pool[j]] = [pool[j], pool[i]];
                 }
-                const choices = pool.slice(0, 3);
+                const choices = pool.slice(0, 3 + (this.metaUpgrades.extrachoice ? 1 : 0));
                 const container = document.getElementById('wave-bonus-options');
                 container.innerHTML = '';
 
