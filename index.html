@@ -566,7 +566,7 @@
             </div>
 
             <div id="wave-bonus-modal" class="hidden">
-                <h3>🏆 Волна отбита!</h3>
+                <h3 id="wave-bonus-title">🏆 Волна отбита!</h3>
                 <p style="font-size: 12px; color: #ccc; text-align: center; margin-bottom: 10px;">Выберите награду для своего отряда:</p>
                 <div id="wave-bonus-options" style="display: flex; flex-direction: column; gap: 8px;"></div>
             </div>
@@ -769,13 +769,26 @@
         const GLORY_VICTORY_BONUS = 50;
 
         // Постоянные апгрейды, покупаемые за Славу между походами. Каждый уровень стоит дороже предыдущего.
+        // "continueCharges" технически тоже "уровень", но расходуется во время игры (см. checkWaveProgression) —
+        // так он естественно уменьшается и его снова можно докупить.
         const META_UPGRADES = [
-            { id: 'budget', name: '💰 Расширенный бюджет', desc: '+5 к стартовому бюджету расстановки за уровень', maxLevel: 4, costs: [30, 60, 100, 150] },
-            { id: 'hp', name: '❤️ Закалённые войска', desc: '+8% HP всем юнитам с начала похода (кроме Некроманта)', maxLevel: 4, costs: [40, 80, 130, 190] },
-            { id: 'dmg', name: '⚔️ Острые клинки', desc: '+5% урона всем юнитам с начала похода', maxLevel: 4, costs: [40, 80, 130, 190] },
-            { id: 'armor', name: '🛡️ Кованые латы', desc: '+10 брони всем юнитам с начала похода (кроме Некроманта)', maxLevel: 4, costs: [35, 70, 115, 170] },
-            { id: 'cd', name: '🔄 Древние знания', desc: '-5% времени восстановления способностей за уровень', maxLevel: 3, costs: [50, 100, 170] },
-            { id: 'extrachoice', name: '🔮 Дар Оракула', desc: 'После каждой волны предлагается на 1 вариант бонуса больше', maxLevel: 1, costs: [200] }
+            // --- Войско: прямые усиления характеристик ---
+            { category: '⚔️ Войско', id: 'hp', name: '❤️ Закалённые войска', desc: '+8% HP всем юнитам с начала похода (кроме Некроманта)', maxLevel: 4, costs: [40, 80, 130, 190] },
+            { category: '⚔️ Войско', id: 'dmg', name: '⚔️ Острые клинки', desc: '+5% урона всем юнитам с начала похода', maxLevel: 4, costs: [40, 80, 130, 190] },
+            { category: '⚔️ Войско', id: 'armor', name: '🛡️ Кованые латы', desc: '+10 брони всем юнитам с начала похода (кроме Некроманта)', maxLevel: 4, costs: [35, 70, 115, 170] },
+            { category: '⚔️ Войско', id: 'init', name: '🐎 Стремительность', desc: '+2 к Инициативе всем юнитам с начала похода', maxLevel: 3, costs: [35, 70, 120] },
+            { category: '⚔️ Войско', id: 'cd', name: '🔄 Древние знания', desc: '-5% времени восстановления способностей за уровень', maxLevel: 3, costs: [50, 100, 170] },
+
+            // --- Экономика: бюджет и стоимость юнитов ---
+            { category: '💰 Экономика', id: 'budget', name: '💰 Расширенный бюджет', desc: '+5 к стартовому бюджету расстановки за уровень', maxLevel: 4, costs: [30, 60, 100, 150] },
+            { category: '💰 Экономика', id: 'unitcost', name: '🏷️ Военный торг', desc: '-1 к стоимости всех юнитов при расстановке за уровень (кроме Некроманта)', maxLevel: 2, costs: [80, 160] },
+            { category: '💰 Экономика', id: 'necrocost', name: '🧙‍♂️ Тёмная сделка', desc: '-4 к стоимости Некроманта при расстановке за уровень', maxLevel: 3, costs: [60, 110, 170] },
+
+            // --- Особые: уникальные механики похода ---
+            { category: '✨ Особые', id: 'extrachoice', name: '🔮 Дар Оракула', desc: 'После каждой волны предлагается на 1 вариант бонуса больше', maxLevel: 1, costs: [200] },
+            { category: '✨ Особые', id: 'startingbonus', name: '🎁 Военный совет', desc: 'Перед первой волной сразу даётся выбор одного бонуса для отряда', maxLevel: 1, costs: [140] },
+            { category: '✨ Особые', id: 'necropact', name: '🩸 Пакт с Тьмой', desc: 'Некромант теряет HP лишь за каждый второй призыв (вместо каждого)', maxLevel: 1, costs: [220] },
+            { category: '✨ Особые', id: 'continueCharges', name: '⏳ Второе дыхание', desc: 'Заряд: при разгроме отряд автоматически воскресает с 25% HP и бой продолжается (расходуется за поход)', maxLevel: 3, costs: [150, 220, 300] }
         ];
 
         class GameEngine {
@@ -892,7 +905,7 @@
                 const typeSelect = document.getElementById('setup-type');
                 const costDisplay = document.getElementById('setup-type-cost');
                 const updateCostDisplay = () => {
-                    costDisplay.innerText = `💰 ${UNIT_COST[typeSelect.value] || 5}`;
+                    costDisplay.innerText = `💰 ${this.getEffectiveUnitCost(typeSelect.value)}`;
                 };
                 typeSelect.addEventListener('change', updateCostDisplay);
                 updateCostDisplay();
@@ -911,10 +924,21 @@
                 this.updateCampaignBudgetUI();
             }
 
+            // Реальная стоимость юнита при расстановке с учётом скидок из Арсенала (только для игрока, враги считают по базовой цене)
+            getEffectiveUnitCost(type) {
+                const base = UNIT_COST[type] || 5;
+                if (type === 'necromancer') {
+                    const discount = 4 * (this.metaUpgrades.necrocost || 0);
+                    return Math.max(6, base - discount);
+                }
+                const discount = this.metaUpgrades.unitcost || 0;
+                return Math.max(1, base - discount);
+            }
+
             updateCampaignBudgetUI() {
                 const used = this.units
                     .filter(u => u.team === 'player')
-                    .reduce((sum, u) => sum + (UNIT_COST[u.id] || 5), 0);
+                    .reduce((sum, u) => sum + this.getEffectiveUnitCost(u.id), 0);
                 const displayEl = document.getElementById('campaign-budget-display');
                 if (displayEl) displayEl.innerText = `${used}/${this.campaignPlayerBudget}`;
                 const wavesEl = document.getElementById('campaign-waves-display');
@@ -927,7 +951,16 @@
                 const container = document.getElementById('armory-options');
                 container.innerHTML = '';
 
+                let lastCategory = null;
                 META_UPGRADES.forEach(upg => {
+                    if (upg.category && upg.category !== lastCategory) {
+                        lastCategory = upg.category;
+                        const header = document.createElement('div');
+                        header.style.cssText = 'font-family:\'Cinzel\',serif; font-size:12px; color:var(--gold-bright); margin:6px 0 -2px; letter-spacing:0.5px; opacity:0.9;';
+                        header.innerText = upg.category;
+                        container.appendChild(header);
+                    }
+
                     const level = this.metaUpgrades[upg.id] || 0;
                     const isMaxed = level >= upg.maxLevel;
                     const cost = isMaxed ? null : upg.costs[level];
@@ -979,8 +1012,11 @@
 
                 if (id === 'budget') {
                     this.campaignPlayerBudget = 45 + 5 * (this.metaUpgrades.budget || 0);
-                    this.updateCampaignBudgetUI();
                 }
+                this.updateCampaignBudgetUI();
+                const typeSelect = document.getElementById('setup-type');
+                const costDisplay = document.getElementById('setup-type-cost');
+                if (typeSelect && costDisplay) costDisplay.innerText = `💰 ${this.getEffectiveUnitCost(typeSelect.value)}`;
 
                 this.updateGloryDisplay();
                 this.renderArmoryModal();
@@ -989,12 +1025,13 @@
             // Применяет постоянные апгрейды Арсенала ко всем юнитам игрока в начале похода
             applyMetaUpgrades() {
                 const lv = this.metaUpgrades;
-                const hpLv = lv.hp || 0, dmgLv = lv.dmg || 0, armorLv = lv.armor || 0, cdLv = lv.cd || 0;
-                if (!hpLv && !dmgLv && !armorLv && !cdLv) return;
+                const hpLv = lv.hp || 0, dmgLv = lv.dmg || 0, armorLv = lv.armor || 0, cdLv = lv.cd || 0, initLv = lv.init || 0;
+                if (!hpLv && !dmgLv && !armorLv && !cdLv && !initLv) return;
 
                 this.units.filter(u => u.team === 'player').forEach(u => {
                     if (dmgLv > 0) u.dmg = Math.round(u.dmg * (1 + 0.05 * dmgLv));
                     if (cdLv > 0) u.cdReductionCampaign = Math.min(0.6, (u.cdReductionCampaign || 0) + 0.05 * cdLv);
+                    if (initLv > 0) { u.baseInitStat = (u.baseInitStat || u.init) + 2 * initLv; u.init = u.baseInitStat; }
                     if (u.id === 'necromancer') return; // Некромант не получает HP/броню ни от чего
                     if (hpLv > 0) { u.maxHp = Math.round(u.maxHp * (1 + 0.08 * hpLv)); u.hp = u.maxHp; }
                     if (armorLv > 0) { u.armor = (u.armor || 0) + 10 * armorLv; u.maxArmor = Math.max(u.maxArmor || 0, u.armor); }
@@ -1187,8 +1224,8 @@
                         let validZone = y >= PLAYER_ZONE_START - (tpl.size - 1);
 
                         if (validZone) {
-                            let used = this.units.filter(u => u.team === 'player').reduce((sum, u) => sum + (UNIT_COST[u.id] || 5), 0);
-                            let cost = UNIT_COST[type] || 5;
+                            let used = this.units.filter(u => u.team === 'player').reduce((sum, u) => sum + this.getEffectiveUnitCost(u.id), 0);
+                            let cost = this.getEffectiveUnitCost(type);
                             if (used + cost > this.campaignPlayerBudget) {
                                 alert(`Недостаточно бюджета! Нужно ${cost}, доступно ${this.campaignPlayerBudget - used}.`);
                                 return;
@@ -1341,7 +1378,13 @@
                 document.getElementById('setup-ui').classList.add('hidden');
                 document.getElementById('actions').classList.remove('hidden');
                 this.clearHighlights();
-                this.nextTurn();
+
+                if (this.metaUpgrades.startingbonus) {
+                    this.renderGrid();
+                    this.showStartBonusModal();
+                } else {
+                    this.nextTurn();
+                }
             }
 
             // Создает вражеского юнита указанного типа на клетке (x,y) с масштабированием по волне
@@ -1463,6 +1506,18 @@
             checkWaveProgression() {
                 let playerAlive = this.units.some(u => u.team === 'player' && u.hp > 0);
                 if (!playerAlive) {
+                    let revivable = this.units.filter(u => u.team === 'player' && u.hp <= 0 && u.id !== 'necromancer');
+                    if ((this.metaUpgrades.continueCharges || 0) > 0 && revivable.length > 0) {
+                        this.metaUpgrades.continueCharges -= 1;
+                        this.saveUpgrades();
+                        revivable.forEach(u => {
+                            u.hp = Math.max(1, Math.round(u.maxHp * 0.25));
+                            u.armor = 0;
+                        });
+                        this.renderGrid();
+                        alert(`⏳ Второе дыхание! Отряд воскрешён с 25% HP. Осталось зарядов: ${this.metaUpgrades.continueCharges}.`);
+                        return;
+                    }
                     this.gameOver = true;
                     alert(`💀 Поражение! Ваш отряд разбит на волне ${this.campaignWave}.\n\n⭐ Заработано Славы за поход: ${this.glorySessionEarned} (всего: ${this.metaGlory})\nПотратьте её в Арсенале перед следующей попыткой!`);
                     return;
@@ -1482,6 +1537,7 @@
             }
 
             showWaveBonusModal() {
+                document.getElementById('wave-bonus-title').innerText = '🏆 Волна отбита!';
                 const pool = CAMPAIGN_BONUSES.filter(b => !b.isAvailable || b.isAvailable(this));
                 for (let i = pool.length - 1; i > 0; i--) {
                     let j = Math.floor(Math.random() * (i + 1));
@@ -1498,6 +1554,42 @@
                     btn.style.padding = '8px';
                     btn.innerHTML = `${bonus.name}<span style="font-size:11px;">${bonus.desc}</span>`;
                     btn.onclick = () => this.applyCampaignBonus(bonus);
+                    container.appendChild(btn);
+                });
+
+                document.getElementById('wave-bonus-modal').classList.remove('hidden');
+                document.getElementById('modal-backdrop').classList.remove('hidden');
+            }
+
+            // "Военный совет": выбор одного бонуса перед первой волной (упомянутый апгрейд Арсенала)
+            showStartBonusModal() {
+                document.getElementById('wave-bonus-title').innerText = '🎁 Военный совет';
+                const pool = CAMPAIGN_BONUSES.filter(b => !b.isAvailable || b.isAvailable(this));
+                for (let i = pool.length - 1; i > 0; i--) {
+                    let j = Math.floor(Math.random() * (i + 1));
+                    [pool[i], pool[j]] = [pool[j], pool[i]];
+                }
+                const choices = pool.slice(0, 3);
+                const container = document.getElementById('wave-bonus-options');
+                container.innerHTML = '';
+
+                choices.forEach(bonus => {
+                    const btn = document.createElement('button');
+                    btn.className = 'success';
+                    btn.style.width = '100%';
+                    btn.style.padding = '8px';
+                    btn.innerHTML = `${bonus.name}<span style="font-size:11px;">${bonus.desc}</span>`;
+                    btn.onclick = () => {
+                        if (bonus.applyOnce) {
+                            bonus.applyOnce(this);
+                        } else {
+                            this.units.filter(u => u.team === 'player' && u.hp > 0).forEach(u => bonus.apply(u));
+                        }
+                        document.getElementById('wave-bonus-modal').classList.add('hidden');
+                        document.getElementById('modal-backdrop').classList.add('hidden');
+                        this.renderGrid();
+                        this.nextTurn();
+                    };
                     container.appendChild(btn);
                 });
 
@@ -2088,6 +2180,10 @@
             // Некромант расплачивается собственным здоровьем за каждый призыв — не может лечиться, поэтому этот ресурс конечен
             applySummonSelfDamage(caster) {
                 if (caster.id !== 'necromancer') return;
+                if (this.metaUpgrades.necropact) {
+                    caster.summonParity = (caster.summonParity || 0) + 1;
+                    if (caster.summonParity % 2 !== 0) return; // Пакт с Тьмой: урон только за каждый второй призыв
+                }
                 caster.hp -= 1;
                 this.spawnFloatingText(caster.x, caster.y, '-1 🩸', '#ff8888');
                 if (caster.hp <= 0) {
