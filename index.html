@@ -682,16 +682,16 @@
 
                     <div id="unit-select-row" class="setup-row" style="align-items: center;">
                         <select id="setup-type">
-                            <option value="dragon">🐉 Дракон (2x2) — 14</option>
+                            <option value="dragon">🐉 Дракон (2x2) — 22</option>
                             <option value="necromancer">🧙‍♂️ Некромант — 24</option>
                             <option value="knight">⚔️ Рыцарь — 6</option>
-                            <option value="crossbow">🏹 Арбалетчик — 5</option>
-                            <option value="ballista">🏗️ Балиста — 7</option>
-                            <option value="ent">🌳 Энт — 9</option>
+                            <option value="crossbow">🏹 Арбалетчик — 6</option>
+                            <option value="ballista">🏗️ Балиста — 9</option>
+                            <option value="ent">🌳 Энт — 11</option>
                             <option value="vampire">🦇 Вампир — 7</option>
                             <option value="stone_golem">🪨 Каменный Голем — 7</option>
                             <option value="chronomancer">🔮 Чародейка Времени — 7</option>
-                            <option value="berserker">🪓 Берсерк — 6</option>
+                            <option value="berserker">🪓 Берсерк — 8</option>
                             <option value="sniper">🎯 Снайпер — 6</option>
                             <option value="frost_mage">🧊 Маг Льда — 5</option>
                             <option value="specter">👻 Призрак — 6</option>
@@ -742,7 +742,7 @@
             crossbow: { id: 'crossbow', name: 'Арбалетчик', hp: 40, armor: 0, dmg: 50, dmgType: 'Стрела', init: 36, move: 3, range: 2, icon: '🏹', size: 1, passive: 'Пассивка: Высокая инициатива для быстрых дальних атак. Теряет дальность под угрозой врага в упор.\nАктивка: "Лечение" — восстанавливает +40 HP союзнику в радиусе 2.' },
             ballista: { id: 'ballista', name: 'Балиста', hp: 80, armor: 0, dmg: 80, dmgType: 'Физ', init: 10, move: 1, range: 4, icon: '🏗️', size: 1, passive: 'Пассивка "Осада": Наносит х5 урон по Энтам, х3 по Каменным Големам и х2 по Драконам. Теряет дальность под угрозой врага в упор. Иммунитет к Ауре Дракона.\nАктивка: "Подготовка" — необходимо активировать перед выстрелом.' },
             ent: { id: 'ent', name: 'Энт', hp: 250, armor: 50, dmg: 70, dmgType: 'Физ', init: 6, move: 1, range: 1, icon: '🌳', size: 1, passive: 'Пассивка "Кора Древа": Снижает входящий ФИЗИЧЕСКИЙ урон и стрелы на 80%. Атака наносит АОЕ урон всем вокруг.\nАктивка: "Окаменение" — дарует +150 Брони (КД: 3х).' },
-            dragon: { id: 'dragon', name: 'Дракон', hp: 120, armor: 0, dmg: 50, dmgType: 'Магия', init: 10, move: 6, range: 2, icon: '🐉', size: 2, passive: 'Пассивка "Ужасающая Аура": Враги в радиусе 2 теряют -10 Инициативы и наносят на -70% меньше урона. Полет через любые юниты и препятствия.\nПассивка "Жатва": При смерти ЛЮБОГО юнита получает +50 maxHP/+50 HP, +5 к Урону и +1 к Инициативе.' },
+            dragon: { id: 'dragon', name: 'Дракон', hp: 120, armor: 0, dmg: 46, dmgType: 'Магия', init: 10, move: 4, range: 2, icon: '🐉', size: 2, passive: 'Пассивка "Устрашающая Аура": Враги в радиусе 1 теряют -6 Инициативы и наносят на -35% меньше урона. Полет через любые юниты и препятствия.\nПассивка "Жатва": При смерти врага получает +18 maxHP/+18 HP, +2 к Урону и +1 к Инициативе (макс. 8 раз за бой).' },
             vampire: { id: 'vampire', name: 'Вампир', hp: 40, armor: 0, dmg: 30, dmgType: 'Физ', init: 24, move: 5, range: 1, icon: '🦇', size: 1, passive: 'Пассивка "Вампиризм": Излечивается на 100% от нанесенного урона. Каждая атака снижает инициативу цели на 1. Перемещение сквозь юнитов.\nАктивка: "Телепортация" — перемещается на любую клетку поля (КД: 4х).' },
             stone_golem: { id: 'stone_golem', name: 'Каменный Голем', hp: 120, armor: 0, dmg: 20, dmgType: 'Физ', init: 5, move: 1, range: 1, icon: '🪨', size: 1, passive: 'Пассивка "Каменная Закалка": После получения любого урона получает +10% защиты (макс. +90%) от физ. урона в ближнем бою и стрел. В конце каждого своего хода автоматически восстанавливает +40 Брони.' },
             chronomancer: { id: 'chronomancer', name: 'Чародейка Времени', hp: 30, armor: 0, dmg: 10, dmgType: 'Магия', init: 14, move: 2, range: 3, icon: '🔮', size: 1, passive: 'Пассивка "Аура Времени": +3 к Инициативе союзникам в радиусе 2. Теряет дальность под угрозой врага в упор.\nАктивка 1: "Замедление" — -30 шкалы хода и -8 Инициативы цели на 2 хода.\nАктивка 2: "Скачок" — моментально дарует ход союзнику.' },
@@ -757,9 +757,9 @@
         // ---- Режим "Кампания" ----
         // Стоимость юнитов для бюджетной расстановки
         const UNIT_COST = {
-            necromancer: 24, knight: 6, crossbow: 5, ballista: 7, ent: 9,
-            dragon: 14, vampire: 7, stone_golem: 7, chronomancer: 7,
-            berserker: 6, sniper: 6, frost_mage: 5, specter: 6, phoenix: 8
+            necromancer: 24, knight: 6, crossbow: 6, ballista: 9, ent: 11,
+            dragon: 22, vampire: 7, stone_golem: 7, chronomancer: 7,
+            berserker: 8, sniper: 6, frost_mage: 5, specter: 6, phoenix: 8
         };
 
         // Роли юнитов для осмысленной генерации и расстановки врагов
@@ -775,25 +775,25 @@
         // Часть бонусов применяется к каждому живому юниту (apply), часть — один раз на всю армию (applyOnce),
         // некоторые доступны только при определённых условиях (isAvailable).
         const CAMPAIGN_BONUSES = [
-            // --- Прямые усиления характеристик ---
-            { id: 'dmg', name: '💪 Мощь', desc: '+15% урона всем юнитам отряда', apply: (u) => { u.dmg = Math.max(1, Math.round(u.dmg * 1.15)); } },
-            { id: 'hp', name: '❤️ Живучесть', desc: '+20% макс. HP, полное исцеление (не влияет на Некроманта)', apply: (u) => { if (u.id === 'necromancer') return; u.maxHp = Math.round(u.maxHp * 1.2); u.hp = u.maxHp; } },
-            { id: 'armor', name: '🛡️ Броня', desc: '+50 брони (и макс. брони) всем юнитам (не влияет на Некроманта)', apply: (u) => { if (u.id === 'necromancer') return; u.armor = (u.armor || 0) + 50; u.maxArmor = Math.max(u.maxArmor || 0, u.armor); } },
-            { id: 'init', name: '⚡ Скорость', desc: '+5 к Инициативе всем юнитам', apply: (u) => { u.baseInitStat = (u.baseInitStat || u.init) + 5; u.init = u.baseInitStat; } },
+            // --- Прямые усиления характеристик (магнитуда снижена под 16-волновой поход) ---
+            { id: 'dmg', name: '💪 Мощь', desc: '+10% урона всем юнитам отряда', apply: (u) => { u.dmg = Math.max(1, Math.round(u.dmg * 1.10)); } },
+            { id: 'hp', name: '❤️ Живучесть', desc: '+15% макс. HP, полное исцеление (не влияет на Некроманта)', apply: (u) => { if (u.id === 'necromancer') return; u.maxHp = Math.round(u.maxHp * 1.15); u.hp = u.maxHp; } },
+            { id: 'armor', name: '🛡️ Броня', desc: '+35 брони (и макс. брони) всем юнитам (не влияет на Некроманта)', apply: (u) => { if (u.id === 'necromancer') return; u.armor = (u.armor || 0) + 35; u.maxArmor = Math.max(u.maxArmor || 0, u.armor); } },
+            { id: 'init', name: '⚡ Скорость', desc: '+4 к Инициативе всем юнитам', apply: (u) => { u.baseInitStat = (u.baseInitStat || u.init) + 4; u.init = u.baseInitStat; } },
             { id: 'heal', name: '✨ Восстановление', desc: 'Полностью восстановить HP и Броню всем юнитам (не влияет на Некроманта)', apply: (u) => { if (u.id === 'necromancer') return; u.hp = u.maxHp; if (u.maxArmor) u.armor = u.maxArmor; } },
-            { id: 'cd', name: '🔄 Мастерство', desc: '-20% времени восстановления способностей (макс. -60%)', apply: (u) => { u.cdReductionCampaign = Math.min(0.6, (u.cdReductionCampaign || 0) + 0.2); } },
+            { id: 'cd', name: '🔄 Мастерство', desc: '-15% времени восстановления способностей (макс. -50%)', apply: (u) => { u.cdReductionCampaign = Math.min(0.5, (u.cdReductionCampaign || 0) + 0.15); } },
             { id: 'range', name: '🏹 Меткость', desc: '+1 к дальности атаки всем юнитам', apply: (u) => { u.range += 1; } },
             { id: 'move', name: '🐎 Прыткость', desc: '+1 к дальности хода всем юнитам', apply: (u) => { u.move += 1; } },
             { id: 'ap', name: '⏱️ Внезапность', desc: 'Все юниты получают +50 очков хода (раньше поднимутся в очереди)', apply: (u) => { u.actionPoints = (u.actionPoints || 0) + 50; } },
 
-            // --- Новые тактические механики ---
-            { id: 'lifesteal', name: '🩸 Кровожадность', desc: '+15% похищения здоровья от нанесённого урона (не влияет на Некроманта)', apply: (u) => { if (u.id === 'necromancer') return; u.lifestealPct = Math.min(0.6, (u.lifestealPct || 0) + 0.15); } },
-            { id: 'thorns', name: '🌵 Шипы', desc: 'При ударе в ближнем бою отражает 20% урона атакующему', apply: (u) => { u.thornsPct = Math.min(0.8, (u.thornsPct || 0) + 0.2); } },
-            { id: 'reduction', name: '🪨 Стойкость', desc: '-10% получаемого урона (складывается)', apply: (u) => { u.dmgReductionPct = Math.min(0.5, (u.dmgReductionPct || 0) + 0.1); } },
-            { id: 'dodge', name: '🌙 Уклонение', desc: '+15% шанс полностью избежать урона от атаки', apply: (u) => { u.dodgeChance = Math.min(0.6, (u.dodgeChance || 0) + 0.15); } },
-            { id: 'crit', name: '💥 Критический удар', desc: '+20% шанс нанести x1.5 урона при атаке', apply: (u) => { u.critChance = Math.min(0.75, (u.critChance || 0) + 0.2); } },
+            // --- Тактические механики (магнитуда и потолки снижены) ---
+            { id: 'lifesteal', name: '🩸 Кровожадность', desc: '+12% похищения здоровья от нанесённого урона (не влияет на Некроманта)', apply: (u) => { if (u.id === 'necromancer') return; u.lifestealPct = Math.min(0.48, (u.lifestealPct || 0) + 0.12); } },
+            { id: 'thorns', name: '🌵 Шипы', desc: 'При ударе в ближнем бою отражает 15% урона атакующему', apply: (u) => { u.thornsPct = Math.min(0.7, (u.thornsPct || 0) + 0.15); } },
+            { id: 'reduction', name: '🪨 Стойкость', desc: '-8% получаемого урона (складывается)', apply: (u) => { u.dmgReductionPct = Math.min(0.45, (u.dmgReductionPct || 0) + 0.08); } },
+            { id: 'dodge', name: '🌙 Уклонение', desc: '+12% шанс полностью избежать урона от атаки', apply: (u) => { u.dodgeChance = Math.min(0.5, (u.dodgeChance || 0) + 0.12); } },
+            { id: 'crit', name: '💥 Критический удар', desc: '+15% шанс нанести x1.5 урона при атаке', apply: (u) => { u.critChance = Math.min(0.65, (u.critChance || 0) + 0.15); } },
             { id: 'laststand', name: '🕯️ Стойкий Дух', desc: 'При смертельном ударе выживает с 1 HP (один раз на юнита)', apply: (u) => { u.lastStandCharges = (u.lastStandCharges || 0) + 1; } },
-            { id: 'armorregen', name: '🔧 Саморемонт', desc: '+15 брони в конце каждого своего хода (не влияет на Некроманта)', apply: (u) => { if (u.id === 'necromancer') return; u.armorRegenPerTurn = (u.armorRegenPerTurn || 0) + 15; } },
+            { id: 'armorregen', name: '🔧 Саморемонт', desc: '+12 брони в конце каждого своего хода (не влияет на Некроманта)', apply: (u) => { if (u.id === 'necromancer') return; u.armorRegenPerTurn = (u.armorRegenPerTurn || 0) + 12; } },
 
             // --- Особые одноразовые эффекты на весь отряд ---
             {
@@ -855,14 +855,14 @@
         // так он естественно уменьшается и его снова можно докупить.
         const META_UPGRADES = [
             // --- Войско: прямые усиления характеристик ---
-            { category: '⚔️ Войско', id: 'hp', name: '❤️ Закалённые войска', desc: '+8% HP всем юнитам с начала похода (кроме Некроманта)', maxLevel: 4, costs: [40, 80, 130, 190] },
-            { category: '⚔️ Войско', id: 'dmg', name: '⚔️ Острые клинки', desc: '+5% урона всем юнитам с начала похода', maxLevel: 4, costs: [40, 80, 130, 190] },
-            { category: '⚔️ Войско', id: 'armor', name: '🛡️ Кованые латы', desc: '+10 брони всем юнитам с начала похода (кроме Некроманта)', maxLevel: 4, costs: [35, 70, 115, 170] },
+            { category: '⚔️ Войско', id: 'hp', name: '❤️ Закалённые войска', desc: '+8% HP всем юнитам с начала похода (кроме Некроманта)', maxLevel: 6, costs: [40, 80, 130, 190, 260, 340] },
+            { category: '⚔️ Войско', id: 'dmg', name: '⚔️ Острые клинки', desc: '+5% урона всем юнитам с начала похода', maxLevel: 6, costs: [40, 80, 130, 190, 260, 340] },
+            { category: '⚔️ Войско', id: 'armor', name: '🛡️ Кованые латы', desc: '+10 брони всем юнитам с начала похода (кроме Некроманта)', maxLevel: 6, costs: [35, 70, 115, 170, 240, 320] },
             { category: '⚔️ Войско', id: 'init', name: '🐎 Стремительность', desc: '+2 к Инициативе всем юнитам с начала похода', maxLevel: 3, costs: [35, 70, 120] },
             { category: '⚔️ Войско', id: 'cd', name: '🔄 Древние знания', desc: '-5% времени восстановления способностей за уровень', maxLevel: 3, costs: [50, 100, 170] },
 
             // --- Экономика: бюджет и стоимость юнитов ---
-            { category: '💰 Экономика', id: 'budget', name: '💰 Расширенный бюджет', desc: '+5 к стартовому бюджету расстановки за уровень', maxLevel: 4, costs: [30, 60, 100, 150] },
+            { category: '💰 Экономика', id: 'budget', name: '💰 Расширенный бюджет', desc: '+5 к стартовому бюджету расстановки за уровень', maxLevel: 6, costs: [30, 60, 100, 150, 220, 300] },
             { category: '💰 Экономика', id: 'unitcost', name: '🏷️ Военный торг', desc: '-1 к стоимости всех юнитов при расстановке за уровень (кроме Некроманта)', maxLevel: 2, costs: [80, 160] },
             { category: '💰 Экономика', id: 'necrocost', name: '🧙‍♂️ Тёмная сделка', desc: '-4 к стоимости Некроманта при расстановке за уровень', maxLevel: 3, costs: [60, 110, 170] },
 
@@ -870,7 +870,8 @@
             { category: '✨ Особые', id: 'extrachoice', name: '🔮 Дар Оракула', desc: 'После каждой волны предлагается на 1 вариант бонуса больше', maxLevel: 1, costs: [200] },
             { category: '✨ Особые', id: 'startingbonus', name: '🎁 Военный совет', desc: 'Перед первой волной сразу даётся выбор одного бонуса для отряда', maxLevel: 1, costs: [140] },
             { category: '✨ Особые', id: 'necropact', name: '🩸 Пакт с Тьмой', desc: 'Некромант теряет HP лишь за каждый второй призыв (вместо каждого)', maxLevel: 1, costs: [220] },
-            { category: '✨ Особые', id: 'continueCharges', name: '⏳ Второе дыхание', desc: 'Заряд: при разгроме отряд автоматически воскресает с 25% HP и бой продолжается (расходуется за поход)', maxLevel: 3, costs: [150, 220, 300] }
+            { category: '✨ Особые', id: 'continueCharges', name: '⏳ Второе дыхание', desc: 'Заряд: при разгроме отряд автоматически воскресает с 25% HP и бой продолжается (расходуется за поход)', maxLevel: 3, costs: [150, 220, 300] },
+            { category: '✨ Особые', id: 'doublerelic', name: '📜 Двойная Реликвия', desc: 'Перед стартом похода выбираются и действуют сразу 2 реликвии вместо 1', maxLevel: 1, costs: [380] }
         ];
 
         const META_SAVE_KEY_HEROES = 'medieval_meta_heroes_v1';
@@ -880,19 +881,32 @@
         const HERO_TYPES = {
             paladin: { id: 'paladin', name: 'Паладин', icon: '🎖️', unlockCost: 0,
                 baseHp: 140, baseArmor: 30, baseDmg: 18, dmgType: 'Физ', baseInit: 11, move: 2, range: 1, size: 1,
-                passive: 'Аура Защитника: союзники в радиусе 2 получают на 15% меньше урона. Сам получает на 10% меньше урона.' },
+                passive: 'Аура Защитника: союзники в радиусе 2 получают на 15% меньше урона. Сам получает на 10% меньше урона.',
+                signature: 'Аура эволюционирует: радиус 3, снижение урона 20%.' },
             ranger: { id: 'ranger', name: 'Следопыт', icon: '🧭', unlockCost: 100,
                 baseHp: 75, baseArmor: 0, baseDmg: 24, dmgType: 'Стрела', baseInit: 20, move: 3, range: 4, size: 1,
-                passive: 'Меткий Глаз: +15% шанс критического удара x1.5. Не теряет дальность рядом с врагами.' },
+                passive: 'Меткий Глаз: +15% шанс критического удара x1.5. Не теряет дальность рядом с врагами.',
+                signature: 'Критический урон усиливается до x2.' },
             warlock: { id: 'warlock', name: 'Тёмный Маг', icon: '💀', unlockCost: 150,
                 baseHp: 85, baseArmor: 0, baseDmg: 22, dmgType: 'Магия', baseInit: 13, move: 2, range: 3, size: 1,
-                passive: 'Тёмный Взрыв: атака дополнительно наносит 40% урона всем врагам рядом с целью.' },
+                passive: 'Тёмный Взрыв: атака дополнительно наносит 40% урона всем врагам рядом с целью.',
+                signature: 'Радиус взрыва увеличивается с 1 до 2 клеток.' },
             jarl: { id: 'jarl', name: 'Ярл', icon: '🪓', unlockCost: 200,
                 baseHp: 220, baseArmor: 20, baseDmg: 16, dmgType: 'Физ', baseInit: 9, move: 2, range: 1, size: 1,
-                passive: 'Боевая Ярость: за каждые потерянные 10% HP наносит +6% урона (макс. +54%).' },
+                passive: 'Боевая Ярость: за каждые потерянные 10% HP наносит +6% урона (макс. +54%).',
+                signature: 'Бонус растёт до +9% за 10% HP (макс. +81%).' },
             druid: { id: 'druid', name: 'Друид', icon: '🌿', unlockCost: 220,
                 baseHp: 100, baseArmor: 0, baseDmg: 14, dmgType: 'Магия', baseInit: 12, move: 2, range: 2, size: 1,
-                passive: 'Дух Природы: в конце своего хода лечит ближайшего раненого союзника на 18 HP.' }
+                passive: 'Дух Природы: в конце своего хода лечит ближайшего раненого союзника на 18 HP.',
+                signature: 'Лечит сразу 2 ближайших раненых союзника.' },
+            engineer: { id: 'engineer', name: 'Инженер', icon: '⚙️', unlockCost: 180,
+                baseHp: 90, baseArmor: 15, baseDmg: 20, dmgType: 'Физ', baseInit: 12, move: 2, range: 3, size: 1,
+                passive: 'Пробитие: урон по целям с бронёй увеличен на 50%. Инженерная выучка: получает на 20% меньше урона от Стрел.',
+                signature: 'Пробитие усиливается до +70% урона по бронированным целям.' },
+            inquisitor: { id: 'inquisitor', name: 'Инквизитор', icon: '⚜️', unlockCost: 260,
+                baseHp: 95, baseArmor: 10, baseDmg: 19, dmgType: 'Магия', baseInit: 14, move: 2, range: 2, size: 1,
+                passive: 'Экзорцист: урон по целям типа Магия увеличен на 50%. Очищение: в конце хода снимает заморозку/замедление с ближайшего союзника.',
+                signature: 'Очищение действует сразу на 2 ближайших союзников.' }
         };
 
         // Общий пул талантов героя — при повышении уровня выдаётся выбор из 2 случайных (без повторов)
@@ -972,13 +986,14 @@
                 this.metaGlory = this.loadGlory();
                 this.metaUpgrades = this.loadUpgrades();
                 this.heroSave = this.loadHeroSave();
+                this.expandedTalentsFor = null;
                 this.glorySessionEarned = 0;
                 this.campaignPlayerBudget = 45 + 5 * (this.metaUpgrades.budget || 0);
                 this.pendingHeroLevelUp = false;
 
                 // Биом, реликвия, боссы похода
                 this.currentBiome = BIOMES[Math.floor(Math.random() * BIOMES.length)];
-                this.activeRelic = null;
+                this.activeRelics = [];
                 this.phoenixBlessingUsed = false;
                 
                 this.initDOM();
@@ -1005,14 +1020,16 @@
             }
             defaultHeroSave() {
                 return {
-                    unlocked: { paladin: true, ranger: false, warlock: false, jarl: false, druid: false },
+                    unlocked: { paladin: true, ranger: false, warlock: false, jarl: false, druid: false, engineer: false, inquisitor: false },
                     active: 'paladin',
                     heroes: {
                         paladin: { level: 1, xp: 0, talents: [] },
                         ranger: { level: 1, xp: 0, talents: [] },
                         warlock: { level: 1, xp: 0, talents: [] },
                         jarl: { level: 1, xp: 0, talents: [] },
-                        druid: { level: 1, xp: 0, talents: [] }
+                        druid: { level: 1, xp: 0, talents: [] },
+                        engineer: { level: 1, xp: 0, talents: [] },
+                        inquisitor: { level: 1, xp: 0, talents: [] }
                     }
                 };
             }
@@ -1304,12 +1321,18 @@
                     desc.className = 'hero-card-desc';
                     desc.innerText = tpl.passive;
 
+                    const sig = document.createElement('div');
+                    sig.className = 'hero-card-desc';
+                    sig.style.color = unlocked && save.level >= 5 ? '#8fce4a' : '#e0aaff';
+                    sig.innerHTML = `${unlocked && save.level >= 5 ? '✅' : '🔒'} <b>Сигнатура (ур. 5):</b> ${tpl.signature}`;
+
                     const meta = document.createElement('div');
                     meta.className = 'hero-card-meta';
-                    meta.innerText = unlocked ? `Уровень ${save.level} • Талантов: ${save.talents.length}` : 'Заблокирован';
+                    meta.innerText = unlocked ? `Уровень ${save.level} • XP: ${save.xp}/${this.heroXpToNextLevel(save.level)}` : 'Заблокирован';
 
                     card.appendChild(top);
                     card.appendChild(desc);
+                    card.appendChild(sig);
                     card.appendChild(meta);
 
                     if (unlocked) {
@@ -1320,6 +1343,32 @@
                         xpFill.style.width = `${Math.min(100, Math.round((save.xp / this.heroXpToNextLevel(save.level)) * 100))}%`;
                         xpBar.appendChild(xpFill);
                         card.appendChild(xpBar);
+
+                        const talentsToggle = document.createElement('button');
+                        talentsToggle.className = 'secondary';
+                        talentsToggle.style.fontSize = '11px';
+                        talentsToggle.style.padding = '5px';
+                        talentsToggle.style.marginTop = '4px';
+                        const isExpanded = this.expandedTalentsFor === id;
+                        talentsToggle.innerText = isExpanded ? `▲ Скрыть таланты (взято ${save.talents.length})` : `▼ Таланты героя (взято ${save.talents.length}/${HERO_TALENTS.length})`;
+                        talentsToggle.onclick = () => {
+                            this.expandedTalentsFor = isExpanded ? null : id;
+                            this.renderHeroModal();
+                        };
+                        card.appendChild(talentsToggle);
+
+                        if (isExpanded) {
+                            const list = document.createElement('div');
+                            list.style.cssText = 'display:flex; flex-direction:column; gap:3px; margin-top:5px; padding:6px; background:rgba(0,0,0,0.2); border-radius:7px;';
+                            HERO_TALENTS.forEach(t => {
+                                const chosen = save.talents.includes(t.id);
+                                const row = document.createElement('div');
+                                row.style.cssText = `font-size:11px; ${chosen ? 'color:#8fce4a;' : 'color:#999;'}`;
+                                row.innerText = `${chosen ? '✅' : '○'} ${t.name} — ${t.desc}`;
+                                list.appendChild(row);
+                            });
+                            card.appendChild(list);
+                        }
                     }
 
                     container.appendChild(card);
@@ -1360,6 +1409,7 @@
                     x: spot.x, y: spot.y, team: 'player',
                     uid: this.nextUid++,
                     isHero: true,
+                    heroLevel: save.level,
                     waveLevel: 1,
                     hp: Math.round(tpl.baseHp * levelScale), maxHp: Math.round(tpl.baseHp * levelScale),
                     dmg: Math.round(tpl.baseDmg * levelScale),
@@ -1668,7 +1718,7 @@
                 document.getElementById('info-type').innerText = unit.dmgType;
                 
                 let mods = [];
-                if (unit.isDragonAuraAffected) mods.push("Аура Дракона (-70% урона)");
+                if (unit.isDragonAuraAffected) mods.push("Аура Дракона (-35% урона)");
                 if (unit.id === 'berserker') {
                     let missingPct = Math.floor((1 - (unit.hp / unit.maxHp)) * 20);
                     if (missingPct > 0) mods.push(`Ярость Берсерка (+${missingPct * 5} урона)`);
@@ -1686,7 +1736,7 @@
                 
                 let buffs = [];
                 if (unit.isPrepared) buffs.push("Готов к выстрелу");
-                if (unit.isDragonAuraAffected) buffs.push("Аура дракона (-10 инст.)");
+                if (unit.isDragonAuraAffected) buffs.push("Аура дракона (-6 инст.)");
                 if (unit.isChronoAuraAffected) buffs.push("Аура времени (+3 инст.)");
                 if (unit.isFrozen) buffs.push("🧊 Заморожен (-50% инст., 0 хода)");
                 if (unit.chronoSlowTurns > 0) buffs.push(`⏳ Замедление (-8 инст., ${unit.chronoSlowTurns}х.)`);
@@ -1725,11 +1775,20 @@
 
                 if (unit.id === 'jarl') {
                     let missingTenths = Math.floor((1 - (unit.hp / unit.maxHp)) * 10);
-                    dmg = Math.round(dmg * (1 + Math.min(9, missingTenths) * 0.06));
+                    let perTenth = (unit.heroLevel >= 5) ? 0.09 : 0.06; // Несокрушимая Ярость (сигнатура ур.5)
+                    dmg = Math.round(dmg * (1 + Math.min(9, missingTenths) * perTenth));
+                }
+
+                if (unit.id === 'engineer' && target && (target.armor || 0) > 0) {
+                    dmg = Math.round(dmg * (unit.heroLevel >= 5 ? 1.7 : 1.5)); // Пробитие (сигнатура ур.5: +70%)
+                }
+
+                if (unit.id === 'inquisitor' && target && target.dmgType === 'Магия') {
+                    dmg = Math.round(dmg * 1.5); // Экзорцист
                 }
 
                 if (unit.isDragonAuraAffected) {
-                    dmg = Math.floor(dmg * 0.3);
+                    dmg = Math.floor(dmg * 0.65);
                 }
 
                 if (unit.id === 'sniper' && target) {
@@ -1744,14 +1803,22 @@
                 this.units = this.units.filter(u => u.team === 'player');
                 if (this.units.length === 0) return alert("Поставьте хотя бы одного синего юнита в рамках бюджета!");
 
+                this.activeRelics = [];
                 this.clearHighlights();
                 this.showRelicChoiceModal(() => this._beginBattleAfterRelic());
             }
 
             // Показывает выбор реликвии похода (1 из 3), затем передаёт управление дальше
             showRelicChoiceModal(onDone) {
-                document.getElementById('wave-bonus-title').innerText = '💎 Выберите реликвию похода';
-                const pool = [...RELICS];
+                const relicsToPick = this.metaUpgrades.doublerelic ? 2 : 1;
+                this.pendingRelicPicks = relicsToPick;
+                this._relicPickStep(onDone);
+            }
+
+            _relicPickStep(onDone) {
+                const stepLabel = this.pendingRelicPicks > 1 ? ` (выбор ${(this.metaUpgrades.doublerelic ? 2 : 1) - this.pendingRelicPicks + 1}/2)` : '';
+                document.getElementById('wave-bonus-title').innerText = '💎 Выберите реликвию похода' + stepLabel;
+                const pool = RELICS.filter(r => !this.activeRelics.includes(r.id));
                 for (let i = pool.length - 1; i > 0; i--) {
                     let j = Math.floor(Math.random() * (i + 1));
                     [pool[i], pool[j]] = [pool[j], pool[i]];
@@ -1767,11 +1834,16 @@
                     btn.style.padding = '8px';
                     btn.innerHTML = `${relic.name}<span style="font-size:11px;">${relic.desc}</span>`;
                     btn.onclick = () => {
-                        this.activeRelic = relic.id;
+                        this.activeRelics.push(relic.id);
                         relic.apply(this);
+                        this.pendingRelicPicks--;
                         document.getElementById('wave-bonus-modal').classList.add('hidden');
                         document.getElementById('modal-backdrop').classList.add('hidden');
-                        onDone();
+                        if (this.pendingRelicPicks > 0) {
+                            this._relicPickStep(onDone);
+                        } else {
+                            onDone();
+                        }
                     };
                     container.appendChild(btn);
                 });
@@ -1876,7 +1948,9 @@
 
             // Бюджет врагов на волну N в Кампании (растет быстрее, чем у игрока)
             getCampaignEnemyBudget(waveNumber) {
-                return Math.round(24 + waveNumber * 13 + Math.pow(waveNumber, 1.2));
+                // Смягчённый старт (даёт новым игрокам продержаться первые волны и заработать Славу),
+                // но более резкий рост к поздним волнам — 16-волновой поход остаётся серьёзным вызовом
+                return Math.round(16 + waveNumber * 10.5 + Math.pow(waveNumber, 1.35));
             }
 
             // Осмысленная генерация состава врагов: гарантированный танк + дальник, затем заполнение бюджета
@@ -2005,14 +2079,28 @@
                 }
             }
 
-            showWaveBonusModal() {
-                document.getElementById('wave-bonus-title').innerText = '🏆 Волна отбита!';
-                const pool = CAMPAIGN_BONUSES.filter(b => !b.isAvailable || b.isAvailable(this));
+            // Выбирает случайные бонусы, избегая недавно взятых (для разнообразия сборки за 16 волн)
+            pickBonusChoices(count) {
+                let pool = CAMPAIGN_BONUSES.filter(b => !b.isAvailable || b.isAvailable(this));
+                const recent = this.recentBonusIds || [];
+                let filtered = pool.filter(b => !recent.includes(b.id));
+                if (filtered.length >= count) pool = filtered;
                 for (let i = pool.length - 1; i > 0; i--) {
                     let j = Math.floor(Math.random() * (i + 1));
                     [pool[i], pool[j]] = [pool[j], pool[i]];
                 }
-                const choices = pool.slice(0, 3 + (this.metaUpgrades.extrachoice ? 1 : 0));
+                return pool.slice(0, count);
+            }
+
+            trackBonusPick(id) {
+                this.recentBonusIds = this.recentBonusIds || [];
+                this.recentBonusIds.push(id);
+                if (this.recentBonusIds.length > 4) this.recentBonusIds.shift();
+            }
+
+            showWaveBonusModal() {
+                document.getElementById('wave-bonus-title').innerText = '🏆 Волна отбита!';
+                const choices = this.pickBonusChoices(3 + (this.metaUpgrades.extrachoice ? 1 : 0));
                 const container = document.getElementById('wave-bonus-options');
                 container.innerHTML = '';
 
@@ -2033,12 +2121,7 @@
             // "Военный совет": выбор одного бонуса перед первой волной (упомянутый апгрейд Арсенала)
             showStartBonusModal() {
                 document.getElementById('wave-bonus-title').innerText = '🎁 Военный совет';
-                const pool = CAMPAIGN_BONUSES.filter(b => !b.isAvailable || b.isAvailable(this));
-                for (let i = pool.length - 1; i > 0; i--) {
-                    let j = Math.floor(Math.random() * (i + 1));
-                    [pool[i], pool[j]] = [pool[j], pool[i]];
-                }
-                const choices = pool.slice(0, 3);
+                const choices = this.pickBonusChoices(3);
                 const container = document.getElementById('wave-bonus-options');
                 container.innerHTML = '';
 
@@ -2054,6 +2137,7 @@
                         } else {
                             this.units.filter(u => u.team === 'player' && u.hp > 0).forEach(u => bonus.apply(u));
                         }
+                        this.trackBonusPick(bonus.id);
                         document.getElementById('wave-bonus-modal').classList.add('hidden');
                         document.getElementById('modal-backdrop').classList.add('hidden');
                         this.renderGrid();
@@ -2082,6 +2166,7 @@
                 } else {
                     this.units.filter(u => u.team === 'player' && u.hp > 0).forEach(u => bonus.apply(u));
                 }
+                this.trackBonusPick(bonus.id);
                 document.getElementById('wave-bonus-modal').classList.add('hidden');
                 document.getElementById('modal-backdrop').classList.add('hidden');
                 this.awaitingWaveBonus = false;
@@ -2130,9 +2215,9 @@
                         if (target.hp <= 0 || target.team === dragon.team) return;
                         if (['dragon', 'ent', 'vampire', 'ballista'].includes(target.id)) return;
 
-                        if (this.getDistance(dragon, target.x, target.y, target.size) <= 2) {
+                        if (this.getDistance(dragon, target.x, target.y, target.size) <= 1) {
                             let scale = 1 + ((dragon.waveLevel || 1) - 1) * 0.10;
-                            target.init -= Math.round(10 * scale);
+                            target.init -= Math.round(6 * scale);
                             target.isDragonAuraAffected = true;
                         }
                     });
@@ -2582,10 +2667,20 @@
                     rawDmg = Math.max(1, Math.round(rawDmg * (1 - defender.dmgReductionPct)));
                 }
 
-                // Аура Паладина: находящиеся рядом союзники получают доп. -15% урона
+                if (defender.id === 'engineer' && attacker.dmgType === 'Стрела') {
+                    rawDmg = Math.max(1, Math.round(rawDmg * 0.8)); // Инженерная выучка
+                }
+
+                // Аура Паладина: находящиеся рядом союзники получают доп. снижение урона (сигнатура ур.5: радиус 2→3, -15%→-20%)
                 if (defender.team === 'player') {
-                    const paladinNearby = this.units.some(u => u.isHero && u.id === 'paladin' && u.team === 'player' && u.hp > 0 && u !== defender && this.getDistance(u, defender.x, defender.y, defender.size) <= 2);
-                    if (paladinNearby) rawDmg = Math.max(1, Math.round(rawDmg * 0.85));
+                    const paladinHero = this.units.find(u => u.isHero && u.id === 'paladin' && u.team === 'player' && u.hp > 0 && u !== defender);
+                    if (paladinHero) {
+                        const auraRadius = paladinHero.heroLevel >= 5 ? 3 : 2;
+                        const auraReduction = paladinHero.heroLevel >= 5 ? 0.80 : 0.85;
+                        if (this.getDistance(paladinHero, defender.x, defender.y, defender.size) <= auraRadius) {
+                            rawDmg = Math.max(1, Math.round(rawDmg * auraReduction));
+                        }
+                    }
                 }
 
                 if (defender.id === 'stone_golem') {
@@ -2617,7 +2712,7 @@
                 }
 
                 // Реликвия "Благословение Феникса": первая смерть за поход отменяется
-                if (defender.hp <= 0 && this.activeRelic === 'phoenixblessing' && !this.phoenixBlessingUsed && defender.id !== 'necromancer') {
+                if (defender.hp <= 0 && this.activeRelics.includes('phoenixblessing') && !this.phoenixBlessingUsed && defender.id !== 'necromancer') {
                     this.phoenixBlessingUsed = true;
                     defender.hp = Math.max(1, Math.round(defender.maxHp * 0.5));
                     this.spawnFloatingText(defender.x, defender.y, '🌟 Благословение Феникса!', '#ffe066');
@@ -2640,7 +2735,7 @@
                         defender.passive = UNIT_TYPES.phoenix_egg.passive;
                     } else {
                         // Реликвия "Кровавый Алтарь": добивающий удар лечит атакующего
-                        if (this.activeRelic === 'bloodaltar' && attacker && attacker.team === 'player' && attacker.id !== 'necromancer' && attacker.hp > 0) {
+                        if (this.activeRelics.includes('bloodaltar') && attacker && attacker.team === 'player' && attacker.id !== 'necromancer' && attacker.hp > 0) {
                             let healAmt = Math.round(attacker.maxHp * 0.2);
                             attacker.hp = Math.min(attacker.maxHp, attacker.hp + healAmt);
                             this.spawnFloatingText(attacker.x, attacker.y, `+${healAmt} 🩸`, '#ff6666');
@@ -2657,24 +2752,31 @@
                             });
                             this.spawnFloatingText(defender.x, defender.y, '🏆 ТРОФЕЙ БОССА!', '#ffb347');
                         }
-                        this.triggerHarvestOnDeath();
+                        this.triggerHarvestOnDeath(defender.team);
                     }
                 }
             }
 
-            triggerHarvestOnDeath() {
-                const dragons = this.units.filter(u => u.id === 'dragon' && u.hp > 0);
+            // Дракон получает "Жатву" только за смерть ВРАГА (не союзника), и не более 8 раз за бой —
+            // иначе аура + бесконечный снежный ком превращают дракона в неубиваемого бога поздней игры
+            triggerHarvestOnDeath(dyingUnitTeam) {
+                const dragons = this.units.filter(u => u.id === 'dragon' && u.hp > 0 && u.team !== dyingUnitTeam);
                 dragons.forEach(d => {
+                    d.harvestStacks = d.harvestStacks || 0;
+                    if (d.harvestStacks >= 8) return;
+                    d.harvestStacks++;
+
                     let scale = 1 + ((d.waveLevel || 1) - 1) * 0.10;
-                    let hpGain = Math.round(50 * scale);
-                    let dmgGain = Math.round(5 * scale);
-                    let initGain = Math.round(1 * scale);
+                    let hpGain = Math.round(18 * scale);
+                    let dmgGain = Math.round(2 * scale);
+                    let initGain = 1;
 
                     d.maxHp += hpGain;
                     d.hp += hpGain;
                     d.bonusDmg = (d.bonusDmg || 0) + dmgGain;
                     d.bonusInit = (d.bonusInit || 0) + initGain;
                     d.init += initGain;
+                    this.spawnFloatingText(d.x, d.y, `+${hpGain} 🌾`, '#ffb347');
                 });
             }
 
@@ -2688,7 +2790,7 @@
                 caster.hp -= 1;
                 this.spawnFloatingText(caster.x, caster.y, '-1 🩸', '#ff8888');
                 if (caster.hp <= 0) {
-                    this.triggerHarvestOnDeath();
+                    this.triggerHarvestOnDeath(caster.team);
                 }
             }
 
@@ -2711,7 +2813,7 @@
                             if (u.id === 'specter') dmg = 0;
 
                             let isCrit = attacker.critChance && Math.random() < attacker.critChance;
-                            if (isCrit) dmg = Math.round(dmg * 1.5);
+                            if (isCrit) dmg = Math.round(dmg * ((attacker.id === 'ranger' && attacker.heroLevel >= 5) ? 2.0 : 1.5));
 
                             this.applyDamageToUnit(attacker, u, dmg);
                             this.playUnitAnim(u.uid, 'unit-anim-hit', 380);
@@ -2734,7 +2836,7 @@
                     if (typeof dmg !== 'number') dmg = this.getActualDmg(attacker, defender);
 
                     let isCrit = attacker.critChance && Math.random() < attacker.critChance;
-                    if (isCrit) dmg = Math.round(dmg * 1.5);
+                    if (isCrit) dmg = Math.round(dmg * ((attacker.id === 'ranger' && attacker.heroLevel >= 5) ? 2.0 : 1.5));
 
                     this.applyDamageToUnit(attacker, defender, dmg);
                     this.playUnitAnim(defender.uid, 'unit-anim-hit', 380);
@@ -2760,11 +2862,12 @@
                         }
                     }
 
-                    // Тёмный Маг: доп. урон по площади вокруг цели
+                    // Тёмный Маг: доп. урон по площади вокруг цели (сигнатура ур.5: радиус 1→2)
                     if (attacker.id === 'warlock') {
+                        const splashRadius = attacker.heroLevel >= 5 ? 2 : 1;
                         this.units.forEach(u => {
                             if (u === defender || u.hp <= 0 || u.team === attacker.team) return;
-                            if (this.getDistance(defender, u.x, u.y, u.size) <= 1) {
+                            if (this.getDistance(defender, u.x, u.y, u.size) <= splashRadius) {
                                 let splashDmg = Math.max(1, Math.round((typeof dmg === 'number' ? dmg : this.getActualDmg(attacker, u)) * 0.4));
                                 this.applyDamageToUnit(attacker, u, splashDmg);
                                 this.playUnitAnim(u.uid, 'unit-anim-hit', 320);
@@ -2818,13 +2921,28 @@
                         this.activeUnit.isFrozen = false;
                     }
                     if (this.activeUnit.id === 'druid') {
+                        // Сигнатура ур.5 "Двойное Исцеление": лечит 2 ближайших раненых союзника вместо 1
+                        const healCount = this.activeUnit.heroLevel >= 5 ? 2 : 1;
                         const wounded = this.units
                             .filter(u => u.team === 'player' && u.hp > 0 && u.hp < u.maxHp && u !== this.activeUnit && u.id !== 'necromancer')
-                            .sort((a, b) => this.getDistance(this.activeUnit, a.x, a.y, a.size) - this.getDistance(this.activeUnit, b.x, b.y, b.size))[0];
-                        if (wounded) {
-                            wounded.hp = Math.min(wounded.maxHp, wounded.hp + 18);
-                            this.spawnFloatingText(wounded.x, wounded.y, '+18 🌿', '#8fce4a');
-                        }
+                            .sort((a, b) => this.getDistance(this.activeUnit, a.x, a.y, a.size) - this.getDistance(this.activeUnit, b.x, b.y, b.size))
+                            .slice(0, healCount);
+                        wounded.forEach(w => {
+                            w.hp = Math.min(w.maxHp, w.hp + 18);
+                            this.spawnFloatingText(w.x, w.y, '+18 🌿', '#8fce4a');
+                        });
+                    }
+                    if (this.activeUnit.id === 'inquisitor') {
+                        const cleanseCount = this.activeUnit.heroLevel >= 5 ? 2 : 1;
+                        const afflicted = this.units
+                            .filter(u => u.team === 'player' && u.hp > 0 && u !== this.activeUnit && (u.isFrozen || u.chronoSlowTurns > 0))
+                            .sort((a, b) => this.getDistance(this.activeUnit, a.x, a.y, a.size) - this.getDistance(this.activeUnit, b.x, b.y, b.size))
+                            .slice(0, cleanseCount);
+                        afflicted.forEach(u => {
+                            u.isFrozen = false;
+                            u.chronoSlowTurns = 0;
+                            this.spawnFloatingText(u.x, u.y, '✨ Очищение', '#ffe066');
+                        });
                     }
                 }
 
