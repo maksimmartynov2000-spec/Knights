@@ -847,6 +847,7 @@
         // ---- Прогресс между забегами ("Арсенал") ----
         const META_SAVE_KEY_GLORY = 'medieval_meta_glory_v1';
         const META_SAVE_KEY_UPGRADES = 'medieval_meta_upgrades_v1';
+        const GAME_STATE_SAVE_KEY = 'medieval_game_state_v1';
         const GLORY_PER_WAVE = 10;
         const GLORY_VICTORY_BONUS = 50;
 
@@ -997,8 +998,87 @@
                 this.phoenixBlessingUsed = false;
                 
                 this.initDOM();
-                this.generateSmartTerrain();
+
+                // Продолжить сохранённую партию (расстановку или бой), если она есть
+                const saved = this.loadGameState();
+                if (saved && !saved.gameOver) {
+                    this.restoreGameState(saved);
+                } else {
+                    this.generateSmartTerrain();
+                    this.renderGrid();
+                }
+            }
+
+            // --- Сохранение партии целиком (расстановка/бой), чтобы продолжить после закрытия вкладки ---
+            saveGameState() {
+                if (this.gameOver) return;
+                try {
+                    const snapshot = {
+                        state: this.state,
+                        units: this.units,
+                        obstacles: this.obstacles,
+                        campaignWave: this.campaignWave,
+                        campaignTotalWaves: this.campaignTotalWaves,
+                        campaignPlayerBudget: this.campaignPlayerBudget,
+                        awaitingWaveBonus: this.awaitingWaveBonus,
+                        gameOver: this.gameOver,
+                        activeRelics: this.activeRelics,
+                        biomeId: this.currentBiome ? this.currentBiome.id : null,
+                        phoenixBlessingUsed: this.phoenixBlessingUsed,
+                        glorySessionEarned: this.glorySessionEarned,
+                        nextUid: this.nextUid,
+                        recentBonusIds: this.recentBonusIds || []
+                    };
+                    localStorage.setItem(GAME_STATE_SAVE_KEY, JSON.stringify(snapshot));
+                } catch (e) { /* хранилище недоступно — прогресс не сохранится между сессиями */ }
+            }
+            loadGameState() {
+                try { return JSON.parse(localStorage.getItem(GAME_STATE_SAVE_KEY) || 'null'); }
+                catch (e) { return null; }
+            }
+            clearGameState() {
+                try { localStorage.removeItem(GAME_STATE_SAVE_KEY); }
+                catch (e) { /* хранилище недоступно */ }
+            }
+
+            // Восстанавливает партию из сохранения (расстановка или бой в процессе)
+            restoreGameState(saved) {
+                this.state = saved.state || 'SETUP';
+                this.units = saved.units || [];
+                this.obstacles = saved.obstacles || [];
+                this.campaignWave = saved.campaignWave || 1;
+                this.campaignTotalWaves = saved.campaignTotalWaves || 16;
+                this.campaignPlayerBudget = saved.campaignPlayerBudget || this.campaignPlayerBudget;
+                this.awaitingWaveBonus = !!saved.awaitingWaveBonus;
+                this.gameOver = false;
+                this.activeRelics = saved.activeRelics || [];
+                this.currentBiome = BIOMES.find(b => b.id === saved.biomeId) || this.currentBiome;
+                this.phoenixBlessingUsed = !!saved.phoenixBlessingUsed;
+                this.glorySessionEarned = saved.glorySessionEarned || 0;
+                this.nextUid = saved.nextUid || this.nextUid;
+                this.recentBonusIds = saved.recentBonusIds || [];
+
                 this.renderGrid();
+                this.updateCampaignBudgetUI();
+                const biomeEl = document.getElementById('biome-display');
+                if (biomeEl && this.currentBiome) biomeEl.innerText = this.currentBiome.name;
+
+                if (this.state === 'BATTLE') {
+                    document.getElementById('setup-ui').classList.add('hidden');
+                    document.getElementById('actions').classList.remove('hidden');
+
+                    if (this.awaitingWaveBonus) {
+                        this.showWaveBonusModal();
+                    } else {
+                        // Мягкий рестарт очереди ходов (не сохраняем позицию посреди раунда — избегаем хрупких краевых случаев)
+                        this.units.forEach(u => { u.actionPoints = 0; });
+                        this.activeUnit = null;
+                        this.nextTurn();
+                    }
+                } else {
+                    document.getElementById('setup-ui').classList.remove('hidden');
+                    document.getElementById('actions').classList.add('hidden');
+                }
             }
 
             // --- Сохранение прогресса (localStorage; если недоступно — прогресс живёт только в рамках вкладки) ---
@@ -1891,7 +1971,9 @@
 
             // Создает вражеского юнита указанного типа на клетке (x,y) с масштабированием по волне
             pushEnemyUnit(tpl, x, y, waveNumber, scale, overrides = null) {
-                let scaledHp = Math.round(tpl.hp * scale);
+                // Некромант никогда не масштабируется по HP — иначе он превращается в неубиваемую губку
+                // (получает строго 1 урона от любой атаки, так что рост HP делает бой с ним мучительно долгим)
+                let scaledHp = tpl.id === 'necromancer' ? tpl.hp : Math.round(tpl.hp * scale);
                 let scaledDmg = Math.round(tpl.dmg * scale);
                 let scaledInit = Math.round(tpl.init * scale);
 
@@ -2057,7 +2139,8 @@
                         return;
                     }
                     this.gameOver = true;
-                    alert(`💀 Поражение! Ваш отряд разбит на волне ${this.campaignWave}.\n\n⭐ Заработано Славы за поход: ${this.glorySessionEarned} (всего: ${this.metaGlory})\nПотратьте её в Арсенале перед следующей попыткой!`);
+                    this.clearGameState();
+                    this.showCampaignEndScreen(false);
                     return;
                 }
                 let enemiesAlive = this.units.some(u => u.team === 'enemy' && u.hp > 0);
@@ -2067,7 +2150,8 @@
                     if (this.campaignWave >= this.campaignTotalWaves) {
                         this.gameOver = true;
                         this.awardGlory(GLORY_VICTORY_BONUS);
-                        alert(`🏆 Победа! Вы прошли всю Кампанию "Средневековье"!\n\n⭐ Заработано Славы за поход: ${this.glorySessionEarned} (всего: ${this.metaGlory})\nЗагляните в Арсенал — там уже есть, на что её потратить!`);
+                        this.clearGameState();
+                        this.showCampaignEndScreen(true);
                         return;
                     }
                     this.awaitingWaveBonus = true;
@@ -2175,11 +2259,75 @@
 
                 if (this.campaignWave > this.campaignTotalWaves) {
                     this.gameOver = true;
-                    alert('🏆 Поздравляем! Кампания "Средневековье" полностью пройдена!');
+                    this.awardGlory(GLORY_VICTORY_BONUS);
+                    this.clearGameState();
+                    this.showCampaignEndScreen(true);
                     return;
                 }
                 this.spawnCampaignWave(this.campaignWave);
                 this.nextTurn();
+            }
+
+            // Экран завершения похода (победа/поражение) со сводкой и кнопкой возврата в меню
+            showCampaignEndScreen(won) {
+                document.getElementById('wave-bonus-title').innerText = won ? '🏆 Победа!' : '💀 Поражение';
+                const container = document.getElementById('wave-bonus-options');
+                container.innerHTML = '';
+
+                const summary = document.createElement('p');
+                summary.style.cssText = 'font-size:12px; color:#ccc; text-align:center; margin-bottom:10px;';
+                summary.innerText = won
+                    ? `Вы прошли всю Кампанию "Средневековье"!\n⭐ Заработано Славы за поход: ${this.glorySessionEarned} (всего: ${this.metaGlory})`
+                    : `Ваш отряд разбит на волне ${this.campaignWave}.\n⭐ Заработано Славы за поход: ${this.glorySessionEarned} (всего: ${this.metaGlory})`;
+                container.appendChild(summary);
+
+                const btn = document.createElement('button');
+                btn.className = 'primary';
+                btn.style.width = '100%';
+                btn.style.padding = '10px';
+                btn.innerText = '🏠 На главный экран';
+                btn.onclick = () => {
+                    document.getElementById('wave-bonus-modal').classList.add('hidden');
+                    document.getElementById('modal-backdrop').classList.add('hidden');
+                    this.returnToMenu();
+                };
+                container.appendChild(btn);
+
+                this.renderGrid();
+                document.getElementById('wave-bonus-modal').classList.remove('hidden');
+                document.getElementById('modal-backdrop').classList.remove('hidden');
+            }
+
+            // Полный сброс к экрану расстановки для нового похода
+            returnToMenu() {
+                this.clearGameState();
+                this.units = [];
+                this.obstacles = [];
+                this.state = 'SETUP';
+                this.activeUnit = null;
+                this.selectedAction = null;
+                this.actionTarget = null;
+                this.summonType = null;
+                this.campaignWave = 1;
+                this.gameOver = false;
+                this.awaitingWaveBonus = false;
+                this.pendingHeroLevelUp = false;
+                this.glorySessionEarned = 0;
+                this.activeRelics = [];
+                this.phoenixBlessingUsed = false;
+                this.recentBonusIds = [];
+                this.campaignPlayerBudget = 45 + 5 * (this.metaUpgrades.budget || 0);
+                this.currentBiome = BIOMES[Math.floor(Math.random() * BIOMES.length)];
+
+                document.getElementById('setup-ui').classList.remove('hidden');
+                document.getElementById('actions').classList.add('hidden');
+                document.getElementById('unit-info-header').innerText = '⚔️ Средневековье — Режим расстановки';
+
+                this.generateSmartTerrain();
+                this.renderGrid();
+                this.updateCampaignBudgetUI();
+                const biomeEl = document.getElementById('biome-display');
+                if (biomeEl) biomeEl.innerText = this.currentBiome.name;
             }
 
             applyGlobalAuras(simUnitsList = null) {
@@ -2194,6 +2342,15 @@
                         let missingPct = Math.floor((1 - (u.hp / u.maxHp)) * 20);
                         let scale = 1 + ((u.waveLevel || 1) - 1) * 0.10;
                         u.init += Math.round(missingPct * 3 * scale);
+                    }
+
+                    // Жёсткий инвариант: Некромант (свой и вражеский) никогда не превышает 10 HP и никогда не получает броню,
+                    // независимо от источника (волна, бонус, реликвия, апгрейд) — проверяется каждый ход для надёжности
+                    if (u.id === 'necromancer') {
+                        u.maxHp = 10;
+                        if (u.hp > 10) u.hp = 10;
+                        u.armor = 0;
+                        u.maxArmor = 0;
                     }
                 });
 
@@ -3313,6 +3470,8 @@
                         this.cells[u.y][u.x].appendChild(uDiv);
                     }
                 });
+
+                this.saveGameState();
             }
         }
 
