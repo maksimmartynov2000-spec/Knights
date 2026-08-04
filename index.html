@@ -525,6 +525,25 @@
             animation: modalPopIn 0.22s ease-out;
         }
         #hero-modal h3 { font-family: 'Cinzel', serif; color: var(--gold-bright); text-align: center; margin-bottom: 4px; }
+
+        #savecode-modal {
+            position: fixed;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(180deg, rgba(28,28,32,0.98), rgba(16,16,19,0.98));
+            padding: 18px;
+            border-radius: 14px;
+            border: 2px solid var(--gold);
+            z-index: 1000;
+            width: 92%;
+            max-width: 360px;
+            max-height: 86vh;
+            overflow-y: auto;
+            color: white;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.75), 0 0 30px rgba(212,175,55,0.3);
+            animation: modalPopIn 0.22s ease-out;
+        }
+        #savecode-modal h3 { font-family: 'Cinzel', serif; color: var(--gold-bright); text-align: center; margin-bottom: 4px; }
         .hero-card {
             display: flex;
             flex-direction: column;
@@ -610,7 +629,10 @@
 </head>
 <body>
     <div id="game-ui">
-        <div id="turn-queue-container"><div id="turn-queue"></div></div>
+        <div id="top-bar-row" style="display: flex; gap: 5px; align-items: stretch; flex-shrink: 0;">
+            <div id="turn-queue-container" style="flex: 1;"><div id="turn-queue"></div></div>
+            <button id="surrender-btn" class="hidden" style="flex-grow: 0; margin-bottom: 5px; padding: 0 10px; font-size: 16px; background: linear-gradient(180deg, #5a5a62, #3d3d43); border: 1px solid #85858d; border-radius: 10px;">🏳️</button>
+        </div>
         
         <div id="grid-container">
             <div id="grid"></div>
@@ -658,6 +680,34 @@
                 <div id="hero-options" style="display: flex; flex-direction: column; gap: 8px;"></div>
                 <button id="close-hero" style="width: 100%; margin-top: 12px; padding: 9px; background: linear-gradient(180deg, #2f7fdb, #0d4c96); border: 1px solid var(--player-glow); border-radius: 7px; color: white; font-weight: 700;">Закрыть</button>
             </div>
+
+            <div id="savecode-modal" class="hidden">
+                <h3>🔑 Слава и сохранение</h3>
+                <p style="font-size: 11px; color: #aaa; text-align: center; margin-bottom: 10px;">Если прогресс вдруг обнулился (браузер Telegram иногда чистит хранилище) — можно вручную вернуть Славу или сохранить/загрузить весь прогресс кодом.</p>
+
+                <div class="armory-item" style="margin-bottom: 8px;">
+                    <div class="armory-item-name">💰 Добавить Славу вручную</div>
+                    <div class="setup-row" style="margin-top: 6px;">
+                        <input id="cheat-glory-input" type="number" min="0" placeholder="Например 200" style="flex:1; padding:7px; background:linear-gradient(180deg,#35353b,#292930); color:#eee; border:1px solid #55555c; border-radius:6px; font-size:12px;">
+                        <button id="cheat-glory-apply" class="success" style="flex-grow:0; padding:7px 12px;">Добавить</button>
+                    </div>
+                </div>
+
+                <div class="armory-item" style="margin-bottom: 8px;">
+                    <div class="armory-item-name">📤 Код сохранения (Слава + Арсенал + Герои)</div>
+                    <div class="armory-item-desc">Скопируй этот код и сохрани его где-нибудь (заметки, чат с собой) — после потери прогресса вставь его обратно.</div>
+                    <textarea id="savecode-export" readonly style="width:100%; margin-top:6px; height:54px; font-size:10px; background:#111; color:#8fce4a; border:1px solid #444; border-radius:6px; padding:6px; resize:none;"></textarea>
+                    <button id="savecode-copy-btn" class="secondary" style="width:100%; margin-top:6px; padding:7px; font-size:11px;">📋 Скопировать код</button>
+                </div>
+
+                <div class="armory-item">
+                    <div class="armory-item-name">📥 Восстановить по коду</div>
+                    <textarea id="savecode-import" placeholder="Вставь сюда ранее сохранённый код..." style="width:100%; margin-top:6px; height:54px; font-size:10px; background:#111; color:#eee; border:1px solid #444; border-radius:6px; padding:6px; resize:none;"></textarea>
+                    <button id="savecode-import-btn" class="primary" style="width:100%; margin-top:6px; padding:7px; font-size:11px;">📥 Восстановить прогресс</button>
+                </div>
+
+                <button id="close-savecode" style="width: 100%; margin-top: 12px; padding: 9px; background: linear-gradient(180deg, #2f7fdb, #0d4c96); border: 1px solid var(--player-glow); border-radius: 7px; color: white; font-weight: 700;">Закрыть</button>
+            </div>
         </div>
 
         <div id="action-panel">
@@ -668,6 +718,7 @@
                     <span style="font-family: 'Cinzel', serif; font-size: 13px; color: var(--gold-bright); font-weight: 700;">⭐ Слава: <span id="glory-display">0</span></span>
                     <button id="open-hero-btn" class="secondary" style="padding: 5px 10px; font-size: 11px; flex-grow: 0;">🦸 Герой</button>
                     <button id="open-armory-btn" class="secondary" style="padding: 5px 10px; font-size: 11px; flex-grow: 0;">🏛️ Арсенал</button>
+                    <button id="open-savecode-btn" class="secondary" style="padding: 5px 8px; font-size: 11px; flex-grow: 0;">🔑</button>
                 </div>
 
                 <div id="setup-controls">
@@ -696,6 +747,9 @@
                             <option value="frost_mage">🧊 Маг Льда — 5</option>
                             <option value="specter">👻 Призрак — 6</option>
                             <option value="phoenix">🌟 Феникс — 8</option>
+                            <option value="alchemist">🧪 Алхимик — 6</option>
+                            <option value="wolf_rider">🐺 Наездник на Волке — 7</option>
+                            <option value="priest">⛪ Жрец — 6</option>
                         </select>
                         <span id="setup-type-cost" style="font-size: 12px; color: #ffd700; white-space: nowrap; padding: 0 4px; font-weight: bold;">💰 6</span>
                     </div>
@@ -751,7 +805,10 @@
             frost_mage: { id: 'frost_mage', name: 'Маг Льда', hp: 35, armor: 0, dmg: 18, dmgType: 'Магия', init: 14, move: 2, range: 3, icon: '🧊', size: 1, passive: 'Пассивка "Глубокая Заморозка": Каждая атака замораживает цель (блокирует Move на 0, снижает Инициативу на 50%). Теряет дальность под угрозой врага в упор.' },
             specter: { id: 'specter', name: 'Призрак', hp: 30, armor: 0, dmg: 20, dmgType: 'Магия', init: 15, move: 4, range: 1, icon: '👻', size: 1, passive: 'Пассивка "Бестелесность": Полный иммунитет к физ. урону и стрелам. Получает х2 урон от Магии. Проходит сквозь юнитов и препятствия.' },
             phoenix: { id: 'phoenix', name: 'Феникс', hp: 50, armor: 0, dmg: 25, dmgType: 'Магия', init: 17, move: 4, range: 2, icon: '🌟', size: 1, passive: 'Пассивка "Возрождение": Летает сквозь юниты и препятствия. При смерти превращается в Яйцо Феникса и перерождается с удвоенными HP и Уроном!' },
-            phoenix_egg: { id: 'phoenix_egg', name: 'Яйцо Феникса', hp: 20, armor: 0, dmg: 0, dmgType: 'Нет', init: 17, move: 0, range: 0, icon: '🥚', size: 1, passive: 'Пассивка: Не может совершать действия. Автоматически перерождается в усовершенствованного Феникса при наступлении хода.' }
+            phoenix_egg: { id: 'phoenix_egg', name: 'Яйцо Феникса', hp: 20, armor: 0, dmg: 0, dmgType: 'Нет', init: 17, move: 0, range: 0, icon: '🥚', size: 1, passive: 'Пассивка: Не может совершать действия. Автоматически перерождается в усовершенствованного Феникса при наступлении хода.' },
+            alchemist: { id: 'alchemist', name: 'Алхимик', hp: 45, armor: 0, dmg: 16, dmgType: 'Магия', init: 13, move: 2, range: 3, icon: '🧪', size: 1, passive: 'Пассивка "Ядовитая Смесь": Атака накладывает яд (3 урона в начале каждого хода цели, 3 хода, стакается до 3 раз).' },
+            wolf_rider: { id: 'wolf_rider', name: 'Наездник на Волке', hp: 60, armor: 0, dmg: 24, dmgType: 'Физ', init: 19, move: 5, range: 1, icon: '🐺', size: 1, passive: 'Пассивка "Стая": Наносит +15% урона, если в радиусе 2 есть другой союзный Наездник на Волке.' },
+            priest: { id: 'priest', name: 'Жрец', hp: 50, armor: 0, dmg: 8, dmgType: 'Магия', init: 16, move: 2, range: 2, icon: '⛪', size: 1, passive: 'Пассивка "Целитель": Активка лечит союзника на 35 HP и снимает заморозку/замедление (КД: 2х).' }
         };
 
         // ---- Режим "Кампания" ----
@@ -759,15 +816,16 @@
         const UNIT_COST = {
             necromancer: 24, knight: 6, crossbow: 6, ballista: 9, ent: 11,
             dragon: 22, vampire: 7, stone_golem: 7, chronomancer: 7,
-            berserker: 8, sniper: 6, frost_mage: 5, specter: 6, phoenix: 8
+            berserker: 8, sniper: 6, frost_mage: 5, specter: 6, phoenix: 8,
+            alchemist: 6, wolf_rider: 7, priest: 6
         };
 
         // Роли юнитов для осмысленной генерации и расстановки врагов
         const UNIT_ROLES = {
             knight: 'tank', ent: 'tank', stone_golem: 'tank',
-            crossbow: 'ranged', ballista: 'ranged', sniper: 'ranged',
-            necromancer: 'support', chronomancer: 'support', frost_mage: 'support',
-            vampire: 'skirmisher', berserker: 'skirmisher',
+            crossbow: 'ranged', ballista: 'ranged', sniper: 'ranged', alchemist: 'ranged',
+            necromancer: 'support', chronomancer: 'support', frost_mage: 'support', priest: 'support',
+            vampire: 'skirmisher', berserker: 'skirmisher', wolf_rider: 'skirmisher',
             dragon: 'flyer', phoenix: 'flyer', specter: 'flyer'
         };
 
@@ -907,7 +965,15 @@
             inquisitor: { id: 'inquisitor', name: 'Инквизитор', icon: '⚜️', unlockCost: 260,
                 baseHp: 95, baseArmor: 10, baseDmg: 19, dmgType: 'Магия', baseInit: 14, move: 2, range: 2, size: 1,
                 passive: 'Экзорцист: урон по целям типа Магия увеличен на 50%. Очищение: в конце хода снимает заморозку/замедление с ближайшего союзника.',
-                signature: 'Очищение действует сразу на 2 ближайших союзников.' }
+                signature: 'Очищение действует сразу на 2 ближайших союзников.' },
+            witch: { id: 'witch', name: 'Ведьма', icon: '🧿', unlockCost: 240,
+                baseHp: 80, baseArmor: 0, baseDmg: 20, dmgType: 'Магия', baseInit: 15, move: 2, range: 3, size: 1,
+                passive: 'Проклятие: атака накладывает на цель -20% урона на 2 хода.',
+                signature: 'Проклятие дополнительно снижает броню цели на 30% при наложении.' },
+            shade: { id: 'shade', name: 'Тень', icon: '🥷', unlockCost: 280,
+                baseHp: 70, baseArmor: 0, baseDmg: 26, dmgType: 'Физ', baseInit: 22, move: 4, range: 1, size: 1,
+                passive: 'Казнь: +50% урона по целям с HP ниже 30% от макс. Теневой Шаг: раз в 3 хода телепортируется на любую свободную клетку.',
+                signature: 'Порог "Казни" повышен до 40% HP.' }
         };
 
         // Общий пул талантов героя — при повышении уровня выдаётся выбор из 2 случайных (без повторов)
@@ -1066,6 +1132,7 @@
                 if (this.state === 'BATTLE') {
                     document.getElementById('setup-ui').classList.add('hidden');
                     document.getElementById('actions').classList.remove('hidden');
+                    document.getElementById('surrender-btn').classList.remove('hidden');
 
                     if (this.awaitingWaveBonus) {
                         this.showWaveBonusModal();
@@ -1078,6 +1145,7 @@
                 } else {
                     document.getElementById('setup-ui').classList.remove('hidden');
                     document.getElementById('actions').classList.add('hidden');
+                    document.getElementById('surrender-btn').classList.add('hidden');
                 }
             }
 
@@ -1100,7 +1168,7 @@
             }
             defaultHeroSave() {
                 return {
-                    unlocked: { paladin: true, ranger: false, warlock: false, jarl: false, druid: false, engineer: false, inquisitor: false },
+                    unlocked: { paladin: true, ranger: false, warlock: false, jarl: false, druid: false, engineer: false, inquisitor: false, witch: false, shade: false },
                     active: 'paladin',
                     heroes: {
                         paladin: { level: 1, xp: 0, talents: [] },
@@ -1109,7 +1177,9 @@
                         jarl: { level: 1, xp: 0, talents: [] },
                         druid: { level: 1, xp: 0, talents: [] },
                         engineer: { level: 1, xp: 0, talents: [] },
-                        inquisitor: { level: 1, xp: 0, talents: [] }
+                        inquisitor: { level: 1, xp: 0, talents: [] },
+                        witch: { level: 1, xp: 0, talents: [] },
+                        shade: { level: 1, xp: 0, talents: [] }
                     }
                 };
             }
@@ -1181,6 +1251,7 @@
                 }
 
                 document.getElementById('start-battle-btn').addEventListener('click', () => this.startBattle());
+                document.getElementById('surrender-btn').addEventListener('click', () => this.surrenderCampaign());
                 document.getElementById('clear-terrain-btn').addEventListener('click', () => {
                     this.obstacles = [];
                     this.renderGrid();
@@ -1240,11 +1311,94 @@
                     document.getElementById('modal-backdrop').classList.add('hidden');
                 });
 
+                document.getElementById('open-savecode-btn').addEventListener('click', () => {
+                    this.renderSaveCodeModal();
+                    document.getElementById('savecode-modal').classList.remove('hidden');
+                    document.getElementById('modal-backdrop').classList.remove('hidden');
+                });
+                document.getElementById('close-savecode').addEventListener('click', () => {
+                    document.getElementById('savecode-modal').classList.add('hidden');
+                    document.getElementById('modal-backdrop').classList.add('hidden');
+                });
+                document.getElementById('cheat-glory-apply').addEventListener('click', () => {
+                    const input = document.getElementById('cheat-glory-input');
+                    const amount = parseInt(input.value, 10);
+                    if (!amount || amount <= 0) return;
+                    this.metaGlory += amount;
+                    this.saveGlory();
+                    this.updateGloryDisplay();
+                    input.value = '';
+                    this.renderSaveCodeModal();
+                    alert(`✅ Добавлено ${amount} Славы. Теперь: ${this.metaGlory}.`);
+                });
+                document.getElementById('savecode-copy-btn').addEventListener('click', () => {
+                    const ta = document.getElementById('savecode-export');
+                    ta.select();
+                    try {
+                        if (navigator.clipboard && navigator.clipboard.writeText) {
+                            navigator.clipboard.writeText(ta.value);
+                        } else {
+                            document.execCommand('copy');
+                        }
+                        alert('📋 Код скопирован! Сохрани его в надёжном месте.');
+                    } catch (e) {
+                        alert('Не удалось скопировать автоматически — выдели текст в поле вручную и скопируй.');
+                    }
+                });
+                document.getElementById('savecode-import-btn').addEventListener('click', () => {
+                    const code = document.getElementById('savecode-import').value.trim();
+                    if (!code) return;
+                    if (this.importSaveCode(code)) {
+                        alert('✅ Прогресс восстановлен из кода!');
+                        this.renderSaveCodeModal();
+                        this.updateGloryDisplay();
+                    } else {
+                        alert('❌ Не удалось прочитать код — проверь, что скопировал его полностью.');
+                    }
+                });
+
                 const biomeEl = document.getElementById('biome-display');
                 if (biomeEl && this.currentBiome) biomeEl.innerText = this.currentBiome.name;
 
                 this.updateGloryDisplay();
                 this.updateCampaignBudgetUI();
+            }
+
+            // Формирует код сохранения (Слава + Арсенал + Герои) в текстовое поле
+            renderSaveCodeModal() {
+                const data = { glory: this.metaGlory, upgrades: this.metaUpgrades, heroes: this.heroSave, v: 1 };
+                let code = '';
+                try { code = btoa(unescape(encodeURIComponent(JSON.stringify(data)))); }
+                catch (e) { code = JSON.stringify(data); }
+                const ta = document.getElementById('savecode-export');
+                if (ta) ta.value = code;
+            }
+
+            // Восстанавливает Славу/Арсенал/Героев из кода сохранения. Возвращает true при успехе.
+            importSaveCode(code) {
+                try {
+                    let json;
+                    try { json = decodeURIComponent(escape(atob(code))); }
+                    catch (e) { json = code; }
+                    const data = JSON.parse(json);
+                    if (typeof data.glory !== 'number' || !data.upgrades || !data.heroes) return false;
+
+                    this.metaGlory = data.glory;
+                    this.metaUpgrades = data.upgrades;
+                    this.heroSave = data.heroes;
+                    Object.keys(HERO_TYPES).forEach(id => {
+                        if (!this.heroSave.heroes[id]) this.heroSave.heroes[id] = { level: 1, xp: 0, talents: [] };
+                        if (this.heroSave.unlocked[id] === undefined) this.heroSave.unlocked[id] = false;
+                    });
+                    this.campaignPlayerBudget = 45 + 5 * (this.metaUpgrades.budget || 0);
+
+                    this.saveGlory();
+                    this.saveUpgrades();
+                    this.saveHeroSave();
+                    return true;
+                } catch (e) {
+                    return false;
+                }
             }
 
             // Реальная стоимость юнита при расстановке с учётом скидок из Арсенала (только для игрока, враги считают по базовой цене)
@@ -1867,6 +2021,22 @@
                     dmg = Math.round(dmg * 1.5); // Экзорцист
                 }
 
+                if (unit.id === 'shade' && target) {
+                    let executeThreshold = unit.heroLevel >= 5 ? 0.4 : 0.3;
+                    if (target.hp < target.maxHp * executeThreshold) {
+                        dmg = Math.round(dmg * 1.5); // Казнь
+                    }
+                }
+
+                if (unit.id === 'wolf_rider') {
+                    let packmate = this.units.some(u => u.id === 'wolf_rider' && u !== unit && u.team === unit.team && u.hp > 0 && this.getDistance(unit, u.x, u.y, u.size) <= 2);
+                    if (packmate) dmg = Math.round(dmg * 1.15); // Стая
+                }
+
+                if (unit.witchCurseTurns > 0) {
+                    dmg = Math.round(dmg * (unit.witchCurseDmgMult || 0.8)); // Проклятие Ведьмы
+                }
+
                 if (unit.isDragonAuraAffected) {
                     dmg = Math.floor(dmg * 0.65);
                 }
@@ -1959,6 +2129,7 @@
                 this.state = 'BATTLE';
                 document.getElementById('setup-ui').classList.add('hidden');
                 document.getElementById('actions').classList.remove('hidden');
+                document.getElementById('surrender-btn').classList.remove('hidden');
                 this.clearHighlights();
 
                 if (this.metaUpgrades.startingbonus) {
@@ -2269,16 +2440,18 @@
             }
 
             // Экран завершения похода (победа/поражение) со сводкой и кнопкой возврата в меню
-            showCampaignEndScreen(won) {
-                document.getElementById('wave-bonus-title').innerText = won ? '🏆 Победа!' : '💀 Поражение';
+            showCampaignEndScreen(won, surrendered = false) {
+                document.getElementById('wave-bonus-title').innerText = surrendered ? '🏳️ Поход прерван' : (won ? '🏆 Победа!' : '💀 Поражение');
                 const container = document.getElementById('wave-bonus-options');
                 container.innerHTML = '';
 
                 const summary = document.createElement('p');
                 summary.style.cssText = 'font-size:12px; color:#ccc; text-align:center; margin-bottom:10px;';
-                summary.innerText = won
-                    ? `Вы прошли всю Кампанию "Средневековье"!\n⭐ Заработано Славы за поход: ${this.glorySessionEarned} (всего: ${this.metaGlory})`
-                    : `Ваш отряд разбит на волне ${this.campaignWave}.\n⭐ Заработано Славы за поход: ${this.glorySessionEarned} (всего: ${this.metaGlory})`;
+                summary.innerText = surrendered
+                    ? `Вы завершили поход досрочно на волне ${this.campaignWave}. Уже заработанная Слава остаётся с вами.\n⭐ Заработано Славы за поход: ${this.glorySessionEarned} (всего: ${this.metaGlory})`
+                    : (won
+                        ? `Вы прошли всю Кампанию "Средневековье"!\n⭐ Заработано Славы за поход: ${this.glorySessionEarned} (всего: ${this.metaGlory})`
+                        : `Ваш отряд разбит на волне ${this.campaignWave}.\n⭐ Заработано Славы за поход: ${this.glorySessionEarned} (всего: ${this.metaGlory})`);
                 container.appendChild(summary);
 
                 const btn = document.createElement('button');
@@ -2296,6 +2469,17 @@
                 this.renderGrid();
                 document.getElementById('wave-bonus-modal').classList.remove('hidden');
                 document.getElementById('modal-backdrop').classList.remove('hidden');
+            }
+
+            // Досрочное завершение похода игроком — уже заработанная Слава уже начислена по ходу боя и никуда не денется
+            surrenderCampaign() {
+                if (this.state !== 'BATTLE' || this.gameOver) return;
+                const ok = confirm('Точно завершить поход досрочно? Уже заработанная Слава останется с вами, но текущий прогресс похода будет потерян.');
+                if (!ok) return;
+                this.gameOver = true;
+                this.clearGameState();
+                document.getElementById('surrender-btn').classList.add('hidden');
+                this.showCampaignEndScreen(false, true);
             }
 
             // Полный сброс к экрану расстановки для нового похода
@@ -2321,6 +2505,7 @@
 
                 document.getElementById('setup-ui').classList.remove('hidden');
                 document.getElementById('actions').classList.add('hidden');
+                document.getElementById('surrender-btn').classList.add('hidden');
                 document.getElementById('unit-info-header').innerText = '⚔️ Средневековье — Режим расстановки';
 
                 this.generateSmartTerrain();
@@ -2423,7 +2608,20 @@
                         }
 
                         if (this.activeUnit.chronoSlowTurns > 0) this.activeUnit.chronoSlowTurns--;
+                        if (this.activeUnit.witchCurseTurns > 0) this.activeUnit.witchCurseTurns--;
                         if (this.activeUnit.vampireDebuffs > 0) this.activeUnit.vampireDebuffs = 0;
+
+                        if ((this.activeUnit.poisonStacks || 0) > 0 && this.activeUnit.hp > 0) {
+                            let poisonDmg = 3 * this.activeUnit.poisonStacks;
+                            this.applyDamageToUnit({ id: 'poison', dmgType: 'Магия', team: 'enemy' }, this.activeUnit, poisonDmg);
+                            this.spawnFloatingText(this.activeUnit.x, this.activeUnit.y, `-${poisonDmg} 🧪`, '#8fce4a');
+                            this.activeUnit.poisonTurnsLeft = (this.activeUnit.poisonTurnsLeft || 1) - 1;
+                            if (this.activeUnit.poisonTurnsLeft <= 0) this.activeUnit.poisonStacks = 0;
+                            if (this.activeUnit.hp <= 0) {
+                                this.endTurn();
+                                return;
+                            }
+                        }
                         
                         this.applyGlobalAuras();
 
@@ -2528,6 +2726,17 @@
                     if (cd > 0) { btn.disabled = true; btn.innerText += ` (${cd})`; }
                 }
 
+                if (u.id === 'shade') {
+                    let cd = u.cooldowns['ShadeStep'] || 0;
+                    let btn = this.createBtn(panel, '🥷 Теневой Шаг', 'success', () => {
+                        this.clearHighlights();
+                        this.selectedAction = 'shade_teleport';
+                        this.resetTarget();
+                        this.highlightTeleport();
+                    });
+                    if (cd > 0) { btn.disabled = true; btn.innerText += ` (${cd})`; }
+                }
+
                 if (u.id === 'necromancer') {
                     ['knight','crossbow','ballista','ent','dragon','vampire','stone_golem','chronomancer','berserker','sniper','frost_mage','specter','phoenix'].forEach(type => {
                         let cdKey = 'summon_' + type;
@@ -2565,6 +2774,18 @@
                         this.resetTarget(); 
                         this.highlightHeal();
                     });
+                }
+
+                if (u.id === 'priest') {
+                    let cd = u.cooldowns['PriestHeal'] || 0;
+                    let healAmount = Math.round(35 * (1 + (wl - 1) * 0.10));
+                    let btn = this.createBtn(panel, `⛪ Целитель (+${healAmount})`, 'success', () => {
+                        this.clearHighlights();
+                        this.selectedAction = 'priest_heal';
+                        this.resetTarget();
+                        this.highlightHeal();
+                    });
+                    if (cd > 0) { btn.disabled = true; btn.innerText += ` (${cd})`; }
                 }
 
                 if (u.id === 'ballista') {
@@ -2686,6 +2907,17 @@
                         this.finishAction(300);
                     }
                 }
+                else if (this.selectedAction === 'shade_teleport') {
+                    if (this.isCellFree(x, y, au.size, au)) {
+                        au.x = x;
+                        au.y = y;
+                        au.cooldowns['ShadeStep'] = this.getAdjustedCooldown(3, wl, au);
+                        this.renderGrid();
+                        this.playUnitAnim(au.uid, 'unit-anim-spawn', 300);
+                        this.spawnFloatingText(x, y, '🥷', '#888888');
+                        this.finishAction(300);
+                    }
+                }
                 else if (this.selectedAction === 'attack') {
                     if (dist <= curRange && targetUnit && targetUnit.team !== au.team) {
                         if (au.id === 'sniper' && dist < 3) return alert("Снайпер не может атаковать цели ближе 3 клеток!");
@@ -2737,6 +2969,22 @@
                         this.playUnitAnim(au.uid, 'unit-anim-attack', 260);
                         this.playUnitAnim(targetUnit.uid, 'unit-anim-buff', 500);
                         this.spawnFloatingText(targetUnit.x, targetUnit.y, `+${healAmount}`, '#00ff88');
+                        this.finishAction(340);
+                    }
+                }
+                else if (this.selectedAction === 'priest_heal') {
+                    if (targetUnit && targetUnit.id === 'necromancer') {
+                        alert('Некромант защищён Призрачным Щитом и не может исцеляться!');
+                        this.resetTarget();
+                    } else if (targetUnit && targetUnit.team === au.team && dist <= curRange) {
+                        let healAmount = Math.round(35 * (1 + (wl - 1) * 0.10));
+                        targetUnit.hp = Math.min(targetUnit.maxHp, targetUnit.hp + healAmount);
+                        targetUnit.isFrozen = false;
+                        targetUnit.chronoSlowTurns = 0;
+                        au.cooldowns['PriestHeal'] = this.getAdjustedCooldown(2, wl, au);
+                        this.playUnitAnim(au.uid, 'unit-anim-attack', 260);
+                        this.playUnitAnim(targetUnit.uid, 'unit-anim-buff', 500);
+                        this.spawnFloatingText(targetUnit.x, targetUnit.y, `+${healAmount} ⛪`, '#00ff88');
                         this.finishAction(340);
                     }
                 }
@@ -3002,6 +3250,22 @@
                     if (attacker.id === 'frost_mage' && defender.hp > 0) {
                         defender.isFrozen = true;
                         this.spawnFloatingText(defender.x, defender.y, '🧊', '#66e0ff');
+                    }
+
+                    if (attacker.id === 'witch' && defender.hp > 0) {
+                        defender.witchCurseTurns = 2;
+                        defender.witchCurseDmgMult = 0.8;
+                        if (attacker.heroLevel >= 5) {
+                            defender.armor = Math.round((defender.armor || 0) * 0.7);
+                            defender.maxArmor = Math.round((defender.maxArmor || 0) * 0.7);
+                        }
+                        this.spawnFloatingText(defender.x, defender.y, '🧿 Проклятие', '#c77dff');
+                    }
+
+                    if (attacker.id === 'alchemist' && defender.hp > 0) {
+                        defender.poisonStacks = Math.min(3, (defender.poisonStacks || 0) + 1);
+                        defender.poisonTurnsLeft = 3;
+                        this.spawnFloatingText(defender.x, defender.y, `🧪 Яд x${defender.poisonStacks}`, '#8fce4a');
                     }
 
                     this.checkCounterAttack(defender, attacker, dmg, dist);
