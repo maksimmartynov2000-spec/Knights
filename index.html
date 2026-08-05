@@ -706,6 +706,12 @@
                     <button id="savecode-import-btn" class="primary" style="width:100%; margin-top:6px; padding:7px; font-size:11px;">📥 Восстановить прогресс</button>
                 </div>
 
+                <div class="armory-item" style="margin-bottom: 8px; border-color: rgba(255,80,80,0.3);">
+                    <div class="armory-item-name" style="color:#ff8080;">⚠️ Сбросить весь прогресс</div>
+                    <div class="armory-item-desc">Обнулит Славу, Арсенал, всех героев и текущий поход. Начнёшь с чистого листа. Отменить нельзя.</div>
+                    <button id="reset-progress-btn" class="danger" style="width:100%; margin-top:6px; padding:7px; font-size:11px;">🗑️ Сбросить всё и начать заново</button>
+                </div>
+
                 <button id="close-savecode" style="width: 100%; margin-top: 12px; padding: 9px; background: linear-gradient(180deg, #2f7fdb, #0d4c96); border: 1px solid var(--player-glow); border-radius: 7px; color: white; font-weight: 700;">Закрыть</button>
             </div>
         </div>
@@ -752,6 +758,11 @@
                             <option value="priest">⛪ Жрец — 6</option>
                         </select>
                         <span id="setup-type-cost" style="font-size: 12px; color: #ffd700; white-space: nowrap; padding: 0 4px; font-weight: bold;">💰 6</span>
+                    </div>
+
+                    <div id="hero-place-row" class="setup-row" style="align-items: center; justify-content: space-between; background: rgba(255,215,0,0.06); border-radius: 8px; padding: 5px 8px;">
+                        <span id="hero-place-label" style="font-size: 12px; color: var(--gold-bright);">🦸 Герой: —</span>
+                        <button id="hero-place-btn" class="success" style="padding: 5px 10px; font-size: 11px; flex-grow: 0;">📍 Разместить</button>
                     </div>
 
                     <div id="terrain-select-row" class="setup-row hidden">
@@ -896,6 +907,7 @@
                         isFrozen: false, chronoSlowTurns: 0, golemStacks: 0, isReborn: false,
                         lastPhoenixHp: sHp, lastPhoenixDmg: sDmg
                     };
+                    engine.applyUnitLevelGrowth(newUnit);
                     engine.units.push(newUnit);
                     engine.spawnFloatingText(spot.x, spot.y, '✨ Подкрепление!', '#cc66ff');
                 }
@@ -934,6 +946,9 @@
         ];
 
         const META_SAVE_KEY_HEROES = 'medieval_meta_heroes_v1';
+        const META_SAVE_KEY_UNITS = 'medieval_meta_units_v1';
+        const UNIT_SIGNATURE_LEVEL = 4;
+        const UNIT_XP_PER_WAVE = 6;
         const HERO_XP_PER_WAVE = 15;
 
         // ---- Герои: персонажи, растущие МЕЖДУ походами (не сбрасываются) ----
@@ -973,7 +988,11 @@
             shade: { id: 'shade', name: 'Тень', icon: '🥷', unlockCost: 280,
                 baseHp: 70, baseArmor: 0, baseDmg: 26, dmgType: 'Физ', baseInit: 22, move: 4, range: 1, size: 1,
                 passive: 'Казнь: +50% урона по целям с HP ниже 30% от макс. Теневой Шаг: раз в 3 хода телепортируется на любую свободную клетку.',
-                signature: 'Порог "Казни" повышен до 40% HP.' }
+                signature: 'Порог "Казни" повышен до 40% HP.' },
+            colossus: { id: 'colossus', name: 'Каменный Исполин', icon: '🗿', unlockCost: 350,
+                baseHp: 280, baseArmor: 45, baseDmg: 20, dmgType: 'Физ', baseInit: 7, move: 2, range: 1, size: 2,
+                passive: 'Несокрушимость: получает на 25% меньше физического урона. Ударная Волна: при получении урона в ближнем бою наносит 15% этого урона всем врагам вокруг (радиус 1).',
+                signature: 'Несокрушимость усиливается до -35%, Ударная Волна — до 25% урона.' }
         };
 
         // Общий пул талантов героя — при повышении уровня выдаётся выбор из 2 случайных (без повторов)
@@ -990,6 +1009,50 @@
             { id: 'h_move', name: '🐎 Прыткость', desc: '+1 к дальности хода', apply: h => { h.move += 1; } },
             { id: 'h_range', name: '🏹 Прицел', desc: '+1 к дальности атаки', apply: h => { h.range += 1; } }
         ];
+
+        // Эксклюзивные таланты — по 2 на каждого героя, недоступны никому другому. Немного мощнее общего пула.
+        const HERO_EXCLUSIVE_TALENTS = {
+            paladin: [
+                { id: 'x_paladin_1', name: '🛡️ Непоколебимость', desc: '+35 брони', apply: h => { h.armor = (h.armor || 0) + 35; h.maxArmor = Math.max(h.maxArmor || 0, h.armor); } },
+                { id: 'x_paladin_2', name: '🕊️ Милосердие', desc: '+18% похищения здоровья', apply: h => { h.lifestealPct = Math.min(0.6, (h.lifestealPct || 0) + 0.18); } }
+            ],
+            ranger: [
+                { id: 'x_ranger_1', name: '🎯 Снайперская Выучка', desc: '+18% шанс крита', apply: h => { h.critChance = Math.min(0.75, (h.critChance || 0) + 0.18); } },
+                { id: 'x_ranger_2', name: '💨 Ветер в Спину', desc: '+2 к дальности хода', apply: h => { h.move += 2; } }
+            ],
+            warlock: [
+                { id: 'x_warlock_1', name: '🔥 Пламя Бездны', desc: '+18% урона', apply: h => { h.dmg = Math.round(h.dmg * 1.18); } },
+                { id: 'x_warlock_2', name: '🌀 Эфирная Броня', desc: '+35 брони', apply: h => { h.armor = (h.armor || 0) + 35; h.maxArmor = Math.max(h.maxArmor || 0, h.armor); } }
+            ],
+            jarl: [
+                { id: 'x_jarl_1', name: '🩸 Неутолимая Жажда', desc: '+18% похищения здоровья', apply: h => { h.lifestealPct = Math.min(0.6, (h.lifestealPct || 0) + 0.18); } },
+                { id: 'x_jarl_2', name: '⚡ Штормовая Поступь', desc: '+2 к дальности хода', apply: h => { h.move += 2; } }
+            ],
+            druid: [
+                { id: 'x_druid_1', name: '🌳 Живой Щит', desc: '+35 брони', apply: h => { h.armor = (h.armor || 0) + 35; h.maxArmor = Math.max(h.maxArmor || 0, h.armor); } },
+                { id: 'x_druid_2', name: '🍃 Быстрый Шаг', desc: '+2 к дальности хода', apply: h => { h.move += 2; } }
+            ],
+            engineer: [
+                { id: 'x_engineer_1', name: '🔧 Двойной Расчёт', desc: '+18% шанс крита', apply: h => { h.critChance = Math.min(0.75, (h.critChance || 0) + 0.18); } },
+                { id: 'x_engineer_2', name: '⚙️ Стальной Каркас', desc: '+35 брони', apply: h => { h.armor = (h.armor || 0) + 35; h.maxArmor = Math.max(h.maxArmor || 0, h.armor); } }
+            ],
+            inquisitor: [
+                { id: 'x_inquisitor_1', name: '📖 Священный Огонь', desc: '+18% урона', apply: h => { h.dmg = Math.round(h.dmg * 1.18); } },
+                { id: 'x_inquisitor_2', name: '🕯️ Стойкая Вера', desc: '-9% получаемого урона', apply: h => { h.dmgReductionPct = Math.min(0.5, (h.dmgReductionPct || 0) + 0.09); } }
+            ],
+            witch: [
+                { id: 'x_witch_1', name: '🔮 Тёмный Пакт', desc: '+18% похищения здоровья', apply: h => { h.lifestealPct = Math.min(0.6, (h.lifestealPct || 0) + 0.18); } },
+                { id: 'x_witch_2', name: '🖤 Пелена Тьмы', desc: '+18% уклонение от урона', apply: h => { h.dodgeChance = Math.min(0.6, (h.dodgeChance || 0) + 0.18); } }
+            ],
+            shade: [
+                { id: 'x_shade_1', name: '🗡️ Смертельная Точность', desc: '+18% шанс крита', apply: h => { h.critChance = Math.min(0.75, (h.critChance || 0) + 0.18); } },
+                { id: 'x_shade_2', name: '👻 Ускользание', desc: '+18% уклонение от урона', apply: h => { h.dodgeChance = Math.min(0.6, (h.dodgeChance || 0) + 0.18); } }
+            ],
+            colossus: [
+                { id: 'x_colossus_1', name: '🏔️ Гора Плоти', desc: '+18% макс. HP', apply: h => { h.maxHp = Math.round(h.maxHp * 1.18); h.hp = h.maxHp; } },
+                { id: 'x_colossus_2', name: '💢 Землетрясение', desc: '+18% отражения урона в ближнем бою', apply: h => { h.thornsPct = Math.min(0.8, (h.thornsPct || 0) + 0.18); } }
+            ]
+        };
 
         // ---- Биомы: визуальные темы рельефа, один случайно выбирается на поход ----
         const BIOMES = [
@@ -1053,7 +1116,9 @@
                 this.metaGlory = this.loadGlory();
                 this.metaUpgrades = this.loadUpgrades();
                 this.heroSave = this.loadHeroSave();
+                this.unitSave = this.loadUnitSave();
                 this.expandedTalentsFor = null;
+                this.placingHero = false;
                 this.glorySessionEarned = 0;
                 this.campaignPlayerBudget = 45 + 5 * (this.metaUpgrades.budget || 0);
                 this.pendingHeroLevelUp = false;
@@ -1126,6 +1191,7 @@
 
                 this.renderGrid();
                 this.updateCampaignBudgetUI();
+                this.updateHeroPlacementUI();
                 const biomeEl = document.getElementById('biome-display');
                 if (biomeEl && this.currentBiome) biomeEl.innerText = this.currentBiome.name;
 
@@ -1168,7 +1234,7 @@
             }
             defaultHeroSave() {
                 return {
-                    unlocked: { paladin: true, ranger: false, warlock: false, jarl: false, druid: false, engineer: false, inquisitor: false, witch: false, shade: false },
+                    unlocked: { paladin: true, ranger: false, warlock: false, jarl: false, druid: false, engineer: false, inquisitor: false, witch: false, shade: false, colossus: false },
                     active: 'paladin',
                     heroes: {
                         paladin: { level: 1, xp: 0, talents: [] },
@@ -1179,7 +1245,8 @@
                         engineer: { level: 1, xp: 0, talents: [] },
                         inquisitor: { level: 1, xp: 0, talents: [] },
                         witch: { level: 1, xp: 0, talents: [] },
-                        shade: { level: 1, xp: 0, talents: [] }
+                        shade: { level: 1, xp: 0, talents: [] },
+                        colossus: { level: 1, xp: 0, talents: [] }
                     }
                 };
             }
@@ -1203,6 +1270,69 @@
             }
             heroXpToNextLevel(level) {
                 return 40 + level * 25;
+            }
+
+            // --- Прокачка обычных юнитов: у каждого типа юнита свой персистентный уровень между походами.
+            // В отличие от героев — рост АВТОМАТИЧЕСКИЙ (без выбора талантов): статы растут понемногу каждый
+            // уровень, а на UNIT_SIGNATURE_LEVEL юнит открывает свою уникальную усиленную способность.
+            defaultUnitSave() {
+                let units = {};
+                Object.keys(UNIT_TYPES).forEach(id => {
+                    if (id === 'phoenix_egg') return; // служебная форма феникса, не отдельный юнит
+                    units[id] = { level: 1, xp: 0 };
+                });
+                return { units };
+            }
+            loadUnitSave() {
+                try {
+                    let raw = JSON.parse(localStorage.getItem(META_SAVE_KEY_UNITS) || 'null');
+                    if (raw && raw.units) {
+                        Object.keys(UNIT_TYPES).forEach(id => {
+                            if (id === 'phoenix_egg') return;
+                            if (!raw.units[id]) raw.units[id] = { level: 1, xp: 0 };
+                        });
+                        return raw;
+                    }
+                } catch (e) { /* хранилище недоступно */ }
+                return this.defaultUnitSave();
+            }
+            saveUnitSave() {
+                try { localStorage.setItem(META_SAVE_KEY_UNITS, JSON.stringify(this.unitSave)); }
+                catch (e) { /* хранилище недоступно */ }
+            }
+            unitXpToNextLevel(level) {
+                return 30 + level * 18;
+            }
+            // Начисляет опыт каждому УНИКАЛЬНОМУ типу юнита, что был жив у игрока на конец волны.
+            // Возвращает массив имён юнитов, которые повысили уровень (для короткого уведомления игроку).
+            awardUnitXP(amount) {
+                const aliveTypes = new Set(this.units.filter(u => u.team === 'player' && u.hp > 0 && !u.isHero).map(u => u.id));
+                const leveledUp = [];
+                aliveTypes.forEach(type => {
+                    const save = this.unitSave.units[type];
+                    if (!save) return;
+                    save.xp += amount;
+                    if (save.xp >= this.unitXpToNextLevel(save.level)) {
+                        save.xp -= this.unitXpToNextLevel(save.level);
+                        save.level += 1;
+                        leveledUp.push(UNIT_TYPES[type] ? UNIT_TYPES[type].name : type);
+                    }
+                });
+                this.saveUnitSave();
+                return leveledUp;
+            }
+            // Применяет накопленный уровень юнита к свежесозданному экземпляру: небольшой автоматический
+            // рост статов +, начиная с UNIT_SIGNATURE_LEVEL, открытая сигнатурная способность (unitLevel флаг,
+            // проверяется в боевых хуках по тому же принципу, что и heroLevel у героев)
+            applyUnitLevelGrowth(unit) {
+                const save = this.unitSave.units[unit.id];
+                if (!save) return;
+                unit.unitLevel = save.level;
+                if (save.level <= 1) return;
+                let scale = 1 + (save.level - 1) * 0.05;
+                unit.maxHp = Math.round(unit.maxHp * scale);
+                unit.hp = unit.maxHp;
+                unit.dmg = Math.round(unit.dmg * scale);
             }
             // Начисляет опыт активному герою и отмечает, если он повысил уровень (обрабатывается после волны)
             awardHeroXP(amount) {
@@ -1356,9 +1486,17 @@
                         alert('❌ Не удалось прочитать код — проверь, что скопировал его полностью.');
                     }
                 });
+                document.getElementById('reset-progress-btn').addEventListener('click', () => {
+                    if (!confirm('Точно сбросить ВЕСЬ прогресс (Слава, Арсенал, все герои, текущий поход)? Это необратимо.')) return;
+                    if (!confirm('Последний шанс передумать. Сбросить всё и начать с нуля?')) return;
+                    this.resetAllProgress();
+                    alert('🗑️ Прогресс сброшен. Начинаем с чистого листа!');
+                });
 
                 const biomeEl = document.getElementById('biome-display');
                 if (biomeEl && this.currentBiome) biomeEl.innerText = this.currentBiome.name;
+
+                this.updateHeroPlacementUI();
 
                 this.updateGloryDisplay();
                 this.updateCampaignBudgetUI();
@@ -1390,15 +1528,39 @@
                         if (!this.heroSave.heroes[id]) this.heroSave.heroes[id] = { level: 1, xp: 0, talents: [] };
                         if (this.heroSave.unlocked[id] === undefined) this.heroSave.unlocked[id] = false;
                     });
+                    if (data.units) this.unitSave = data.units;
                     this.campaignPlayerBudget = 45 + 5 * (this.metaUpgrades.budget || 0);
 
                     this.saveGlory();
                     this.saveUpgrades();
                     this.saveHeroSave();
+                    this.saveUnitSave();
                     return true;
                 } catch (e) {
                     return false;
                 }
+            }
+
+            // Полный сброс прогресса: Слава, Арсенал, герои, уровни юнитов, текущий поход — всё с нуля
+            resetAllProgress() {
+                try {
+                    localStorage.removeItem(META_SAVE_KEY_GLORY);
+                    localStorage.removeItem(META_SAVE_KEY_UPGRADES);
+                    localStorage.removeItem(META_SAVE_KEY_HEROES);
+                    localStorage.removeItem(META_SAVE_KEY_UNITS);
+                    localStorage.removeItem(GAME_STATE_SAVE_KEY);
+                } catch (e) { /* хранилище недоступно */ }
+
+                this.metaGlory = 0;
+                this.metaUpgrades = {};
+                this.heroSave = this.defaultHeroSave();
+                this.unitSave = this.defaultUnitSave();
+                this.campaignPlayerBudget = 45;
+
+                document.getElementById('savecode-modal').classList.add('hidden');
+                document.getElementById('modal-backdrop').classList.add('hidden');
+                this.returnToMenu();
+                this.updateGloryDisplay();
             }
 
             // Реальная стоимость юнита при расстановке с учётом скидок из Арсенала (только для игрока, враги считают по базовой цене)
@@ -1622,25 +1784,70 @@
 
             selectHero(id) {
                 if (!this.heroSave.unlocked[id]) return;
+                // Если старый герой уже был расставлен на поле — убираем его: нельзя иметь на поле героя,
+                // который больше не активен (и его размер/статы могли не совпасть с новым выбором)
+                if (this.heroSave.active !== id) {
+                    this.units = this.units.filter(u => !(u.isHero && u.team === 'player'));
+                }
                 this.heroSave.active = id;
                 this.saveHeroSave();
                 this.renderHeroModal();
+                this.placingHero = false;
+                this.updateHeroPlacementUI();
+                this.updateCampaignBudgetUI();
+                this.renderGrid();
             }
 
-            // Создаёт юнита героя для боя: база + рост от уровня + все выбранные таланты, размещает бесплатно (вне бюджета)
-            spawnHero() {
+            // Обновляет строку "Герой: ... [Разместить/Убрать]" в экране расстановки под текущее состояние
+            updateHeroPlacementUI() {
+                const tpl = HERO_TYPES[this.heroSave.active];
+                const label = document.getElementById('hero-place-label');
+                const btn = document.getElementById('hero-place-btn');
+                if (!tpl || !label || !btn) return;
+
+                const alreadyPlaced = this.units.some(u => u.isHero && u.team === 'player');
+                const sizeText = (tpl.size === 2) ? ' (2x2)' : '';
+                label.innerText = `🦸 ${tpl.icon} ${tpl.name}${sizeText}`;
+
+                if (alreadyPlaced) {
+                    btn.innerText = '❌ Убрать';
+                    btn.className = 'danger';
+                    btn.onclick = () => {
+                        this.units = this.units.filter(u => !(u.isHero && u.team === 'player'));
+                        this.placingHero = false;
+                        this.updateHeroPlacementUI();
+                        this.updateCampaignBudgetUI();
+                        this.renderGrid();
+                    };
+                } else if (this.placingHero) {
+                    btn.innerText = '❌ Отмена';
+                    btn.className = 'secondary';
+                    btn.onclick = () => {
+                        this.placingHero = false;
+                        this.updateHeroPlacementUI();
+                    };
+                } else {
+                    btn.innerText = '📍 Разместить';
+                    btn.className = 'success';
+                    btn.onclick = () => {
+                        this.placingHero = true;
+                        this.updateHeroPlacementUI();
+                    };
+                }
+            }
+
+            // Создаёт юнита героя (база + рост от уровня + все выбранные таланты). НЕ размещает сам —
+            // герой теперь ставится вручную игроком, как обычный юнит (см. handleCellClick / placingHero)
+            buildHeroUnit(x, y) {
                 const id = this.heroSave.active;
                 const tpl = HERO_TYPES[id];
                 const save = this.heroSave.heroes[id];
-                if (!tpl || !save) return;
-
-                const spot = this.findFreePlayerCell(1);
-                if (!spot) return; // зона игрока переполнена — герой в этот раз не поместится
+                if (!tpl || !save) return null;
 
                 const levelScale = 1 + (save.level - 1) * 0.04;
                 const hero = {
-                    id: tpl.id, name: tpl.name, icon: tpl.icon, dmgType: tpl.dmgType, size: 1,
-                    x: spot.x, y: spot.y, team: 'player',
+                    id: tpl.id, name: tpl.name, icon: tpl.icon, dmgType: tpl.dmgType, size: tpl.size || 1,
+                    x, y, team: 'player',
                     uid: this.nextUid++,
                     isHero: true,
                     heroLevel: save.level,
@@ -1658,28 +1865,52 @@
                 };
                 if (id === 'ranger') hero.critChance = 0.15;
                 if (id === 'paladin') hero.dmgReductionPct = 0.10;
+                if (id === 'colossus') {
+                    hero.physReductionPct = hero.heroLevel >= 5 ? 0.35 : 0.25;
+                    hero.shockwavePct = hero.heroLevel >= 5 ? 0.25 : 0.15;
+                }
 
                 save.talents.forEach(talentId => {
-                    const talent = HERO_TALENTS.find(t => t.id === talentId);
+                    const talent = this.findTalentById(talentId, id);
                     if (talent) talent.apply(hero);
                 });
 
-                this.units.push(hero);
+                return hero;
+            }
+
+            // Ищет талант по id — сперва в общем пуле, затем в эксклюзивном пуле указанного героя
+            findTalentById(talentId, heroId) {
+                let t = HERO_TALENTS.find(x => x.id === talentId);
+                if (t) return t;
+                const exclusive = HERO_EXCLUSIVE_TALENTS[heroId] || [];
+                return exclusive.find(x => x.id === talentId) || null;
             }
 
             // Показывает выбор таланта героя (2 случайных, без повторов) при повышении уровня
             showHeroLevelUpModal(onDone) {
-                const save = this.heroSave.heroes[this.heroSave.active];
-                const tpl = HERO_TYPES[this.heroSave.active];
+                const activeId = this.heroSave.active;
+                const save = this.heroSave.heroes[activeId];
+                const tpl = HERO_TYPES[activeId];
                 document.getElementById('wave-bonus-title').innerText = `🌟 ${tpl.name} повышен до ${save.level} уровня!`;
 
-                const available = HERO_TALENTS.filter(t => !save.talents.includes(t.id));
-                const pool = available.length > 0 ? available : HERO_TALENTS;
-                for (let i = pool.length - 1; i > 0; i--) {
-                    let j = Math.floor(Math.random() * (i + 1));
-                    [pool[i], pool[j]] = [pool[j], pool[i]];
+                const exclusivePool = (HERO_EXCLUSIVE_TALENTS[activeId] || []).filter(t => !save.talents.includes(t.id));
+                const commonPool = HERO_TALENTS.filter(t => !save.talents.includes(t.id));
+
+                let choices = [];
+                // Гарантируем хотя бы один уникальный талант героя в выборе, если такой ещё доступен
+                if (exclusivePool.length > 0) {
+                    choices.push(exclusivePool[Math.floor(Math.random() * exclusivePool.length)]);
                 }
-                const choices = pool.slice(0, 2);
+                let restPool = [...exclusivePool.filter(t => !choices.includes(t)), ...commonPool];
+                for (let i = restPool.length - 1; i > 0; i--) {
+                    let j = Math.floor(Math.random() * (i + 1));
+                    [restPool[i], restPool[j]] = [restPool[j], restPool[i]];
+                }
+                while (choices.length < 3 && restPool.length > 0) {
+                    choices.push(restPool.shift());
+                }
+                if (choices.length === 0) choices = HERO_TALENTS.slice(0, 3); // фолбэк, если всё уже взято
+
                 const container = document.getElementById('wave-bonus-options');
                 container.innerHTML = '';
 
@@ -1688,7 +1919,8 @@
                     btn.className = 'success';
                     btn.style.width = '100%';
                     btn.style.padding = '8px';
-                    btn.innerHTML = `${talent.name}<span style="font-size:11px;">${talent.desc}</span>`;
+                    const isExclusive = (HERO_EXCLUSIVE_TALENTS[activeId] || []).some(t => t.id === talent.id);
+                    btn.innerHTML = `${isExclusive ? '⭐ ' : ''}${talent.name}<span style="font-size:11px;">${talent.desc}</span>`;
                     btn.onclick = () => {
                         save.talents.push(talent.id);
                         this.saveHeroSave();
@@ -1862,11 +2094,34 @@
                 if (this.state === 'SETUP') {
                     const setupMode = document.getElementById('setup-mode').value;
 
+                    if (this.placingHero && setupMode === 'units') {
+                        if (targetUnit) {
+                            this.placingHero = false;
+                            this.updateHeroPlacementUI();
+                            return;
+                        }
+                        const heroTpl = HERO_TYPES[this.heroSave.active];
+                        const size = heroTpl.size || 1;
+                        let validZone = y >= PLAYER_ZONE_START - (size - 1);
+                        if (validZone && this.isCellFree(x, y, size)) {
+                            const hero = this.buildHeroUnit(x, y);
+                            if (hero) this.units.push(hero);
+                            this.placingHero = false;
+                            this.updateHeroPlacementUI();
+                            this.updateCampaignBudgetUI();
+                            this.renderGrid();
+                        } else {
+                            alert('Сюда нельзя поставить героя — клетка занята или вне зоны расстановки.');
+                        }
+                        return;
+                    }
+
                     if (setupMode === 'terrain') {
                         const obstacleType = document.getElementById('setup-obstacle-type').value;
                         
                         if (targetUnit) {
                             this.units = this.units.filter(u => u !== targetUnit);
+                            if (targetUnit.isHero) this.updateHeroPlacementUI();
                         }
 
                         let existingObstacle = this.getObstacleAt(x, y);
@@ -1888,6 +2143,7 @@
 
                     if (targetUnit) {
                         this.units = this.units.filter(u => u !== targetUnit);
+                        if (targetUnit.isHero) this.updateHeroPlacementUI();
                     } else {
                         let validZone = y >= PLAYER_ZONE_START - (tpl.size - 1);
 
@@ -1901,7 +2157,7 @@
                         }
 
                         if (validZone && this.isCellFree(x, y, tpl.size)) {
-                            this.units.push({
+                            const newUnit = {
                                 ...tpl, x, y, team,
                                 uid: this.nextUid++,
                                 waveLevel: 1,
@@ -1923,7 +2179,9 @@
                                 isReborn: false,
                                 lastPhoenixHp: tpl.hp,
                                 lastPhoenixDmg: tpl.dmg
-                            });
+                            };
+                            this.applyUnitLevelGrowth(newUnit);
+                            this.units.push(newUnit);
                         }
                     }
                     this.updateCampaignBudgetUI();
@@ -2004,7 +2262,8 @@
                 if (unit.id === 'berserker') {
                     let missingPct = Math.floor((1 - (unit.hp / unit.maxHp)) * 20);
                     let scale = 1 + ((unit.waveLevel || 1) - 1) * 0.10;
-                    dmg += Math.round(missingPct * 5 * scale);
+                    let perStep = (unit.unitLevel || 1) >= UNIT_SIGNATURE_LEVEL ? 7 : 5; // Неукротимая Ярость (сигнатура)
+                    dmg += Math.round(missingPct * perStep * scale);
                 }
 
                 if (unit.id === 'jarl') {
@@ -2029,8 +2288,10 @@
                 }
 
                 if (unit.id === 'wolf_rider') {
-                    let packmate = this.units.some(u => u.id === 'wolf_rider' && u !== unit && u.team === unit.team && u.hp > 0 && this.getDistance(unit, u.x, u.y, u.size) <= 2);
-                    if (packmate) dmg = Math.round(dmg * 1.15); // Стая
+                    let isSig = (unit.unitLevel || 1) >= UNIT_SIGNATURE_LEVEL;
+                    let packRadius = isSig ? 3 : 2;
+                    let packmate = this.units.some(u => u.id === 'wolf_rider' && u !== unit && u.team === unit.team && u.hp > 0 && this.getDistance(unit, u.x, u.y, u.size) <= packRadius);
+                    if (packmate) dmg = Math.round(dmg * (isSig ? 1.25 : 1.15)); // Стая (сигнатура: сильнее и дальше)
                 }
 
                 if (unit.witchCurseTurns > 0) {
@@ -2043,7 +2304,8 @@
 
                 if (unit.id === 'sniper' && target) {
                     let dist = this.getDistance(unit, target.x, target.y, target.size);
-                    dmg = Math.floor(dmg * (1 + 0.10 * dist));
+                    let perTile = (unit.unitLevel || 1) >= UNIT_SIGNATURE_LEVEL ? 0.14 : 0.10; // Мастер Прицела (сигнатура)
+                    dmg = Math.floor(dmg * (1 + perTile * dist));
                 }
 
                 return Math.max(1, dmg);
@@ -2053,6 +2315,7 @@
                 this.units = this.units.filter(u => u.team === 'player');
                 if (this.units.length === 0) return alert("Поставьте хотя бы одного синего юнита в рамках бюджета!");
 
+                this.placingHero = false;
                 this.activeRelics = [];
                 this.clearHighlights();
                 this.showRelicChoiceModal(() => this._beginBattleAfterRelic());
@@ -2111,7 +2374,6 @@
                 this.phoenixBlessingUsed = false;
 
                 this.spawnCampaignWave(this.campaignWave);
-                this.spawnHero();
                 
                 this.units.forEach(u => {
                     u.actionPoints = 0;
@@ -2318,6 +2580,10 @@
                 if (!enemiesAlive && !this.awaitingWaveBonus) {
                     this.awardGlory(GLORY_PER_WAVE);
                     this.awardHeroXP(HERO_XP_PER_WAVE);
+                    const leveledUnits = this.awardUnitXP(UNIT_XP_PER_WAVE);
+                    if (leveledUnits.length > 0) {
+                        alert(`📈 Ополчение возмужало!\n${leveledUnits.map(n => `${n} повысил уровень`).join('\n')}`);
+                    }
                     if (this.campaignWave >= this.campaignTotalWaves) {
                         this.gameOver = true;
                         this.awardGlory(GLORY_VICTORY_BONUS);
@@ -2502,6 +2768,7 @@
                 this.recentBonusIds = [];
                 this.campaignPlayerBudget = 45 + 5 * (this.metaUpgrades.budget || 0);
                 this.currentBiome = BIOMES[Math.floor(Math.random() * BIOMES.length)];
+                this.placingHero = false;
 
                 document.getElementById('setup-ui').classList.remove('hidden');
                 document.getElementById('actions').classList.add('hidden');
@@ -2511,6 +2778,7 @@
                 this.generateSmartTerrain();
                 this.renderGrid();
                 this.updateCampaignBudgetUI();
+                this.updateHeroPlacementUI();
                 const biomeEl = document.getElementById('biome-display');
                 if (biomeEl) biomeEl.innerText = this.currentBiome.name;
             }
@@ -2541,11 +2809,13 @@
 
                 const chronos = targetList.filter(u => u.id === 'chronomancer' && u.hp > 0);
                 chronos.forEach(chrono => {
+                    let chronoSig = (chrono.unitLevel || 1) >= UNIT_SIGNATURE_LEVEL;
+                    let chronoRadius = chronoSig ? 3 : 2;
                     targetList.forEach(target => {
                         if (target.hp <= 0 || target.team !== chrono.team) return;
-                        if (this.getDistance(chrono, target.x, target.y, target.size) <= 2) {
+                        if (this.getDistance(chrono, target.x, target.y, target.size) <= chronoRadius) {
                             let scale = 1 + ((chrono.waveLevel || 1) - 1) * 0.10;
-                            target.init += Math.round(3 * scale);
+                            target.init += Math.round((chronoSig ? 4 : 3) * scale);
                             target.isChronoAuraAffected = true;
                         }
                     });
@@ -2591,8 +2861,9 @@
                             this.activeUnit.id = 'phoenix';
                             this.activeUnit.name = UNIT_TYPES.phoenix.name;
                             this.activeUnit.icon = UNIT_TYPES.phoenix.icon;
-                            let newHp = (this.activeUnit.lastPhoenixHp || UNIT_TYPES.phoenix.hp) * 2;
-                            let newDmg = (this.activeUnit.lastPhoenixDmg || UNIT_TYPES.phoenix.dmg) * 2;
+                            let rebirthMult = (this.activeUnit.unitLevel || 1) >= UNIT_SIGNATURE_LEVEL ? 2.5 : 2;
+                            let newHp = Math.round((this.activeUnit.lastPhoenixHp || UNIT_TYPES.phoenix.hp) * rebirthMult);
+                            let newDmg = Math.round((this.activeUnit.lastPhoenixDmg || UNIT_TYPES.phoenix.dmg) * rebirthMult);
                             
                             this.activeUnit.hp = newHp;
                             this.activeUnit.maxHp = newHp;
@@ -2754,11 +3025,12 @@
                 
                 if (u.id === 'knight') {
                     let cd = u.cooldowns['Armor'] || 0;
-                    let amount = Math.round(120 * (1 + (wl - 1) * 0.10));
+                    let isSig = (u.unitLevel || 1) >= UNIT_SIGNATURE_LEVEL;
+                    let amount = Math.round((isSig ? 160 : 120) * (1 + (wl - 1) * 0.10));
                     let btn = this.createBtn(panel, `Щит (+${amount})`, 'success', () => {
                         u.armor = (u.armor || 0) + amount;
                         u.maxArmor = Math.max(u.maxArmor || 0, u.armor);
-                        u.cooldowns['Armor'] = this.getAdjustedCooldown(2, wl, u);
+                        u.cooldowns['Armor'] = this.getAdjustedCooldown(isSig ? 1 : 2, wl, u);
                         this.playUnitAnim(u.uid, 'unit-anim-buff', 500);
                         this.spawnFloatingText(u.x, u.y, `+${amount} 🛡️`, '#00bcd4');
                         this.finishAction(340);
@@ -2767,7 +3039,8 @@
                 }
 
                 if (u.id === 'crossbow') {
-                    let healAmount = Math.round(40 * (1 + (wl - 1) * 0.10));
+                    let isSig = (u.unitLevel || 1) >= UNIT_SIGNATURE_LEVEL;
+                    let healAmount = Math.round((isSig ? 55 : 40) * (1 + (wl - 1) * 0.10));
                     this.createBtn(panel, `Лечение (+${healAmount})`, 'success', () => {
                         this.clearHighlights();
                         this.selectedAction = 'heal'; 
@@ -2778,7 +3051,8 @@
 
                 if (u.id === 'priest') {
                     let cd = u.cooldowns['PriestHeal'] || 0;
-                    let healAmount = Math.round(35 * (1 + (wl - 1) * 0.10));
+                    let isSig = (u.unitLevel || 1) >= UNIT_SIGNATURE_LEVEL;
+                    let healAmount = Math.round((isSig ? 50 : 35) * (1 + (wl - 1) * 0.10));
                     let btn = this.createBtn(panel, `⛪ Целитель (+${healAmount})`, 'success', () => {
                         this.clearHighlights();
                         this.selectedAction = 'priest_heal';
@@ -2799,11 +3073,12 @@
 
                 if (u.id === 'ent') {
                     let cd = u.cooldowns['Petrify'] || 0;
-                    let amount = Math.round(150 * (1 + (wl - 1) * 0.10));
+                    let isSig = (u.unitLevel || 1) >= UNIT_SIGNATURE_LEVEL;
+                    let amount = Math.round((isSig ? 200 : 150) * (1 + (wl - 1) * 0.10));
                     let btn = this.createBtn(panel, `Окаменение (+${amount})`, 'success', () => {
                         u.armor = (u.armor || 0) + amount;
                         u.maxArmor = Math.max(u.maxArmor || 0, u.armor);
-                        u.cooldowns['Petrify'] = this.getAdjustedCooldown(3, wl, u);
+                        u.cooldowns['Petrify'] = this.getAdjustedCooldown(isSig ? 2 : 3, wl, u);
                         this.playUnitAnim(u.uid, 'unit-anim-buff', 500);
                         this.spawnFloatingText(u.x, u.y, `+${amount} 🛡️`, '#00bcd4');
                         this.finishAction(340);
@@ -2900,7 +3175,8 @@
                     if (this.isCellFree(x, y, au.size, au)) {
                         au.x = x;
                         au.y = y;
-                        au.cooldowns['Teleport'] = this.getAdjustedCooldown(4, wl, au);
+                        let isSig = (au.unitLevel || 1) >= UNIT_SIGNATURE_LEVEL;
+                        au.cooldowns['Teleport'] = this.getAdjustedCooldown(isSig ? 2 : 4, wl, au);
                         this.renderGrid();
                         this.playUnitAnim(au.uid, 'unit-anim-spawn', 300);
                         this.spawnFloatingText(x, y, '🌀', '#e0aaff');
@@ -2950,7 +3226,8 @@
                         };
                         this.units.push(newUnit);
                         
-                        let baseCd = (this.summonType === 'stone_golem') ? 2 : 20;
+                        let isSig = (au.unitLevel || 1) >= UNIT_SIGNATURE_LEVEL;
+                        let baseCd = (this.summonType === 'stone_golem') ? (isSig ? 1 : 2) : (isSig ? 15 : 20);
                         au.cooldowns['summon_' + this.summonType] = this.getAdjustedCooldown(baseCd, wl, au);
                         this.applySummonSelfDamage(au);
                         this.renderGrid();
@@ -2964,7 +3241,8 @@
                         alert('Некромант защищён Призрачным Щитом и не может исцеляться!');
                         this.resetTarget();
                     } else if (targetUnit && targetUnit.team === au.team && dist <= curRange) {
-                        let healAmount = Math.round(40 * (1 + (wl - 1) * 0.10));
+                        let isSig = (au.unitLevel || 1) >= UNIT_SIGNATURE_LEVEL;
+                        let healAmount = Math.round((isSig ? 55 : 40) * (1 + (wl - 1) * 0.10));
                         targetUnit.hp = Math.min(targetUnit.maxHp, targetUnit.hp + healAmount);
                         this.playUnitAnim(au.uid, 'unit-anim-attack', 260);
                         this.playUnitAnim(targetUnit.uid, 'unit-anim-buff', 500);
@@ -2977,11 +3255,12 @@
                         alert('Некромант защищён Призрачным Щитом и не может исцеляться!');
                         this.resetTarget();
                     } else if (targetUnit && targetUnit.team === au.team && dist <= curRange) {
-                        let healAmount = Math.round(35 * (1 + (wl - 1) * 0.10));
+                        let isSig = (au.unitLevel || 1) >= UNIT_SIGNATURE_LEVEL;
+                        let healAmount = Math.round((isSig ? 50 : 35) * (1 + (wl - 1) * 0.10));
                         targetUnit.hp = Math.min(targetUnit.maxHp, targetUnit.hp + healAmount);
                         targetUnit.isFrozen = false;
                         targetUnit.chronoSlowTurns = 0;
-                        au.cooldowns['PriestHeal'] = this.getAdjustedCooldown(2, wl, au);
+                        au.cooldowns['PriestHeal'] = this.getAdjustedCooldown(isSig ? 1 : 2, wl, au);
                         this.playUnitAnim(au.uid, 'unit-anim-attack', 260);
                         this.playUnitAnim(targetUnit.uid, 'unit-anim-buff', 500);
                         this.spawnFloatingText(targetUnit.x, targetUnit.y, `+${healAmount} ⛪`, '#00ff88');
@@ -3028,7 +3307,10 @@
                 
                 if (defender.id === 'specter') {
                     if (attacker.dmgType === 'Физ' || attacker.dmgType === 'Стрела') return 0;
-                    if (attacker.dmgType === 'Магия') return this.getActualDmg(attacker, defender) * 2;
+                    if (attacker.dmgType === 'Магия') {
+                        let mult = (defender.unitLevel || 1) >= UNIT_SIGNATURE_LEVEL ? 1.5 : 2;
+                        return Math.round(this.getActualDmg(attacker, defender) * mult);
+                    }
                 }
 
                 if (attacker.id === 'ent') return Math.floor(this.getActualDmg(attacker, defender) * 0.2) + " (АОЕ)";
@@ -3052,9 +3334,10 @@
                 if (defender.id === 'ent' && isPhysDamage) dmg = Math.floor(dmg * 0.2);
 
                 if (attacker.id === 'ballista') {
-                    if (defender.id === 'ent') dmg *= 5;
-                    if (defender.id === 'stone_golem') dmg *= 3;
-                    if (defender.id === 'dragon') dmg *= 2;
+                    let isSig = (attacker.unitLevel || 1) >= UNIT_SIGNATURE_LEVEL;
+                    if (defender.id === 'ent') dmg *= isSig ? 7 : 5;
+                    if (defender.id === 'stone_golem') dmg *= isSig ? 4 : 3;
+                    if (defender.id === 'dragon') dmg *= isSig ? 3 : 2;
                 }
 
                 return Math.max(1, dmg);
@@ -3070,6 +3353,10 @@
 
                 if (defender.dmgReductionPct) {
                     rawDmg = Math.max(1, Math.round(rawDmg * (1 - defender.dmgReductionPct)));
+                }
+
+                if (defender.physReductionPct && (attacker.dmgType === 'Физ' || attacker.dmgType === 'Стрела')) {
+                    rawDmg = Math.max(1, Math.round(rawDmg * (1 - defender.physReductionPct))); // Несокрушимость Исполина
                 }
 
                 if (defender.id === 'engineer' && attacker.dmgType === 'Стрела') {
@@ -3168,7 +3455,8 @@
                 const dragons = this.units.filter(u => u.id === 'dragon' && u.hp > 0 && u.team !== dyingUnitTeam);
                 dragons.forEach(d => {
                     d.harvestStacks = d.harvestStacks || 0;
-                    if (d.harvestStacks >= 8) return;
+                    let cap = (d.unitLevel || 1) >= UNIT_SIGNATURE_LEVEL ? 12 : 8;
+                    if (d.harvestStacks >= cap) return;
                     d.harvestStacks++;
 
                     let scale = 1 + ((d.waveLevel || 1) - 1) * 0.10;
@@ -3250,6 +3538,11 @@
                     if (attacker.id === 'frost_mage' && defender.hp > 0) {
                         defender.isFrozen = true;
                         this.spawnFloatingText(defender.x, defender.y, '🧊', '#66e0ff');
+                        if ((attacker.unitLevel || 1) >= UNIT_SIGNATURE_LEVEL) {
+                            let shatterDmg = Math.max(1, Math.round(attacker.dmg * 0.4));
+                            this.applyDamageToUnit(attacker, defender, shatterDmg);
+                            this.spawnFloatingText(defender.x, defender.y, `-${shatterDmg} 💎`, '#66e0ff');
+                        }
                     }
 
                     if (attacker.id === 'witch' && defender.hp > 0) {
@@ -3263,8 +3556,9 @@
                     }
 
                     if (attacker.id === 'alchemist' && defender.hp > 0) {
-                        defender.poisonStacks = Math.min(3, (defender.poisonStacks || 0) + 1);
-                        defender.poisonTurnsLeft = 3;
+                        let isSig = (attacker.unitLevel || 1) >= UNIT_SIGNATURE_LEVEL;
+                        defender.poisonStacks = Math.min(isSig ? 5 : 3, (defender.poisonStacks || 0) + 1);
+                        defender.poisonTurnsLeft = isSig ? 4 : 3;
                         this.spawnFloatingText(defender.x, defender.y, `🧪 Яд x${defender.poisonStacks}`, '#8fce4a');
                     }
 
@@ -3322,13 +3616,26 @@
                     this.playUnitAnim(attacker.uid, 'unit-anim-hit', 380);
                     this.spawnFloatingText(attacker.x, attacker.y, `-${thornsDmg} 🌵`, '#8fce4a');
                 }
+
+                if (defender.shockwavePct) {
+                    let waveDmg = Math.max(1, Math.floor(dmg * defender.shockwavePct));
+                    this.units.forEach(u => {
+                        if (u.hp <= 0 || u.team === defender.team) return;
+                        if (this.getDistance(defender, u.x, u.y, u.size) <= 1) {
+                            this.applyDamageToUnit(defender, u, waveDmg);
+                            this.playUnitAnim(u.uid, 'unit-anim-hit', 380);
+                            this.spawnFloatingText(u.x, u.y, `-${waveDmg} 💥`, '#ffb347');
+                        }
+                    });
+                }
             }
 
             endTurn() {
                 if (this.activeUnit && this.activeUnit.hp > 0) {
                     if (this.activeUnit.id === 'stone_golem') {
                         let scale = 1 + ((this.activeUnit.waveLevel || 1) - 1) * 0.10;
-                        let armorRestore = Math.round(40 * scale);
+                        let isSig = (this.activeUnit.unitLevel || 1) >= UNIT_SIGNATURE_LEVEL;
+                        let armorRestore = Math.round((isSig ? 60 : 40) * scale);
                         this.activeUnit.armor = (this.activeUnit.armor || 0) + armorRestore;
                         this.activeUnit.maxArmor = Math.max(this.activeUnit.maxArmor || 0, this.activeUnit.armor);
                         this.spawnFloatingText(this.activeUnit.x, this.activeUnit.y, `+${armorRestore} 🛡️`, '#00bcd4');
@@ -3425,7 +3732,8 @@
                                 };
                                 this.units.push(newUnit);
                                 
-                                let baseCd = (type === 'stone_golem') ? 2 : 20;
+                                let isSigAI = (me.unitLevel || 1) >= UNIT_SIGNATURE_LEVEL;
+                                let baseCd = (type === 'stone_golem') ? (isSigAI ? 1 : 2) : (isSigAI ? 15 : 20);
                                 me.cooldowns['summon_' + type] = this.getAdjustedCooldown(baseCd, wl, me);
                                 this.applySummonSelfDamage(me);
                                 this.renderGrid();
