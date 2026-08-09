@@ -1049,6 +1049,8 @@
         const UNIT_SIGNATURE_LEVEL = 4;
         const UNIT_SIGNATURE_LEVEL_2 = 8;
         const UNIT_SIGNATURE_LEVEL_3 = 12;
+        const UNIT_MAX_LEVEL = 12; // юнит не может расти выше 3-й сигнатурной ступени
+        const HERO_MAX_LEVEL = 15; // герой не может расти выше 3-й сигнатурной ступени
         const UNIT_XP_PER_WAVE = 6;
         const HERO_XP_PER_WAVE = 15;
 
@@ -1475,13 +1477,15 @@
                 aliveTypes.forEach(type => {
                     const save = this.unitSave.units[type];
                     if (!save) return;
+                    if (save.level >= UNIT_MAX_LEVEL) { save.xp = 0; return; } // максимум достигнут — опыт больше не копится впустую
                     const oldLevel = save.level;
                     save.xp += amount;
-                    if (save.xp >= this.unitXpToNextLevel(save.level)) {
+                    while (save.level < UNIT_MAX_LEVEL && save.xp >= this.unitXpToNextLevel(save.level)) {
                         save.xp -= this.unitXpToNextLevel(save.level);
                         save.level += 1;
-                        leveledUp.push({ type, oldLevel, newLevel: save.level });
                     }
+                    if (save.level >= UNIT_MAX_LEVEL) { save.level = UNIT_MAX_LEVEL; save.xp = 0; }
+                    if (save.level !== oldLevel) leveledUp.push({ type, oldLevel, newLevel: save.level });
                 });
                 this.saveUnitSave();
                 return leveledUp;
@@ -1562,10 +1566,12 @@
             awardHeroXP(amount) {
                 const hero = this.heroSave.heroes[this.heroSave.active];
                 if (!hero) return;
+                if (hero.level >= HERO_MAX_LEVEL) { hero.xp = 0; this.saveHeroSave(); return; } // максимум достигнут
                 hero.xp += amount;
-                if (hero.xp >= this.heroXpToNextLevel(hero.level)) {
+                if (hero.level < HERO_MAX_LEVEL && hero.xp >= this.heroXpToNextLevel(hero.level)) {
                     hero.xp -= this.heroXpToNextLevel(hero.level);
                     hero.level += 1;
+                    if (hero.level >= HERO_MAX_LEVEL) { hero.level = HERO_MAX_LEVEL; hero.xp = 0; }
                     this.pendingHeroLevelUp = true;
                 }
                 this.saveHeroSave();
@@ -1794,7 +1800,7 @@
                     const oldLevel = save.level;
                     save.xp += amount;
                     let levelsGained = 0;
-                    while (save.xp >= this.heroXpToNextLevel(save.level)) {
+                    while (save.level < HERO_MAX_LEVEL && save.xp >= this.heroXpToNextLevel(save.level)) {
                         save.xp -= this.heroXpToNextLevel(save.level);
                         save.level++;
                         levelsGained++;
@@ -1804,6 +1810,7 @@
                         const pool = exclusivePool.length > 0 ? exclusivePool : HERO_TALENTS.filter(t => !save.talents.includes(t.id));
                         if (pool.length > 0) save.talents.push(pool[Math.floor(Math.random() * pool.length)].id);
                     }
+                    if (save.level >= HERO_MAX_LEVEL) { save.level = HERO_MAX_LEVEL; save.xp = 0; }
                     this.saveHeroSave();
                     return { oldLevel, newLevel: save.level, levelsGained };
                 } else {
@@ -1812,11 +1819,12 @@
                     const oldLevel = save.level;
                     save.xp += amount;
                     let levelsGained = 0;
-                    while (save.xp >= this.unitXpToNextLevel(save.level)) {
+                    while (save.level < UNIT_MAX_LEVEL && save.xp >= this.unitXpToNextLevel(save.level)) {
                         save.xp -= this.unitXpToNextLevel(save.level);
                         save.level++;
                         levelsGained++;
                     }
+                    if (save.level >= UNIT_MAX_LEVEL) { save.level = UNIT_MAX_LEVEL; save.xp = 0; }
                     this.saveUnitSave();
                     return { oldLevel, newLevel: save.level, levelsGained };
                 }
@@ -2072,10 +2080,11 @@
 
                     const meta = document.createElement('div');
                     meta.className = 'hero-card-meta';
-                    meta.innerText = unlocked ? `Уровень ${save.level} • XP: ${save.xp}/${this.heroXpToNextLevel(save.level)}` : 'Заблокирован';
+                    const isMaxLevel = save.level >= HERO_MAX_LEVEL;
+                    meta.innerText = unlocked ? `Уровень ${save.level}${isMaxLevel ? ' • МАКС. УРОВЕНЬ' : ` • XP: ${save.xp}/${this.heroXpToNextLevel(save.level)}`}` : 'Заблокирован';
                     card.appendChild(meta);
 
-                    if (unlocked) {
+                    if (unlocked && !isMaxLevel) {
                         // Прогноз роста: что даст следующий уровень — видно заранее, ещё до похода
                         const heroStatsAt = (lvl) => {
                             const s = 1 + (lvl - 1) * 0.04;
@@ -2430,6 +2439,61 @@
             }
 
             // Снимает ВСЕ негативные эффекты с юнита (эксклюзивная фишка Жреца — единственного лекаря в игре)
+            // Возвращает строку "на вашем текущем уровне значение X" для юнитов с известной прогрессией
+            // пассивки — иначе описание в UNIT_TYPES остаётся статичным текстом с диапазоном, а не
+            // конкретным числом, которое реально действует прямо сейчас
+            getPassiveCurrentValueNote(unit) {
+                const lvl = unit.unitLevel || 1;
+                switch (unit.id) {
+                    case 'stone_golem': {
+                        let base = lvl >= UNIT_SIGNATURE_LEVEL_3 ? 85 : (lvl >= UNIT_SIGNATURE_LEVEL_2 ? 72 : (lvl >= UNIT_SIGNATURE_LEVEL ? 60 : 40));
+                        return `📍 На вашем уровне (${lvl}): +${base} брони в конце хода`;
+                    }
+                    case 'knight': {
+                        let arrowRed = lvl >= UNIT_SIGNATURE_LEVEL_3 ? 70 : (lvl >= UNIT_SIGNATURE_LEVEL_2 ? 60 : 50);
+                        let reflect = lvl >= UNIT_SIGNATURE_LEVEL_3 ? 100 : (lvl >= UNIT_SIGNATURE_LEVEL_2 ? 90 : 80);
+                        return `📍 На вашем уровне (${lvl}): -${arrowRed}% урона от стрел, отражает ${reflect}% урона`;
+                    }
+                    case 'ent': {
+                        let red = lvl >= UNIT_SIGNATURE_LEVEL_3 ? 90 : (lvl >= UNIT_SIGNATURE_LEVEL_2 ? 85 : 80);
+                        return `📍 На вашем уровне (${lvl}): -${red}% физического урона`;
+                    }
+                    case 'frost_mage': {
+                        if (lvl < UNIT_SIGNATURE_LEVEL) return `📍 На вашем уровне (${lvl}): доп. урон при заморозке ещё не открыт (нужен ур.${UNIT_SIGNATURE_LEVEL})`;
+                        let mult = lvl >= UNIT_SIGNATURE_LEVEL_3 ? 60 : (lvl >= UNIT_SIGNATURE_LEVEL_2 ? 50 : 40);
+                        return `📍 На вашем уровне (${lvl}): доп. урон при заморозке = ${mult}% от урона атаки`;
+                    }
+                    case 'alchemist': {
+                        let maxStacks = lvl >= UNIT_SIGNATURE_LEVEL_3 ? 7 : (lvl >= UNIT_SIGNATURE_LEVEL_2 ? 6 : (lvl >= UNIT_SIGNATURE_LEVEL ? 5 : 3));
+                        let duration = lvl >= UNIT_SIGNATURE_LEVEL_2 ? 5 : (lvl >= UNIT_SIGNATURE_LEVEL ? 4 : 3);
+                        return `📍 На вашем уровне (${lvl}): яд до x${maxStacks} стаков, ${duration} хода`;
+                    }
+                    case 'ballista': {
+                        let entMult = lvl >= UNIT_SIGNATURE_LEVEL_3 ? 9 : (lvl >= UNIT_SIGNATURE_LEVEL_2 ? 8 : (lvl >= UNIT_SIGNATURE_LEVEL ? 7 : 5));
+                        return `📍 На вашем уровне (${lvl}): x${entMult} урона по Энтам`;
+                    }
+                    case 'wolf_rider': {
+                        let radius = lvl >= UNIT_SIGNATURE_LEVEL_2 ? 4 : (lvl >= UNIT_SIGNATURE_LEVEL ? 3 : 2);
+                        let bonus = lvl >= UNIT_SIGNATURE_LEVEL_3 ? 35 : (lvl >= UNIT_SIGNATURE_LEVEL_2 ? 30 : (lvl >= UNIT_SIGNATURE_LEVEL ? 25 : 15));
+                        return `📍 На вашем уровне (${lvl}): радиус Стаи ${radius}, бонус +${bonus}%`;
+                    }
+                    case 'sniper': {
+                        let perTile = lvl >= UNIT_SIGNATURE_LEVEL_3 ? 22 : (lvl >= UNIT_SIGNATURE_LEVEL_2 ? 18 : (lvl >= UNIT_SIGNATURE_LEVEL ? 14 : 10));
+                        return `📍 На вашем уровне (${lvl}): +${perTile}% урона за клетку дистанции`;
+                    }
+                    case 'chronomancer': {
+                        let radius = lvl >= UNIT_SIGNATURE_LEVEL_2 ? 4 : (lvl >= UNIT_SIGNATURE_LEVEL ? 3 : 2);
+                        let bonus = lvl >= UNIT_SIGNATURE_LEVEL_3 ? 6 : (lvl >= UNIT_SIGNATURE_LEVEL_2 ? 5 : (lvl >= UNIT_SIGNATURE_LEVEL ? 4 : 3));
+                        return `📍 На вашем уровне (${lvl}): аура радиус ${radius}, +${bonus} иниц.`;
+                    }
+                    case 'dragon': {
+                        let cap = lvl >= UNIT_SIGNATURE_LEVEL_3 ? 20 : (lvl >= UNIT_SIGNATURE_LEVEL_2 ? 16 : (lvl >= UNIT_SIGNATURE_LEVEL ? 12 : 8));
+                        return `📍 На вашем уровне (${lvl}): потолок Жатвы — ${cap} убийств за бой`;
+                    }
+                    default: return null;
+                }
+            }
+
             cleanseAllDebuffs(unit) {
                 unit.isFrozen = false;
                 unit.chronoSlowTurns = 0;
@@ -2619,9 +2683,12 @@
                     bonusDmg: 0, bonusInit: 0
                 };
                 this.showUnitInfo(previewUnit);
+                const isMaxLevel = save.level >= UNIT_MAX_LEVEL;
                 const xpNeeded = this.unitXpToNextLevel(save.level);
                 const cdsEl = document.getElementById('info-cds');
-                const xpNote = `📊 Опыт юнита: ${save.xp}/${xpNeeded} до след. уровня (стоимость: 💰${this.getEffectiveUnitCost(type)})`;
+                const xpNote = isMaxLevel
+                    ? `📊 МАКСИМАЛЬНЫЙ УРОВЕНЬ (стоимость: 💰${this.getEffectiveUnitCost(type)})`
+                    : `📊 Опыт юнита: ${save.xp}/${xpNeeded} до след. уровня (стоимость: 💰${this.getEffectiveUnitCost(type)})`;
                 if (cdsEl) cdsEl.innerText = cdsEl.innerText ? `${cdsEl.innerText}\n${xpNote}` : xpNote;
 
                 // Прогноз роста: наглядно видно, стоит ли вкладывать усилия в прокачку этого юнита ЗАРАНЕЕ,
@@ -2635,16 +2702,18 @@
                 header.innerText = '🔮 Прогноз роста';
                 forecastEl.appendChild(header);
 
-                const statsAt = (lvl) => {
-                    const s = 1 + (lvl - 1) * 0.05;
-                    return { hp: Math.round(tpl.hp * s), dmg: Math.round(tpl.dmg * s) };
-                };
-                const curStats = statsAt(save.level);
-                const nextStats = statsAt(save.level + 1);
-                const nextRow = document.createElement('div');
-                nextRow.className = 'info-buff-row buff-positive';
-                nextRow.innerText = `След. уровень (${save.level + 1}): ❤️ ${curStats.hp} → ${nextStats.hp} (+${nextStats.hp - curStats.hp})   ⚔️ ${curStats.dmg} → ${nextStats.dmg} (+${nextStats.dmg - curStats.dmg})`;
-                forecastEl.appendChild(nextRow);
+                if (!isMaxLevel) {
+                    const statsAt = (lvl) => {
+                        const s = 1 + (lvl - 1) * 0.05;
+                        return { hp: Math.round(tpl.hp * s), dmg: Math.round(tpl.dmg * s) };
+                    };
+                    const curStats = statsAt(save.level);
+                    const nextStats = statsAt(save.level + 1);
+                    const nextRow = document.createElement('div');
+                    nextRow.className = 'info-buff-row buff-positive';
+                    nextRow.innerText = `След. уровень (${save.level + 1}): ❤️ ${curStats.hp} → ${nextStats.hp} (+${nextStats.hp - curStats.hp})   ⚔️ ${curStats.dmg} → ${nextStats.dmg} (+${nextStats.dmg - curStats.dmg})`;
+                    forecastEl.appendChild(nextRow);
+                }
 
                 [UNIT_SIGNATURE_LEVEL, UNIT_SIGNATURE_LEVEL_2, UNIT_SIGNATURE_LEVEL_3].forEach(tier => {
                     const row = document.createElement('div');
@@ -2703,7 +2772,29 @@
                 let curMove = this.getEffectiveMove(unit);
                 let curRange = this.getEffectiveRange(unit);
                 document.getElementById('info-range').innerText = `${curRange} (баз. ${unit.range}) / ${curMove}`;
-                document.getElementById('info-passive').innerText = unit.passive || 'Нет пассивных способностей.';
+
+                let passiveText = unit.passive || 'Нет пассивных способностей.';
+                // У героев названия и описания активных способностей (например, "Пелена Тьмы") хранятся
+                // в тексте сигнатурных ступеней — раньше они нигде не показывались, кроме экрана выбора героя
+                if (unit.isHero) {
+                    const heroTpl = HERO_TYPES[unit.id];
+                    if (heroTpl && heroTpl.signatures) {
+                        const heroLvl = unit.heroLevel || 1;
+                        heroTpl.signatures.forEach(sigTier => {
+                            if (heroLvl >= sigTier.level) {
+                                passiveText += `\n\n✅ Сигнатура ур.${sigTier.level}: ${sigTier.text}`;
+                            } else {
+                                passiveText += `\n\n🔒 Сигнатура ур.${sigTier.level} (ещё не открыта)`;
+                            }
+                        });
+                    }
+                } else {
+                    // Описание в UNIT_TYPES — статичный текст с диапазоном ("растёт до X/Y на ур.8/12"),
+                    // а не конкретное число, которое действует ПРЯМО СЕЙЧАС — добавляем его отдельной строкой
+                    const currentNote = this.getPassiveCurrentValueNote(unit);
+                    if (currentNote) passiveText += `\n\n${currentNote}`;
+                }
+                document.getElementById('info-passive').innerText = passiveText;
                 
                 // Каждый эффект — своя строка с цветом: зелёный = хорошо для юнита, красный = плохо, золотой = нейтрально/временно
                 let buffs = [];
