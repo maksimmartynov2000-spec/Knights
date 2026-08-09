@@ -276,7 +276,15 @@
             height: 100%;
             background: linear-gradient(90deg, #23b843, #7cff5a);
             box-shadow: 0 0 4px rgba(90,255,110,0.7);
-            transition: width 0.3s ease;
+            transition: width 0.3s ease, background 0.3s ease;
+        }
+        .hp-fill.hp-warning {
+            background: linear-gradient(90deg, #d99a1f, #ffd24d);
+            box-shadow: 0 0 4px rgba(255,210,77,0.7);
+        }
+        .hp-fill.hp-critical {
+            background: linear-gradient(90deg, #c41f1f, #ff5a5a);
+            box-shadow: 0 0 5px rgba(255,60,60,0.85);
         }
 
         .armor-bar {
@@ -757,6 +765,21 @@
                 </div>
 
                 <div class="armory-item" style="margin-bottom: 8px;">
+                    <div class="armory-item-name">📈 Добавить опыт юниту/герою</div>
+                    <div class="setup-row" style="margin-top: 6px;">
+                        <select id="cheat-xp-kind" style="flex-grow: 0;">
+                            <option value="unit">Юнит</option>
+                            <option value="hero">Герой</option>
+                        </select>
+                        <select id="cheat-xp-target" style="flex: 1;"></select>
+                    </div>
+                    <div class="setup-row" style="margin-top: 6px;">
+                        <input id="cheat-xp-input" type="number" min="0" placeholder="Например 200" style="flex:1; padding:7px; background:linear-gradient(180deg,#35353b,#292930); color:#eee; border:1px solid #55555c; border-radius:6px; font-size:12px;">
+                        <button id="cheat-xp-apply" class="success" style="flex-grow:0; padding:7px 12px;">Добавить</button>
+                    </div>
+                </div>
+
+                <div class="armory-item" style="margin-bottom: 8px;">
                     <div class="armory-item-name">📤 Код сохранения (Слава + Арсенал + Герои)</div>
                     <div class="armory-item-desc">Скопируй этот код и сохрани его где-нибудь (заметки, чат с собой) — после потери прогресса вставь его обратно.</div>
                     <textarea id="savecode-export" readonly style="width:100%; margin-top:6px; height:54px; font-size:10px; background:#111; color:#8fce4a; border:1px solid #444; border-radius:6px; padding:6px; resize:none;"></textarea>
@@ -870,21 +893,21 @@
 
         const UNIT_TYPES = {
             necromancer: { id: 'necromancer', name: 'Некромант', hp: 10, armor: 0, dmg: 5, dmgType: 'Магия', init: 10, move: 1, range: 2, icon: '🧙‍♂️', size: 1, passive: 'Пассивка "Призрачный Щит": Получает строго 1 ед. урона от ЛЮБОЙ атаки. Не может получать HP/Броню и не может исцеляться никаким способом.\nАктивка 1: "Призыв" — призывает союзника любого типа в радиусе 2, но теряет 1 HP за каждый призыв.\nАктивка 2 (сигнатура ур.4): "Тёмный Пульс" — 80% урона всем врагам рядом (КД: 3х).\nАктивка 3 (сигнатура ур.8): "Восстание Мёртвых" — все союзники получают +20% урона на 2 хода (КД: 5х).' },
-            knight: { id: 'knight', name: 'Рыцарь', hp: 100, armor: 0, dmg: 10, dmgType: 'Физ', init: 12, move: 2, range: 1, icon: '⚔️', size: 1, passive: 'Пассивка "Латы": Получает на -50% меньше урона от стрел. Возвращает 80% физ. урона в ближнем бою обратно атакующему.\nАктивка 1: "Щит" — моментально +120 к Броне (КД: 2х).\nАктивка 2 (сигнатура ур.4): "Боевой Клич" — союзники в радиусе 2 получают +10 брони (КД: 3х).\nАктивка 3 (сигнатура ур.8): "Неприступность" — полностью блокирует следующий удар по себе (КД: 4х).' },
+            knight: { id: 'knight', name: 'Рыцарь', hp: 100, armor: 0, dmg: 10, dmgType: 'Физ', init: 12, move: 2, range: 1, icon: '⚔️', size: 1, passive: 'Пассивка "Латы": Получает на -50% меньше урона от стрел (растёт до -60%/-70% на сигнатурах ур.8/12). Возвращает 80% физ. урона в ближнем бою обратно атакующему (растёт до 90%/100%).\nАктивка 1: "Щит" — моментально +120 к Броне (КД: 2х).\nАктивка 2 (сигнатура ур.4): "Боевой Клич" — союзники в радиусе 2 получают +10 брони (КД: 3х).\nАктивка 3 (сигнатура ур.8): "Неприступность" — полностью блокирует следующий удар по себе (КД: 4х).' },
             crossbow: { id: 'crossbow', name: 'Арбалетчик', hp: 40, armor: 0, dmg: 50, dmgType: 'Стрела', init: 36, move: 3, range: 2, icon: '🏹', size: 1, passive: 'Пассивка: Высокая инициатива для быстрых дальних атак. Теряет дальность под угрозой врага в упор.\nАктивка 1: "Ослабляющий Выстрел" — урон + цель бьёт на 20% слабее 2 хода.\nАктивка 2 (сигнатура ур.4): "Точный Выстрел" — удвоенный урон по цели (КД: 3х).\nАктивка 3 (сигнатура ур.8): "Двойной Взвод" — стреляет дважды подряд по цели (КД: 4х).' },
             ballista: { id: 'ballista', name: 'Балиста', hp: 80, armor: 0, dmg: 80, dmgType: 'Физ', init: 10, move: 1, range: 4, icon: '🏗️', size: 1, armorPenPct: 0.3, passive: 'Пассивка "Осада": Наносит х5 урон по Энтам, х3 по Каменным Големам и х2 по Драконам. Теряет дальность под угрозой врага в упор. Иммунитет к Ауре Дракона.\nПассивка "Пробитие Брони": 30% урона игнорирует броню цели и бьёт сразу по HP.\nАктивка 1: "Подготовка" — необходимо активировать перед выстрелом.\nАктивка 2 (сигнатура ур.4): "Обстрел" — 50% урона по ВСЕМ врагам в радиусе поражения (КД: 4х).\nАктивка 3 (сигнатура ур.8): "Точный Прицел" — следующий выстрел гарантированно критический (КД: 3х).' },
-            ent: { id: 'ent', name: 'Энт', hp: 250, armor: 50, dmg: 70, dmgType: 'Физ', init: 6, move: 1, range: 1, icon: '🌳', size: 1, passive: 'Пассивка "Кора Древа": Снижает входящий ФИЗИЧЕСКИЙ урон и стрелы на 80%. Атака наносит АОЕ урон всем вокруг.\nАктивка 1: "Окаменение" — +150 Брони (КД: 3х).\nАктивка 2 (сигнатура ур.4): "Корни" — обездвиживает врага на 2 хода (дальность 3, КД: 3х).\nАктивка 3 (сигнатура ур.8): "Ядовитые Споры" — яд x2 всем врагам рядом (КД: 4х).' },
+            ent: { id: 'ent', name: 'Энт', hp: 250, armor: 50, dmg: 70, dmgType: 'Физ', init: 6, move: 1, range: 1, icon: '🌳', size: 1, passive: 'Пассивка "Кора Древа": Снижает входящий ФИЗИЧЕСКИЙ урон и стрелы на 80% (растёт до 85%/90% на сигнатурах ур.8/12). Атака наносит АОЕ урон всем вокруг.\nАктивка 1: "Окаменение" — +150 Брони (КД: 3х).\nАктивка 2 (сигнатура ур.4): "Корни" — обездвиживает врага на 2 хода (дальность 3, КД: 3х).\nАктивка 3 (сигнатура ур.8): "Ядовитые Споры" — яд x2 всем врагам рядом (КД: 4х).' },
             dragon: { id: 'dragon', name: 'Дракон', hp: 120, armor: 0, dmg: 46, dmgType: 'Магия', init: 10, move: 4, range: 2, icon: '🐉', size: 2, passive: 'Пассивка "Устрашающая Аура": Враги в радиусе 1 теряют -6 Инициативы и наносят на -35% меньше урона. Полет через любые юниты и препятствия.\nПассивка "Жатва": При смерти врага получает +18 maxHP/+18 HP, +2 к Урону и +1 к Инициативе (макс. 8 раз за бой).\nАктивка 1: "Огненное Дыхание" — 60% урона всем врагам рядом с целью (КД: 3х).\nАктивка 2 (сигнатура ур.4): "Оглушающий Рёв" — обнуляет ход цели и замедляет на 2 хода (КД: 4х).\nАктивка 3 (сигнатура ур.8): "Полёт" — мгновенно перемещается в любую точку поля (КД: 4х).' },
             vampire: { id: 'vampire', name: 'Вампир', hp: 40, armor: 0, dmg: 30, dmgType: 'Физ', init: 24, move: 5, range: 1, icon: '🦇', size: 1, armorPenPct: 0.2, passive: 'Пассивка "Вампиризм": Излечивается на 100% от нанесенного урона. Каждая атака снижает инициативу цели на 1. Перемещение сквозь юнитов.\nПассивка "Клыки": 20% урона игнорирует броню цели и бьёт сразу по HP.\nАктивка 1: "Телепортация" — перемещается на любую клетку поля (КД: 4х).\nАктивка 2 (сигнатура ур.4): "Жажда Крови" — +15 к Инициативе на 3 хода (КД: 4х).\nАктивка 3 (сигнатура ур.8): "Кровавое Пиршество" — полностью исцеляется и снимает все дебаффы (КД: 5х).' },
-            stone_golem: { id: 'stone_golem', name: 'Каменный Голем', hp: 120, armor: 0, dmg: 20, dmgType: 'Физ', init: 5, move: 1, range: 1, icon: '🪨', size: 1, passive: 'Пассивка "Каменная Закалка": После получения любого урона получает +10% защиты (макс. +90%) от физ. урона в ближнем бою и стрел. В конце каждого своего хода автоматически восстанавливает +40 Брони.\nАктивка 1: "Каменная Твердыня" — мгновенно +60 брони (КД: 4х).\nАктивка 2 (сигнатура ур.4): "Землетрясение" — урон и замедление всем врагам рядом (КД: 4х).\nАктивка 3 (сигнатура ур.8): "Обвал" — оглушает всех врагов рядом (КД: 5х).' },
+            stone_golem: { id: 'stone_golem', name: 'Каменный Голем', hp: 120, armor: 0, dmg: 20, dmgType: 'Физ', init: 5, move: 1, range: 1, icon: '🪨', size: 1, passive: 'Пассивка "Каменная Закалка": После получения любого урона получает +10% защиты (макс. +90%) от физ. урона в ближнем бою и стрел. В конце каждого своего хода автоматически восстанавливает +40 Брони (растёт до 72/85 на сигнатурах ур.8/12).\nАктивка 1: "Каменная Твердыня" — мгновенно +60 брони (КД: 4х).\nАктивка 2 (сигнатура ур.4): "Землетрясение" — урон и замедление всем врагам рядом (КД: 4х).\nАктивка 3 (сигнатура ур.8): "Обвал" — оглушает всех врагов рядом (КД: 5х).' },
             chronomancer: { id: 'chronomancer', name: 'Чародейка Времени', hp: 30, armor: 0, dmg: 10, dmgType: 'Магия', init: 14, move: 2, range: 3, icon: '🔮', size: 1, passive: 'Пассивка "Аура Времени": +3 к Инициативе союзникам в радиусе 2. Теряет дальность под угрозой врага в упор.\nАктивка 1: "Замедление" — -30 шкалы хода и -8 Инициативы цели на 2 хода (КД: 3х).\nАктивка 2: "Скачок" — моментально дарует ход союзнику (КД: 4х).\nАктивка 3 (сигнатура ур.8): "Разрыв Времени" — мгновенно сбрасывает КД союзника (дальность 3, КД: 5х).' },
             berserker: { id: 'berserker', name: 'Берсерк', hp: 240, armor: 0, dmg: 20, dmgType: 'Физ', init: 10, move: 3, range: 1, icon: '🪓', size: 1, passive: 'Пассивка "Квадро-Ярость": За каждые потерянные 5% HP получает +3 к Инициативе и +5 к Урону.\nАктивка 1: "Боевой Клич" — +25% урона на 2 хода (КД: 3х).\nАктивка 2 (сигнатура ур.4): "Второе Дыхание" — восстанавливает 20% макс. HP (КД: 4х).\nАктивка 3 (сигнатура ур.8): "Смертельный Рывок" — x1.5 урона по цели (КД: 4х).' },
             sniper: { id: 'sniper', name: 'Снайпер', hp: 25, armor: 0, dmg: 50, dmgType: 'Стрела', init: 8, move: 1, range: 6, icon: '🎯', size: 1, passive: 'Пассивка "Дальний Выстрел": Не поддается срезке дальности от врагов в упор. Не может атаковать цели ближе 3 клеток. Получает +10% к урону за каждую клетку дистанции до цели.\nАктивка 1: "Прицельный Выстрел" — следующая атака гарантированно критическая (КД: 3х).\nАктивка 2 (сигнатура ур.4): "Маскировка" — +30% уклонение на 2 хода (КД: 4х).\nАктивка 3 (сигнатура ур.8): "Двойной Выстрел" — стреляет дважды подряд по цели (КД: 4х).' },
-            frost_mage: { id: 'frost_mage', name: 'Маг Льда', hp: 35, armor: 0, dmg: 18, dmgType: 'Магия', init: 14, move: 2, range: 3, icon: '🧊', size: 1, passive: 'Пассивка "Глубокая Заморозка": Каждая атака замораживает цель (блокирует Move на 0, снижает Инициативу на 50%). Теряет дальность под угрозой врага в упор.\nАктивка 1 (сигнатура ур.4): "Ледяной Щит" — мгновенно +30 брони (КД: 3х).\nАктивка 2: "Ледяной Взрыв" — урон и заморозка всем врагам рядом с целью (КД: 4х).\nАктивка 3 (сигнатура ур.8): "Абсолютный Ноль" — замораживает всех врагов в радиусе 2 без урона (КД: 5х).' },
+            frost_mage: { id: 'frost_mage', name: 'Маг Льда', hp: 35, armor: 0, dmg: 18, dmgType: 'Магия', init: 14, move: 2, range: 3, icon: '🧊', size: 1, passive: 'Пассивка "Глубокая Заморозка": Каждая атака замораживает цель (блокирует Move на 0, снижает Инициативу на 50%), с сигнатуры ур.4 дополнительно наносит доп. урон при заморозке (растёт с 40% до 50%/60% урона на ур.8/12). Теряет дальность под угрозой врага в упор.\nАктивка 1 (сигнатура ур.4): "Ледяной Щит" — мгновенно +30 брони (КД: 3х).\nАктивка 2: "Ледяной Взрыв" — урон и заморозка всем врагам рядом с целью (КД: 4х).\nАктивка 3 (сигнатура ур.8): "Абсолютный Ноль" — замораживает всех врагов в радиусе 2 без урона (КД: 5х).' },
             specter: { id: 'specter', name: 'Призрак', hp: 30, armor: 0, dmg: 20, dmgType: 'Магия', init: 15, move: 4, range: 1, icon: '👻', size: 1, passive: 'Пассивка "Бестелесность": Полный иммунитет к физ. урону и стрелам. Получает х2 урон от Магии. Проходит сквозь юнитов и препятствия.\nАктивка 1: "Фаза" — телепортация на любую клетку (КД: 4х).\nАктивка 2 (сигнатура ур.4): "Вопль Ужаса" — цель наносит на 30% меньше урона 2 хода (дальность 3, КД: 3х).\nАктивка 3 (сигнатура ур.8): "Поглощение Души" — урон + исцеление на 50% от нанесённого (КД: 4х).' },
             phoenix: { id: 'phoenix', name: 'Феникс', hp: 50, armor: 0, dmg: 25, dmgType: 'Магия', init: 17, move: 4, range: 2, icon: '🌟', size: 1, passive: 'Пассивка "Возрождение": Летает сквозь юниты и препятствия. При смерти превращается в Яйцо Феникса и перерождается с удвоенными HP и Уроном!\nАктивка 1: "Испепеляющий Взгляд" — урон + мощный ожог (яд x2 стака).\nАктивка 2 (сигнатура ур.4): "Огненная Волна" — 60% урона всем врагам рядом с целью (КД: 3х).\nАктивка 3 (сигнатура ур.8): "Небесное Пике" — телепорт с уроном по площади при приземлении (КД: 5х).' },
             phoenix_egg: { id: 'phoenix_egg', name: 'Яйцо Феникса', hp: 20, armor: 0, dmg: 0, dmgType: 'Нет', init: 17, move: 0, range: 0, icon: '🥚', size: 1, passive: 'Пассивка: Не может совершать действия. Автоматически перерождается в усовершенствованного Феникса при наступлении хода.' },
-            alchemist: { id: 'alchemist', name: 'Алхимик', hp: 45, armor: 0, dmg: 16, dmgType: 'Магия', init: 13, move: 2, range: 3, icon: '🧪', size: 1, passive: 'Пассивка "Ядовитая Смесь": Атака накладывает яд (3 урона в начале каждого хода цели, 3 хода, стакается до 3 раз).\nАктивка 1: "Зелье Ярости" — даёт союзнику +20% урона на 2 хода.\nАктивка 2 (сигнатура ур.4): "Кислотная Бомба" — урон и -30% брони цели (КД: 3х).\nАктивка 3 (сигнатура ур.8): "Едкий Туман" — яд x2 всем врагам рядом с целью (КД: 4х).' },
+            alchemist: { id: 'alchemist', name: 'Алхимик', hp: 45, armor: 0, dmg: 16, dmgType: 'Магия', init: 13, move: 2, range: 3, icon: '🧪', size: 1, passive: 'Пассивка "Ядовитая Смесь": Атака накладывает яд (3 урона в начале каждого хода цели). Длительность и потолок стаков растут с уровнем: 3 хода/3 стака на старте, до 5 ходов/7 стаков на сигнатуре ур.12.\nАктивка 1: "Зелье Ярости" — даёт союзнику +20% урона на 2 хода.\nАктивка 2 (сигнатура ур.4): "Кислотная Бомба" — урон и -30% брони цели (КД: 3х).\nАктивка 3 (сигнатура ур.8): "Едкий Туман" — яд x2 всем врагам рядом с целью (КД: 4х).' },
             wolf_rider: { id: 'wolf_rider', name: 'Наездник на Волке', hp: 60, armor: 0, dmg: 24, dmgType: 'Физ', init: 19, move: 5, range: 1, icon: '🐺', size: 1, armorPenPct: 0.2, passive: 'Пассивка "Стая": Наносит +15% урона, если в радиусе 2 есть другой союзный Наездник на Волке.\nПассивка "Клыки Волка": 20% урона игнорирует броню цели и бьёт сразу по HP.\nАктивка 1: "Дикий Рывок" — мгновенно +2 к дальности хода (КД: 3х).\nАктивка 2 (сигнатура ур.4): "Волчий Вой" — союзники в радиусе 3 получают +5 Инициативы (КД: 4х).\nАктивка 3 (сигнатура ур.8): "Смертельный Прыжок" — x1.4 урона по цели (КД: 4х).' },
             priest: { id: 'priest', name: 'Жрец', hp: 50, armor: 0, dmg: 8, dmgType: 'Магия', init: 16, move: 2, range: 2, icon: '⛪', size: 1, passive: 'Пассивка "Целитель": Единственный лекарь в игре. Активка лечит союзника на 35 HP и снимает ВСЕ негативные эффекты (яд, проклятие, заморозку, замедление, корни) (КД: 2х).\nАктивка 2 (сигнатура ур.4): "Экзорцизм" — урон x1.8 по врагу (КД: 3х).\nАктивка 3 (сигнатура ур.8): "Массовое Благословение" — лечит и снимает дебаффы со всех союзников в радиусе 3 (КД: 5х).' }
         };
@@ -1672,6 +1695,21 @@
                     this.renderSaveCodeModal();
                     alert(`✅ Добавлено ${amount} Славы. Теперь: ${this.metaGlory}.`);
                 });
+                document.getElementById('cheat-xp-kind').addEventListener('change', () => this.populateCheatXpTargets());
+                document.getElementById('cheat-xp-apply').addEventListener('click', () => {
+                    const kind = document.getElementById('cheat-xp-kind').value;
+                    const targetId = document.getElementById('cheat-xp-target').value;
+                    const input = document.getElementById('cheat-xp-input');
+                    const amount = parseInt(input.value, 10);
+                    if (!amount || amount <= 0 || !targetId) return;
+                    const result = this.applyCheatXP(kind, targetId, amount);
+                    if (!result) return;
+                    input.value = '';
+                    const name = kind === 'hero' ? HERO_TYPES[targetId].name : UNIT_TYPES[targetId].name;
+                    const levelNote = result.levelsGained > 0 ? ` (${result.oldLevel} → ${result.newLevel}, +${result.levelsGained} ур.)` : ' (уровень не изменился)';
+                    alert(`✅ ${name} получил ${amount} опыта${levelNote}.`);
+                    this.refreshUnitOptionLabels();
+                });
                 document.getElementById('savecode-copy-btn').addEventListener('click', () => {
                     const ta = document.getElementById('savecode-export');
                     ta.select();
@@ -1721,6 +1759,67 @@
                 catch (e) { code = JSON.stringify(data); }
                 const ta = document.getElementById('savecode-export');
                 if (ta) ta.value = code;
+                this.populateCheatXpTargets();
+            }
+
+            // Заполняет список целей для чит-кода опыта — юниты или герои, в зависимости от выбранного типа
+            populateCheatXpTargets() {
+                const kindSel = document.getElementById('cheat-xp-kind');
+                const targetSel = document.getElementById('cheat-xp-target');
+                if (!kindSel || !targetSel) return;
+                targetSel.innerHTML = '';
+                if (kindSel.value === 'hero') {
+                    Object.keys(HERO_TYPES).forEach(id => {
+                        const opt = document.createElement('option');
+                        opt.value = id;
+                        opt.innerText = `${HERO_TYPES[id].icon} ${HERO_TYPES[id].name}`;
+                        targetSel.appendChild(opt);
+                    });
+                } else {
+                    Object.keys(UNIT_TYPES).filter(id => id !== 'phoenix_egg').forEach(id => {
+                        const opt = document.createElement('option');
+                        opt.value = id;
+                        opt.innerText = `${UNIT_TYPES[id].icon} ${UNIT_TYPES[id].name}`;
+                        targetSel.appendChild(opt);
+                    });
+                }
+            }
+
+            // Начисляет опыт напрямую конкретному юниту или герою по чит-коду, честно обрабатывая
+            // возможные несколько повышений уровня подряд (если ввели много опыта разом)
+            applyCheatXP(kind, targetId, amount) {
+                if (kind === 'hero') {
+                    const save = this.heroSave.heroes[targetId];
+                    if (!save) return null;
+                    const oldLevel = save.level;
+                    save.xp += amount;
+                    let levelsGained = 0;
+                    while (save.xp >= this.heroXpToNextLevel(save.level)) {
+                        save.xp -= this.heroXpToNextLevel(save.level);
+                        save.level++;
+                        levelsGained++;
+                        // Автоматически выбираем случайный доступный талант за каждый полученный уровень,
+                        // чтобы герой не остался с "дырой" в билде после чит-кода без ручного выбора
+                        const exclusivePool = (HERO_EXCLUSIVE_TALENTS[targetId] || []).filter(t => !save.talents.includes(t.id));
+                        const pool = exclusivePool.length > 0 ? exclusivePool : HERO_TALENTS.filter(t => !save.talents.includes(t.id));
+                        if (pool.length > 0) save.talents.push(pool[Math.floor(Math.random() * pool.length)].id);
+                    }
+                    this.saveHeroSave();
+                    return { oldLevel, newLevel: save.level, levelsGained };
+                } else {
+                    const save = this.unitSave.units[targetId];
+                    if (!save) return null;
+                    const oldLevel = save.level;
+                    save.xp += amount;
+                    let levelsGained = 0;
+                    while (save.xp >= this.unitXpToNextLevel(save.level)) {
+                        save.xp -= this.unitXpToNextLevel(save.level);
+                        save.level++;
+                        levelsGained++;
+                    }
+                    this.saveUnitSave();
+                    return { oldLevel, newLevel: save.level, levelsGained };
+                }
             }
 
             // Восстанавливает Славу/Арсенал/Героев из кода сохранения. Возвращает true при успехе.
@@ -2342,6 +2441,7 @@
                 unit.witchCurseDot = false;
                 unit.rootedTurns = 0;
                 unit.vampireDebuffs = 0;
+                unit.vampireDebuffTurns = 0;
             }
 
             getEffectiveMove(unit) {
@@ -3331,7 +3431,11 @@
                             }
                             if (this.activeUnit.witchCurseTurns <= 0) this.activeUnit.witchCurseDot = false;
                         }
-                        if (this.activeUnit.vampireDebuffs > 0) this.activeUnit.vampireDebuffs = 0;
+                        // Укус вампира (ослабление инициативы цели) снимается через 2 ХОДА ЦЕЛИ, а не мгновенно на следующем ходу вампира
+                        if (this.activeUnit.vampireDebuffTurns > 0) {
+                            this.activeUnit.vampireDebuffTurns--;
+                            if (this.activeUnit.vampireDebuffTurns <= 0) this.activeUnit.vampireDebuffs = 0;
+                        }
 
                         if ((this.activeUnit.poisonStacks || 0) > 0 && this.activeUnit.hp > 0) {
                             let poisonDmg = Math.round(3 * this.activeUnit.poisonStacks * (this.activeUnit.poisonDmgMult || 1));
@@ -3398,6 +3502,7 @@
             startUnitTurn() {
                 this.selectedAction = null;
                 this.actionTarget = null;
+                this.actionInProgress = false; // новый ход — снимаем защиту от повторных кликов с предыдущего хода
                 this.renderGrid();
                 
                 let headerText = `Ходит: ${this.activeUnit.name} (${this.activeUnit.team === 'player' ? 'Игрок' : 'Враг'})`;
@@ -4139,7 +4244,9 @@
                 const btn = document.createElement('button');
                 btn.className = className;
                 btn.innerText = text;
-                btn.onclick = onClick;
+                // Единая защита от "двойного тапа": пока предыдущее действие ещё не завершилось
+                // (ход не сменился), повторные клики по любой кнопке игнорируются
+                btn.onclick = () => { if (this.actionInProgress) return; onClick(); };
                 parent.appendChild(btn);
                 return btn;
             }
@@ -4148,6 +4255,7 @@
             selfBuffButton(panel, u, cdKey, label, cdBase, wl, applyFn) {
                 let cd = u.cooldowns[cdKey] || 0;
                 let btn = this.createBtn(panel, label, 'success', () => {
+                    if (this.actionInProgress) return; // защита от нескольких быстрых нажатий подряд
                     applyFn();
                     u.cooldowns[cdKey] = this.getAdjustedCooldown(cdBase, wl, u);
                     this.playUnitAnim(u.uid, 'unit-anim-buff', 500);
@@ -4162,6 +4270,7 @@
             selfAoeButton(panel, u, cdKey, label, cdBase, wl, radius, filterFn, applyToTarget) {
                 let cd = u.cooldowns[cdKey] || 0;
                 let btn = this.createBtn(panel, label, 'success', () => {
+                    if (this.actionInProgress) return; // защита от нескольких быстрых нажатий подряд
                     this.units.filter(t => t.hp > 0 && t !== u && filterFn(t) && this.getDistance(u, t.x, t.y, t.size) <= radius).forEach(applyToTarget);
                     u.cooldowns[cdKey] = this.getAdjustedCooldown(cdBase, wl, u);
                     this.playUnitAnim(u.uid, 'unit-anim-attack', 300);
@@ -4215,10 +4324,12 @@
 
             // Небольшая задержка перед завершением хода, чтобы анимация успела проиграться
             finishAction(delayMs = 300) {
+                this.actionInProgress = true; // блокируем повторные клики, пока не закончится анимация и не сменится активный юнит
                 setTimeout(() => this.endTurn(), delayMs);
             }
 
             processActionClick(x, y, targetUnit) {
+                if (this.actionInProgress) return; // защита от нескольких быстрых нажатий на активку подряд
                 const au = this.activeUnit;
                 const wl = au.waveLevel || 1;
                 const dist = this.getDistance(au, x, y, targetUnit ? targetUnit.size : 1);
@@ -4725,11 +4836,17 @@
                 }
 
                 if (defender.id === 'knight' && attacker.dmgType === 'Стрела') {
-                    dmg = Math.floor(dmg * 0.5);
+                    let klv2 = defender.unitLevel || 1;
+                    let arrowReduction = klv2 >= UNIT_SIGNATURE_LEVEL_3 ? 0.7 : (klv2 >= UNIT_SIGNATURE_LEVEL_2 ? 0.6 : 0.5);
+                    dmg = Math.floor(dmg * (1 - arrowReduction));
                 }
                 
                 let isPhysDamage = attacker.dmgType === 'Физ' || attacker.dmgType === 'Стрела';
-                if (defender.id === 'ent' && isPhysDamage) dmg = Math.floor(dmg * 0.2);
+                if (defender.id === 'ent' && isPhysDamage) {
+                    let elv2 = defender.unitLevel || 1;
+                    let entReduction = elv2 >= UNIT_SIGNATURE_LEVEL_3 ? 0.9 : (elv2 >= UNIT_SIGNATURE_LEVEL_2 ? 0.85 : 0.8);
+                    dmg = Math.floor(dmg * (1 - entReduction));
+                }
 
                 if (attacker.id === 'ballista') {
                     let balv = attacker.unitLevel || 1;
@@ -4746,18 +4863,18 @@
             }
 
             applyDamageToUnit(attacker, defender, rawDmg) {
-                if (rawDmg <= 0) return;
+                if (rawDmg <= 0) return 0;
 
                 if (defender.nextAttackImmune) {
                     defender.nextAttackImmune = false;
                     this.spawnFloatingText(defender.x, defender.y, '🛡️ НЕПРИСТУПНОСТЬ!', '#ffd700');
-                    return;
+                    return 0;
                 }
 
                 const effectiveDodge = (defender.dodgeChance || 0) + ((defender.tempDodgeTurns > 0) ? (defender.tempDodgeBonus || 0) : 0);
                 if (effectiveDodge && !attacker.ignoreDodge && Math.random() < effectiveDodge) {
                     this.spawnFloatingText(defender.x, defender.y, 'УКЛОНЕНИЕ!', '#8ab4ff');
-                    return;
+                    return 0;
                 }
 
                 if (defender.tempDmgTakenTurns > 0 && defender.tempDmgTakenMult) {
@@ -4796,8 +4913,14 @@
                     defender.golemStacks = Math.min(9, (defender.golemStacks || 0) + 1);
                 }
 
+                // Фактически нанесённый урон (после всех клэмпов) — возвращается вызывающему коду,
+                // чтобы всплывающий текст всегда показывал ПРАВДИВОЕ число, а не сырой предварительный расчёт
+                // (например, Некромант всегда теряет ровно 1 HP независимо от входного урона)
+                let actualDealt = 0;
+
                 if (defender.id === 'necromancer') {
                     defender.hp -= 1;
+                    actualDealt = 1;
                 } else {
                     let currentArmor = defender.armor || 0;
                     // Пробитие Брони: доля урона атакующего игнорирует броню и бьёт сразу по HP
@@ -4819,13 +4942,14 @@
                     } else {
                         defender.hp -= normalDmg;
                     }
+                    actualDealt = penDmg + normalDmg;
                 }
 
                 if (defender.hp <= 0 && (defender.lastStandCharges || 0) > 0) {
                     defender.lastStandCharges--;
                     defender.hp = 1;
                     this.spawnFloatingText(defender.x, defender.y, '🕯️ СТОЙКИЙ ДУХ!', '#ffe066');
-                    return;
+                    return actualDealt;
                 }
 
                 // Реликвия "Благословение Феникса": первая смерть за поход отменяется
@@ -4833,7 +4957,7 @@
                     this.phoenixBlessingUsed = true;
                     defender.hp = Math.max(1, Math.round(defender.maxHp * 0.5));
                     this.spawnFloatingText(defender.x, defender.y, '🌟 Благословение Феникса!', '#ffe066');
-                    return;
+                    return actualDealt;
                 }
 
                 if (defender.hp <= 0) {
@@ -4901,6 +5025,25 @@
                         this.triggerHarvestOnDeath(defender.team);
                     }
                 }
+
+                // Вампиризм/похищение здоровья теперь работает от ЛЮБОГО источника урона (не только обычной атаки) —
+                // если Вампир бьёт по площади несколькими способностями, он лечится от каждого попадания
+                if (actualDealt > 0 && attacker && attacker.hp > 0) {
+                    if (attacker.id === 'vampire' && defender.id !== 'specter') {
+                        attacker.hp = Math.min(attacker.maxHp, attacker.hp + actualDealt);
+                        let scale = 1 + ((attacker.waveLevel || 1) - 1) * 0.10;
+                        defender.vampireDebuffs = (defender.vampireDebuffs || 0) + Math.round(1 * scale);
+                        defender.vampireDebuffTurns = 2;
+                        this.spawnFloatingText(attacker.x, attacker.y, `+${actualDealt}`, '#00ff88');
+                    } else if (attacker.lifestealPct && attacker.id !== 'necromancer') {
+                        let healAmount = Math.floor(actualDealt * attacker.lifestealPct);
+                        if (healAmount > 0) {
+                            attacker.hp = Math.min(attacker.maxHp, attacker.hp + healAmount);
+                            this.spawnFloatingText(attacker.x, attacker.y, `+${healAmount}`, '#00ff88');
+                        }
+                    }
+                }
+                return actualDealt;
             }
 
             // Дракон получает "Жатву" только за смерть ВРАГА (не союзника), и не более 8 раз за бой —
@@ -4952,7 +5095,11 @@
                             let dmg = this.getActualDmg(attacker, u);
                             let dist = this.getDistance(attacker, u.x, u.y, u.size);
                             
-                            if (u.id === 'ent') dmg = Math.floor(dmg * 0.2);
+                            if (u.id === 'ent') {
+                                let elv3 = u.unitLevel || 1;
+                                let entSelfReduction = elv3 >= UNIT_SIGNATURE_LEVEL_3 ? 0.9 : (elv3 >= UNIT_SIGNATURE_LEVEL_2 ? 0.85 : 0.8);
+                                dmg = Math.floor(dmg * (1 - entSelfReduction));
+                            }
                             if (u.id === 'knight' && attacker.dmgType === 'Стрела') dmg = Math.floor(dmg * 0.5);
                             if (u.id === 'stone_golem') {
                                 let armorBonus = (u.golemStacks || 0) * 0.10;
@@ -4992,15 +5139,17 @@
                     attacker.hasAttackedThisTurn = true;
                     if (isCrit) dmg = Math.round(dmg * ((attacker.id === 'ranger' && attacker.heroLevel >= 10) ? 2.5 : ((attacker.id === 'ranger' && attacker.heroLevel >= 5) ? 2.0 : 1.5)));
 
-                    this.applyDamageToUnit(attacker, defender, dmg);
+                    let actualDealt = this.applyDamageToUnit(attacker, defender, dmg);
                     this.playUnitAnim(defender.uid, 'unit-anim-hit', 380);
-                    this.spawnFloatingText(defender.x, defender.y, `-${dmg}${isCrit ? ' 💥' : ''}`, isCrit ? '#ffd700' : '#ff5555');
+                    if (actualDealt > 0) this.spawnFloatingText(defender.x, defender.y, `-${actualDealt}${isCrit ? ' 💥' : ''}`, isCrit ? '#ffd700' : '#ff5555');
 
                     if (attacker.id === 'frost_mage' && defender.hp > 0 && !defender.ccImmune && !defender.debuffImmune) {
                         defender.isFrozen = true;
                         this.spawnFloatingText(defender.x, defender.y, '🧊', '#66e0ff');
                         if ((attacker.unitLevel || 1) >= UNIT_SIGNATURE_LEVEL) {
-                            let shatterDmg = Math.max(1, Math.round(attacker.dmg * 0.4));
+                            let flv = attacker.unitLevel || 1;
+                            let shatterMult = flv >= UNIT_SIGNATURE_LEVEL_3 ? 0.6 : (flv >= UNIT_SIGNATURE_LEVEL_2 ? 0.5 : 0.4);
+                            let shatterDmg = Math.max(1, Math.round(attacker.dmg * shatterMult));
                             this.applyDamageToUnit(attacker, defender, shatterDmg);
                             this.spawnFloatingText(defender.x, defender.y, `-${shatterDmg} 💎`, '#66e0ff');
                         }
@@ -5050,9 +5199,11 @@
                     }
 
                     if (attacker.id === 'alchemist' && defender.hp > 0) {
-                        let isSig = (attacker.unitLevel || 1) >= UNIT_SIGNATURE_LEVEL;
-                        defender.poisonStacks = Math.min(isSig ? 5 : 3, (defender.poisonStacks || 0) + 1);
-                        defender.poisonTurnsLeft = isSig ? 4 : 3;
+                        let alv = attacker.unitLevel || 1;
+                        let maxStacks = alv >= UNIT_SIGNATURE_LEVEL_3 ? 7 : (alv >= UNIT_SIGNATURE_LEVEL_2 ? 6 : (alv >= UNIT_SIGNATURE_LEVEL ? 5 : 3));
+                        let poisonDuration = alv >= UNIT_SIGNATURE_LEVEL_2 ? 5 : (alv >= UNIT_SIGNATURE_LEVEL ? 4 : 3);
+                        defender.poisonStacks = Math.min(maxStacks, (defender.poisonStacks || 0) + 1);
+                        defender.poisonTurnsLeft = poisonDuration;
                         this.spawnFloatingText(defender.x, defender.y, `🧪 Яд x${defender.poisonStacks}`, '#8fce4a');
                     }
 
@@ -5075,19 +5226,6 @@
                     }
 
                     this.checkCounterAttack(defender, attacker, dmg, dist);
-
-                    if (attacker.id === 'vampire' && defender.id !== 'specter') {
-                        attacker.hp = Math.min(attacker.maxHp, attacker.hp + (typeof dmg === 'number' ? dmg : 1));
-                        let scale = 1 + ((attacker.waveLevel || 1) - 1) * 0.10;
-                        attacker.vampireDebuffs = (attacker.vampireDebuffs || 0) + Math.round(1 * scale);
-                        this.spawnFloatingText(attacker.x, attacker.y, `+${typeof dmg === 'number' ? dmg : 1}`, '#00ff88');
-                    } else if (attacker.lifestealPct && attacker.id !== 'necromancer') {
-                        let healAmount = Math.floor((typeof dmg === 'number' ? dmg : 0) * attacker.lifestealPct);
-                        if (healAmount > 0) {
-                            attacker.hp = Math.min(attacker.maxHp, attacker.hp + healAmount);
-                            this.spawnFloatingText(attacker.x, attacker.y, `+${healAmount}`, '#00ff88');
-                        }
-                    }
 
                     if (attacker.id === 'inquisitor' && attacker.healOnMagicKill && defender.dmgType === 'Магия') {
                         let healAmount = Math.floor((typeof dmg === 'number' ? dmg : 0) * attacker.healOnMagicKill);
@@ -5172,7 +5310,9 @@
                 let isPhysDamage = attacker.dmgType === 'Физ' || attacker.dmgType === 'Стрела';
 
                 if (defender.id === 'knight' && isPhysDamage) {
-                    let reflectDmg = Math.floor(dmg * 0.8);
+                    let klv3 = defender.unitLevel || 1;
+                    let reflectPct = klv3 >= UNIT_SIGNATURE_LEVEL_3 ? 1.0 : (klv3 >= UNIT_SIGNATURE_LEVEL_2 ? 0.9 : 0.8);
+                    let reflectDmg = Math.floor(dmg * reflectPct);
                     if (reflectDmg > 0) {
                         let finalReflectDmg = (attacker.id === 'ent') ? Math.floor(reflectDmg * 0.2) : reflectDmg;
                         if (attacker.id === 'specter') finalReflectDmg = 0;
@@ -5212,8 +5352,9 @@
                 if (this.activeUnit && this.activeUnit.hp > 0) {
                     if (this.activeUnit.id === 'stone_golem') {
                         let scale = 1 + ((this.activeUnit.waveLevel || 1) - 1) * 0.10;
-                        let isSig = (this.activeUnit.unitLevel || 1) >= UNIT_SIGNATURE_LEVEL;
-                        let armorRestore = Math.round((isSig ? 60 : 40) * scale);
+                        let glv = this.activeUnit.unitLevel || 1;
+                        let armorBase = glv >= UNIT_SIGNATURE_LEVEL_3 ? 85 : (glv >= UNIT_SIGNATURE_LEVEL_2 ? 72 : (glv >= UNIT_SIGNATURE_LEVEL ? 60 : 40));
+                        let armorRestore = Math.round(armorBase * scale);
                         this.activeUnit.armor = (this.activeUnit.armor || 0) + armorRestore;
                         this.activeUnit.maxArmor = Math.max(this.activeUnit.maxArmor || 0, this.activeUnit.armor);
                         this.spawnFloatingText(this.activeUnit.x, this.activeUnit.y, `+${armorRestore} 🛡️`, '#00bcd4');
@@ -5359,7 +5500,13 @@
 
                 if (me.id === 'necromancer') {
                     const summonableTypes = Object.keys(UNIT_TYPES).filter(t => t !== 'phoenix_egg' && t !== 'necromancer');
-                    const availableSummons = summonableTypes.filter(type => (me.cooldowns['summon_' + type] || 0) === 0);
+                    let availableSummons = summonableTypes.filter(type => (me.cooldowns['summon_' + type] || 0) === 0);
+                    // Перемешиваем — иначе перебор всегда шёл в порядке объявления UNIT_TYPES (Рыцарь, Арбалетчик, ...),
+                    // и Некромант каждый раз пытался призвать одних и тех же первых юнитов из списка
+                    for (let i = availableSummons.length - 1; i > 0; i--) {
+                        const j = Math.floor(Math.random() * (i + 1));
+                        [availableSummons[i], availableSummons[j]] = [availableSummons[j], availableSummons[i]];
+                    }
 
                     if (availableSummons.length > 0) {
                         let validCells = [];
@@ -5735,8 +5882,14 @@
                     };
                     const sb = selfBuffs[me.id];
                     if (sb && (me.unitLevel || 1) >= (sb.minLevel || 1) && (me.cooldowns[sb.cdKey] || 0) === 0) {
-                        const enemyNearby = enemies.some(e => this.getDistance(me, e.x, e.y, e.size) <= (me.range + me.move + 1));
-                        const skip = sb.skipIfInRange && targetsInRange.length > 0;
+                        // Самобафф не должен "воровать" ход у продуктивного сближения: используем его только
+                        // если враг рядом, НО подойти на дистанцию атаки в этот ход всё равно не получится —
+                        // иначе юнит будет вечно бафаться на месте вместо того, чтобы идти в бой
+                        let closestDist = Infinity;
+                        enemies.forEach(e => { let d = this.getDistance(me, e.x, e.y, e.size); if (d < closestDist) closestDist = d; });
+                        const enemyNearby = closestDist <= (me.range + me.move + 1);
+                        const canCloseToRangeThisTurn = closestDist !== Infinity && (closestDist - this.getEffectiveMove(me)) <= me.range;
+                        const skip = (sb.skipIfInRange && targetsInRange.length > 0) || canCloseToRangeThisTurn;
                         if (!skip && (!sb.needEnemyNear || enemyNearby)) {
                             sb.run();
                             me.cooldowns[sb.cdKey] = this.getAdjustedCooldown(sb.cd, me.waveLevel || 1, me);
@@ -5977,8 +6130,11 @@
                     const hpBar = document.createElement('div');
                     hpBar.className = 'hp-bar';
                     const hpFill = document.createElement('div');
-                    hpFill.className = 'hp-fill';
-                    hpFill.style.width = `${Math.max(0, (u.hp / u.maxHp) * 100)}%`;
+                    const hpPct = Math.max(0, Math.min(100, (u.hp / u.maxHp) * 100));
+                    // Цветовая кодировка по порогам — на таком маленьком токене точную ширину полоски
+                    // трудно отличить на глаз (40% от 15%), а вот смену цвета видно сразу
+                    hpFill.className = 'hp-fill' + (hpPct <= 25 ? ' hp-critical' : (hpPct <= 50 ? ' hp-warning' : ''));
+                    hpFill.style.width = `${hpPct}%`;
                     hpBar.appendChild(hpFill);
                     uDiv.appendChild(hpBar);
 
@@ -5988,7 +6144,7 @@
                         const armorFill = document.createElement('div');
                         armorFill.className = 'armor-fill';
                         let maxA = u.maxArmor || u.armor || 1;
-                        armorFill.style.width = `${Math.max(0, (u.armor / maxA) * 100)}%`;
+                        armorFill.style.width = `${Math.max(0, Math.min(100, (u.armor / maxA) * 100))}%`;
                         armorBar.appendChild(armorFill);
                         uDiv.appendChild(armorBar);
                     }
