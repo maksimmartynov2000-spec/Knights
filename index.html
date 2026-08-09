@@ -779,7 +779,10 @@
         </div>
 
         <div id="action-panel">
-            <div id="unit-info-header">⚔️ Средневековье — Режим расстановки</div>
+            <div id="unit-info-header-row" style="display: flex; align-items: center; gap: 6px;">
+                <div id="unit-info-header" style="flex: 1;">⚔️ Средневековье — Режим расстановки</div>
+                <button id="battle-info-btn" class="secondary hidden" style="flex-grow: 0; padding: 4px 10px; font-size: 13px;">ⓘ</button>
+            </div>
             
             <div id="setup-ui">
                 <div class="setup-row" style="align-items: center; justify-content: space-between; margin-bottom: 5px; padding: 0 2px;">
@@ -865,24 +868,24 @@
         // ряды 4-7 — нейтральная полоса, изначально никто не может там вставать
 
         const UNIT_TYPES = {
-            necromancer: { id: 'necromancer', name: 'Некромант', hp: 10, armor: 0, dmg: 5, dmgType: 'Магия', init: 10, move: 1, range: 2, icon: '🧙‍♂️', size: 1, passive: 'Пассивка "Призрачный Щит": Получает строго 1 ед. урона от ЛЮБОЙ атаки. Не может получать HP/Броню и не может исцеляться никаким способом.\nАктивка: Умеет призывать союзников любого типа в радиусе 2, но теряет 1 HP за каждый призыв.' },
-            knight: { id: 'knight', name: 'Рыцарь', hp: 100, armor: 0, dmg: 10, dmgType: 'Физ', init: 12, move: 2, range: 1, icon: '⚔️', size: 1, passive: 'Пассивка "Латы": Получает на -50% меньше урона от стрел. Возвращает 80% физ. урона в ближнем бою обратно атакующему.\nАктивка: "Щит" — моментально добавляет +120 к Броне (КД: 2х).' },
-            crossbow: { id: 'crossbow', name: 'Арбалетчик', hp: 40, armor: 0, dmg: 50, dmgType: 'Стрела', init: 36, move: 3, range: 2, icon: '🏹', size: 1, passive: 'Пассивка: Высокая инициатива для быстрых дальних атак. Теряет дальность под угрозой врага в упор.\nАктивка: "Лечение" — восстанавливает +40 HP союзнику в радиусе 2.' },
-            ballista: { id: 'ballista', name: 'Балиста', hp: 80, armor: 0, dmg: 80, dmgType: 'Физ', init: 10, move: 1, range: 4, icon: '🏗️', size: 1, armorPenPct: 0.3, passive: 'Пассивка "Осада": Наносит х5 урон по Энтам, х3 по Каменным Големам и х2 по Драконам. Теряет дальность под угрозой врага в упор. Иммунитет к Ауре Дракона.\nПассивка "Пробитие Брони": 30% урона игнорирует броню цели и бьёт сразу по HP.\nАктивка: "Подготовка" — необходимо активировать перед выстрелом.\nАктивка: "Обстрел" — бьёт по всем врагам в радиусе поражения.' },
-            ent: { id: 'ent', name: 'Энт', hp: 250, armor: 50, dmg: 70, dmgType: 'Физ', init: 6, move: 1, range: 1, icon: '🌳', size: 1, passive: 'Пассивка "Кора Древа": Снижает входящий ФИЗИЧЕСКИЙ урон и стрелы на 80%. Атака наносит АОЕ урон всем вокруг.\nАктивка: "Окаменение" — дарует +150 Брони (КД: 3х).' },
-            dragon: { id: 'dragon', name: 'Дракон', hp: 120, armor: 0, dmg: 46, dmgType: 'Магия', init: 10, move: 4, range: 2, icon: '🐉', size: 2, passive: 'Пассивка "Устрашающая Аура": Враги в радиусе 1 теряют -6 Инициативы и наносят на -35% меньше урона. Полет через любые юниты и препятствия.\nПассивка "Жатва": При смерти врага получает +18 maxHP/+18 HP, +2 к Урону и +1 к Инициативе (макс. 8 раз за бой).' },
-            vampire: { id: 'vampire', name: 'Вампир', hp: 40, armor: 0, dmg: 30, dmgType: 'Физ', init: 24, move: 5, range: 1, icon: '🦇', size: 1, passive: 'Пассивка "Вампиризм": Излечивается на 100% от нанесенного урона. Каждая атака снижает инициативу цели на 1. Перемещение сквозь юнитов.\nАктивка: "Телепортация" — перемещается на любую клетку поля (КД: 4х).' },
-            stone_golem: { id: 'stone_golem', name: 'Каменный Голем', hp: 120, armor: 0, dmg: 20, dmgType: 'Физ', init: 5, move: 1, range: 1, icon: '🪨', size: 1, passive: 'Пассивка "Каменная Закалка": После получения любого урона получает +10% защиты (макс. +90%) от физ. урона в ближнем бою и стрел. В конце каждого своего хода автоматически восстанавливает +40 Брони.' },
-            chronomancer: { id: 'chronomancer', name: 'Чародейка Времени', hp: 30, armor: 0, dmg: 10, dmgType: 'Магия', init: 14, move: 2, range: 3, icon: '🔮', size: 1, passive: 'Пассивка "Аура Времени": +3 к Инициативе союзникам в радиусе 2. Теряет дальность под угрозой врага в упор.\nАктивка 1: "Замедление" — -30 шкалы хода и -8 Инициативы цели на 2 хода.\nАктивка 2: "Скачок" — моментально дарует ход союзнику.' },
-            berserker: { id: 'berserker', name: 'Берсерк', hp: 240, armor: 0, dmg: 20, dmgType: 'Физ', init: 10, move: 3, range: 1, icon: '🪓', size: 1, passive: 'Пассивка "Квадро-Ярость": За каждые потерянные 5% HP получает +3 к Инициативе и +5 к Урону.' },
-            sniper: { id: 'sniper', name: 'Снайпер', hp: 25, armor: 0, dmg: 50, dmgType: 'Стрела', init: 8, move: 1, range: 6, icon: '🎯', size: 1, passive: 'Пассивка "Дальний Выстрел": Не поддается срезке дальности от врагов в упор. Не может атаковать цели ближе 3 клеток. Получает +10% к урону за каждую клетку дистанции до цели.' },
-            frost_mage: { id: 'frost_mage', name: 'Маг Льда', hp: 35, armor: 0, dmg: 18, dmgType: 'Магия', init: 14, move: 2, range: 3, icon: '🧊', size: 1, passive: 'Пассивка "Глубокая Заморозка": Каждая атака замораживает цель (блокирует Move на 0, снижает Инициативу на 50%). Теряет дальность под угрозой врага в упор.' },
-            specter: { id: 'specter', name: 'Призрак', hp: 30, armor: 0, dmg: 20, dmgType: 'Магия', init: 15, move: 4, range: 1, icon: '👻', size: 1, passive: 'Пассивка "Бестелесность": Полный иммунитет к физ. урону и стрелам. Получает х2 урон от Магии. Проходит сквозь юнитов и препятствия.' },
-            phoenix: { id: 'phoenix', name: 'Феникс', hp: 50, armor: 0, dmg: 25, dmgType: 'Магия', init: 17, move: 4, range: 2, icon: '🌟', size: 1, passive: 'Пассивка "Возрождение": Летает сквозь юниты и препятствия. При смерти превращается в Яйцо Феникса и перерождается с удвоенными HP и Уроном!' },
+            necromancer: { id: 'necromancer', name: 'Некромант', hp: 10, armor: 0, dmg: 5, dmgType: 'Магия', init: 10, move: 1, range: 2, icon: '🧙‍♂️', size: 1, passive: 'Пассивка "Призрачный Щит": Получает строго 1 ед. урона от ЛЮБОЙ атаки. Не может получать HP/Броню и не может исцеляться никаким способом.\nАктивка 1: "Призыв" — призывает союзника любого типа в радиусе 2, но теряет 1 HP за каждый призыв.\nАктивка 2: "Тёмный Пульс" — 80% урона всем врагам рядом (КД: 3х).' },
+            knight: { id: 'knight', name: 'Рыцарь', hp: 100, armor: 0, dmg: 10, dmgType: 'Физ', init: 12, move: 2, range: 1, icon: '⚔️', size: 1, passive: 'Пассивка "Латы": Получает на -50% меньше урона от стрел. Возвращает 80% физ. урона в ближнем бою обратно атакующему.\nАктивка 1: "Щит" — моментально +120 к Броне (КД: 2х).\nАктивка 2: "Боевой Клич" — союзники в радиусе 2 получают +10 брони (КД: 3х).' },
+            crossbow: { id: 'crossbow', name: 'Арбалетчик', hp: 40, armor: 0, dmg: 50, dmgType: 'Стрела', init: 36, move: 3, range: 2, icon: '🏹', size: 1, passive: 'Пассивка: Высокая инициатива для быстрых дальних атак. Теряет дальность под угрозой врага в упор.\nАктивка 1: "Лечение" — +40 HP союзнику в радиусе 2.\nАктивка 2: "Точный Выстрел" — удвоенный урон по цели (КД: 3х).' },
+            ballista: { id: 'ballista', name: 'Балиста', hp: 80, armor: 0, dmg: 80, dmgType: 'Физ', init: 10, move: 1, range: 4, icon: '🏗️', size: 1, armorPenPct: 0.3, passive: 'Пассивка "Осада": Наносит х5 урон по Энтам, х3 по Каменным Големам и х2 по Драконам. Теряет дальность под угрозой врага в упор. Иммунитет к Ауре Дракона.\nПассивка "Пробитие Брони": 30% урона игнорирует броню цели и бьёт сразу по HP.\nАктивка 1: "Подготовка" — необходимо активировать перед выстрелом.\nАктивка 2: "Обстрел" — 50% урона по ВСЕМ врагам в радиусе поражения (КД: 4х).' },
+            ent: { id: 'ent', name: 'Энт', hp: 250, armor: 50, dmg: 70, dmgType: 'Физ', init: 6, move: 1, range: 1, icon: '🌳', size: 1, passive: 'Пассивка "Кора Древа": Снижает входящий ФИЗИЧЕСКИЙ урон и стрелы на 80%. Атака наносит АОЕ урон всем вокруг.\nАктивка 1: "Окаменение" — +150 Брони (КД: 3х).\nАктивка 2: "Корни" — обездвиживает врага на 2 хода (дальность 3, КД: 3х).' },
+            dragon: { id: 'dragon', name: 'Дракон', hp: 120, armor: 0, dmg: 46, dmgType: 'Магия', init: 10, move: 4, range: 2, icon: '🐉', size: 2, passive: 'Пассивка "Устрашающая Аура": Враги в радиусе 1 теряют -6 Инициативы и наносят на -35% меньше урона. Полет через любые юниты и препятствия.\nПассивка "Жатва": При смерти врага получает +18 maxHP/+18 HP, +2 к Урону и +1 к Инициативе (макс. 8 раз за бой).\nАктивка 1: "Огненное Дыхание" — 60% урона всем врагам рядом с целью (КД: 3х).\nАктивка 2: "Оглушающий Рёв" — обнуляет ход цели и замедляет на 2 хода (КД: 4х).' },
+            vampire: { id: 'vampire', name: 'Вампир', hp: 40, armor: 0, dmg: 30, dmgType: 'Физ', init: 24, move: 5, range: 1, icon: '🦇', size: 1, passive: 'Пассивка "Вампиризм": Излечивается на 100% от нанесенного урона. Каждая атака снижает инициативу цели на 1. Перемещение сквозь юнитов.\nАктивка 1: "Телепортация" — перемещается на любую клетку поля (КД: 4х).\nАктивка 2: "Жажда Крови" — +15 к Инициативе на 3 хода (КД: 4х).' },
+            stone_golem: { id: 'stone_golem', name: 'Каменный Голем', hp: 120, armor: 0, dmg: 20, dmgType: 'Физ', init: 5, move: 1, range: 1, icon: '🪨', size: 1, passive: 'Пассивка "Каменная Закалка": После получения любого урона получает +10% защиты (макс. +90%) от физ. урона в ближнем бою и стрел. В конце каждого своего хода автоматически восстанавливает +40 Брони.\nАктивка 1: "Каменная Твердыня" — мгновенно +60 брони (КД: 4х).\nАктивка 2: "Землетрясение" — урон и замедление всем врагам рядом (КД: 4х).' },
+            chronomancer: { id: 'chronomancer', name: 'Чародейка Времени', hp: 30, armor: 0, dmg: 10, dmgType: 'Магия', init: 14, move: 2, range: 3, icon: '🔮', size: 1, passive: 'Пассивка "Аура Времени": +3 к Инициативе союзникам в радиусе 2. Теряет дальность под угрозой врага в упор.\nАктивка 1: "Замедление" — -30 шкалы хода и -8 Инициативы цели на 2 хода (КД: 3х).\nАктивка 2: "Скачок" — моментально дарует ход союзнику (КД: 4х).' },
+            berserker: { id: 'berserker', name: 'Берсерк', hp: 240, armor: 0, dmg: 20, dmgType: 'Физ', init: 10, move: 3, range: 1, icon: '🪓', size: 1, passive: 'Пассивка "Квадро-Ярость": За каждые потерянные 5% HP получает +3 к Инициативе и +5 к Урону.\nАктивка 1: "Боевой Клич" — +25% урона на 2 хода (КД: 3х).\nАктивка 2: "Второе Дыхание" — восстанавливает 20% макс. HP (КД: 4х).' },
+            sniper: { id: 'sniper', name: 'Снайпер', hp: 25, armor: 0, dmg: 50, dmgType: 'Стрела', init: 8, move: 1, range: 6, icon: '🎯', size: 1, passive: 'Пассивка "Дальний Выстрел": Не поддается срезке дальности от врагов в упор. Не может атаковать цели ближе 3 клеток. Получает +10% к урону за каждую клетку дистанции до цели.\nАктивка 1: "Прицельный Выстрел" — следующая атака гарантированно критическая (КД: 3х).\nАктивка 2: "Маскировка" — +30% уклонение на 2 хода (КД: 4х).' },
+            frost_mage: { id: 'frost_mage', name: 'Маг Льда', hp: 35, armor: 0, dmg: 18, dmgType: 'Магия', init: 14, move: 2, range: 3, icon: '🧊', size: 1, passive: 'Пассивка "Глубокая Заморозка": Каждая атака замораживает цель (блокирует Move на 0, снижает Инициативу на 50%). Теряет дальность под угрозой врага в упор.\nАктивка 1: "Ледяной Щит" — мгновенно +30 брони (КД: 3х).\nАктивка 2: "Ледяной Взрыв" — урон и заморозка всем врагам рядом с целью (КД: 4х).' },
+            specter: { id: 'specter', name: 'Призрак', hp: 30, armor: 0, dmg: 20, dmgType: 'Магия', init: 15, move: 4, range: 1, icon: '👻', size: 1, passive: 'Пассивка "Бестелесность": Полный иммунитет к физ. урону и стрелам. Получает х2 урон от Магии. Проходит сквозь юнитов и препятствия.\nАктивка 1: "Фаза" — телепортация на любую клетку (КД: 4х).\nАктивка 2: "Вопль Ужаса" — цель наносит на 30% меньше урона 2 хода (дальность 3, КД: 3х).' },
+            phoenix: { id: 'phoenix', name: 'Феникс', hp: 50, armor: 0, dmg: 25, dmgType: 'Магия', init: 17, move: 4, range: 2, icon: '🌟', size: 1, passive: 'Пассивка "Возрождение": Летает сквозь юниты и препятствия. При смерти превращается в Яйцо Феникса и перерождается с удвоенными HP и Уроном!\nАктивка 1: "Огненная Волна" — 60% урона всем врагам рядом с целью (КД: 3х).\nАктивка 2: "Возрождающее Пламя" — лечит союзника на 25 HP (КД: 3х).' },
             phoenix_egg: { id: 'phoenix_egg', name: 'Яйцо Феникса', hp: 20, armor: 0, dmg: 0, dmgType: 'Нет', init: 17, move: 0, range: 0, icon: '🥚', size: 1, passive: 'Пассивка: Не может совершать действия. Автоматически перерождается в усовершенствованного Феникса при наступлении хода.' },
-            alchemist: { id: 'alchemist', name: 'Алхимик', hp: 45, armor: 0, dmg: 16, dmgType: 'Магия', init: 13, move: 2, range: 3, icon: '🧪', size: 1, passive: 'Пассивка "Ядовитая Смесь": Атака накладывает яд (3 урона в начале каждого хода цели, 3 хода, стакается до 3 раз).' },
-            wolf_rider: { id: 'wolf_rider', name: 'Наездник на Волке', hp: 60, armor: 0, dmg: 24, dmgType: 'Физ', init: 19, move: 5, range: 1, icon: '🐺', size: 1, passive: 'Пассивка "Стая": Наносит +15% урона, если в радиусе 2 есть другой союзный Наездник на Волке.' },
-            priest: { id: 'priest', name: 'Жрец', hp: 50, armor: 0, dmg: 8, dmgType: 'Магия', init: 16, move: 2, range: 2, icon: '⛪', size: 1, passive: 'Пассивка "Целитель": Активка лечит союзника на 35 HP и снимает заморозку/замедление (КД: 2х).' }
+            alchemist: { id: 'alchemist', name: 'Алхимик', hp: 45, armor: 0, dmg: 16, dmgType: 'Магия', init: 13, move: 2, range: 3, icon: '🧪', size: 1, passive: 'Пассивка "Ядовитая Смесь": Атака накладывает яд (3 урона в начале каждого хода цели, 3 хода, стакается до 3 раз).\nАктивка 1: "Кислотная Бомба" — урон и -30% брони цели (КД: 3х).\nАктивка 2: "Лечебное Зелье" — лечит союзника на 30 HP (КД: 3х).' },
+            wolf_rider: { id: 'wolf_rider', name: 'Наездник на Волке', hp: 60, armor: 0, dmg: 24, dmgType: 'Физ', init: 19, move: 5, range: 1, icon: '🐺', size: 1, passive: 'Пассивка "Стая": Наносит +15% урона, если в радиусе 2 есть другой союзный Наездник на Волке.\nАктивка 1: "Дикий Рывок" — мгновенно +2 к дальности хода (КД: 3х).\nАктивка 2: "Волчий Вой" — союзники в радиусе 3 получают +5 Инициативы (КД: 4х).' },
+            priest: { id: 'priest', name: 'Жрец', hp: 50, armor: 0, dmg: 8, dmgType: 'Магия', init: 16, move: 2, range: 2, icon: '⛪', size: 1, passive: 'Пассивка "Целитель": Активка лечит союзника на 35 HP и снимает заморозку/замедление (КД: 2х).\nАктивка 2: "Экзорцизм" — урон x1.8 по врагу (КД: 3х).' }
         };
 
         // ---- Режим "Кампания" ----
@@ -1319,6 +1322,7 @@
                     document.getElementById('setup-ui').classList.add('hidden');
                     document.getElementById('actions').classList.remove('hidden');
                     document.getElementById('surrender-btn').classList.remove('hidden');
+                    document.getElementById('battle-info-btn').classList.remove('hidden');
 
                     if (this.awaitingWaveBonus) {
                         this.showWaveBonusModal();
@@ -1332,6 +1336,7 @@
                     document.getElementById('setup-ui').classList.remove('hidden');
                     document.getElementById('actions').classList.add('hidden');
                     document.getElementById('surrender-btn').classList.add('hidden');
+                    document.getElementById('battle-info-btn').classList.add('hidden');
                 }
             }
 
@@ -1502,6 +1507,9 @@
 
                 document.getElementById('start-battle-btn').addEventListener('click', () => this.startBattle());
                 document.getElementById('surrender-btn').addEventListener('click', () => this.surrenderCampaign());
+                document.getElementById('battle-info-btn').addEventListener('click', () => {
+                    if (this.activeUnit) this.showUnitInfo(this.activeUnit);
+                });
                 document.getElementById('clear-terrain-btn').addEventListener('click', () => {
                     this.obstacles = [];
                     this.renderGrid();
@@ -2614,6 +2622,7 @@
                 document.getElementById('setup-ui').classList.add('hidden');
                 document.getElementById('actions').classList.remove('hidden');
                 document.getElementById('surrender-btn').classList.remove('hidden');
+                document.getElementById('battle-info-btn').classList.remove('hidden');
                 this.clearHighlights();
 
                 if (this.metaUpgrades.startingbonus) {
@@ -2968,6 +2977,7 @@
                 this.gameOver = true;
                 this.clearGameState();
                 document.getElementById('surrender-btn').classList.add('hidden');
+                document.getElementById('battle-info-btn').classList.add('hidden');
                 this.showCampaignEndScreen(false, true);
             }
 
@@ -2997,6 +3007,7 @@
                 document.getElementById('setup-ui').classList.remove('hidden');
                 document.getElementById('actions').classList.add('hidden');
                 document.getElementById('surrender-btn').classList.add('hidden');
+                document.getElementById('battle-info-btn').classList.add('hidden');
                 document.getElementById('unit-info-header').innerText = '⚔️ Средневековье — Режим расстановки';
 
                 this.generateSmartTerrain();
@@ -4610,6 +4621,137 @@
                             me.cooldowns['Boost'] = this.getAdjustedCooldown(4, wl, me);
                             this.playUnitAnim(boostTarget.uid, 'unit-anim-buff', 500);
                             this.spawnFloatingText(boostTarget.x, boostTarget.y, '⚡ Ход!', '#ffd700');
+                            return this.finishAction(340);
+                        }
+                    }
+                }
+
+                // --- ИИ для новых активок: лечение союзников, если кто-то ранен ---
+                const healerAbilities = {
+                    crossbow: { cdKey: null, selectorAction: 'heal', amount: 40, range: 2 },
+                    priest: { cdKey: 'PriestHeal', amount: 35, range: 2 },
+                    alchemist: { cdKey: 'HealPotion', amount: 30, range: 3 },
+                    phoenix: { cdKey: 'RejuvFlame', amount: 25, range: 2 }
+                };
+                if (healerAbilities[me.id]) {
+                    const cfg = healerAbilities[me.id];
+                    const cdReady = !cfg.cdKey || (me.cooldowns[cfg.cdKey] || 0) === 0;
+                    if (cdReady) {
+                        const wounded = allies.filter(a => a !== me && a.id !== 'necromancer' && a.hp < a.maxHp * 0.6 && this.getDistance(me, a.x, a.y, a.size) <= this.getEffectiveRange(me))
+                            .sort((a, b) => (a.hp / a.maxHp) - (b.hp / b.maxHp))[0];
+                        if (wounded) {
+                            wounded.hp = Math.min(wounded.maxHp, wounded.hp + cfg.amount);
+                            if (me.id === 'priest') { wounded.isFrozen = false; wounded.chronoSlowTurns = 0; }
+                            if (cfg.cdKey) me.cooldowns[cfg.cdKey] = this.getAdjustedCooldown(3, me.waveLevel || 1, me);
+                            this.playUnitAnim(me.uid, 'unit-anim-attack', 260);
+                            this.playUnitAnim(wounded.uid, 'unit-anim-buff', 500);
+                            this.spawnFloatingText(wounded.x, wounded.y, `+${cfg.amount}`, '#00ff88');
+                            return this.finishAction(340);
+                        }
+                    }
+                }
+
+                // --- ИИ для АОЕ-активок: используются вместо обычной атаки, если задевают 2+ врагов ---
+                const aoeAbilities = {
+                    ballista: { cdKey: 'Barrage', dmgMult: 0.5, mode: 'range' },
+                    dragon: { cdKey: 'FireBreath', dmgMult: 0.6, mode: 'cellRadius1' },
+                    necromancer: { cdKey: null, mode: 'selfRadius1', dmgMult: 0.8 },
+                    phoenix: { cdKey: 'FlameWave', mode: 'selfRadius1', dmgMult: 0.6 },
+                    stone_golem: { cdKey: 'Earthquake', mode: 'selfRadius1', dmgMult: 0.5 },
+                    frost_mage: { cdKey: 'IceNova', dmgMult: 0.5, mode: 'cellRadius1' }
+                };
+                if (aoeAbilities[me.id] && me.id !== 'necromancer') {
+                    const cfg = aoeAbilities[me.id];
+                    const cdReady = !cfg.cdKey || (me.cooldowns[cfg.cdKey] || 0) === 0;
+                    if (cdReady) {
+                        if (cfg.mode === 'selfRadius1') {
+                            const hitCount = enemies.filter(e => this.getDistance(me, e.x, e.y, e.size) <= 1).length;
+                            if (hitCount >= 2) {
+                                enemies.filter(e => this.getDistance(me, e.x, e.y, e.size) <= 1).forEach(e => {
+                                    let d = Math.max(1, Math.round(this.getActualDmg(me, e) * cfg.dmgMult));
+                                    this.applyDamageToUnit(me, e, d);
+                                    this.playUnitAnim(e.uid, 'unit-anim-hit', 350);
+                                    this.spawnFloatingText(e.x, e.y, `-${d}`, '#ff8800');
+                                });
+                                if (cfg.cdKey) me.cooldowns[cfg.cdKey] = this.getAdjustedCooldown(4, me.waveLevel || 1, me);
+                                this.playUnitAnim(me.uid, 'unit-anim-attack', 300);
+                                return this.finishAction(380);
+                            }
+                        } else if (cfg.mode === 'range' || cfg.mode === 'cellRadius1') {
+                            const bestCell = targetsInRange.find(t => enemies.filter(e => this.getDistance(t, e.x, e.y, e.size) <= (cfg.mode === 'range' ? this.getEffectiveRange(me) : 1)).length >= 2);
+                            if (bestCell) {
+                                const hitRadius = cfg.mode === 'range' ? this.getEffectiveRange(me) : 1;
+                                const hitList = cfg.mode === 'range' ? enemies.filter(e => this.getDistance(me, e.x, e.y, e.size) <= hitRadius) : enemies.filter(e => this.getDistance(bestCell, e.x, e.y, e.size) <= 1);
+                                hitList.forEach(e => {
+                                    let d = Math.max(1, Math.round(this.getActualDmg(me, e) * cfg.dmgMult));
+                                    this.applyDamageToUnit(me, e, d);
+                                    if (me.id === 'frost_mage' && !e.ccImmune && !e.debuffImmune) e.isFrozen = true;
+                                    this.playUnitAnim(e.uid, 'unit-anim-hit', 350);
+                                    this.spawnFloatingText(e.x, e.y, `-${d}`, '#ff8800');
+                                });
+                                if (cfg.cdKey) me.cooldowns[cfg.cdKey] = this.getAdjustedCooldown(4, me.waveLevel || 1, me);
+                                this.playUnitAnim(me.uid, 'unit-anim-attack', 300);
+                                return this.finishAction(380);
+                            }
+                        }
+                    }
+                }
+
+                // --- ИИ для точечных дебаффов (Корни Энта, Вопль Ужаса Призрака) ---
+                if (me.id === 'ent' && (me.cooldowns['Roots'] || 0) === 0) {
+                    let rootTarget = enemies.find(e => this.getDistance(me, e.x, e.y, e.size) <= 3 && !e.ccImmune && !e.debuffImmune && !(e.rootedTurns > 0));
+                    if (rootTarget && this.getDistance(me, rootTarget.x, rootTarget.y, rootTarget.size) > 1) { // предпочитаем атаку, если враг уже рядом
+                        rootTarget.rootedTurns = 2;
+                        me.cooldowns['Roots'] = this.getAdjustedCooldown(3, me.waveLevel || 1, me);
+                        this.playUnitAnim(me.uid, 'unit-anim-attack', 260);
+                        this.spawnFloatingText(rootTarget.x, rootTarget.y, '🌿 Опутан корнями', '#4a7c2a');
+                        return this.finishAction(340);
+                    }
+                }
+                if (me.id === 'specter' && (me.cooldowns['Wail'] || 0) === 0) {
+                    let wailTarget = enemies.find(e => this.getDistance(me, e.x, e.y, e.size) <= 3 && !e.ccImmune && !e.debuffImmune && !(e.witchCurseTurns > 0));
+                    if (wailTarget && targetsInRange.length === 0) {
+                        wailTarget.witchCurseTurns = Math.max(wailTarget.witchCurseTurns || 0, 2);
+                        wailTarget.witchCurseDmgMult = Math.min(wailTarget.witchCurseDmgMult || 1, 0.7);
+                        me.cooldowns['Wail'] = this.getAdjustedCooldown(3, me.waveLevel || 1, me);
+                        this.playUnitAnim(me.uid, 'unit-anim-attack', 260);
+                        this.spawnFloatingText(wailTarget.x, wailTarget.y, '😱 Ужас!', '#8855aa');
+                        return this.finishAction(340);
+                    }
+                }
+                if (me.id === 'dragon' && (me.cooldowns['Roar'] || 0) === 0) {
+                    let roarTarget = enemies.find(e => this.getDistance(me, e.x, e.y, e.size) <= this.getEffectiveRange(me) && !e.ccImmune && !e.debuffImmune && e.hp > e.maxHp * 0.4);
+                    if (roarTarget) {
+                        roarTarget.actionPoints = 0;
+                        roarTarget.chronoSlowTurns = Math.max(roarTarget.chronoSlowTurns || 0, 2);
+                        me.cooldowns['Roar'] = this.getAdjustedCooldown(4, me.waveLevel || 1, me);
+                        this.playUnitAnim(me.uid, 'unit-anim-attack', 300);
+                        this.spawnFloatingText(roarTarget.x, roarTarget.y, '😱 Оглушён!', '#ff3333');
+                        return this.finishAction(380);
+                    }
+                }
+
+                // --- ИИ для самобаффов: используются, когда бой рядом, но добить врага в этот ход нельзя ---
+                const canKillNow = targetsInRange.some(e => this.getActualDmg(me, e) >= (e.hp + (e.armor || 0)));
+                if (!canKillNow) {
+                    const selfBuffs = {
+                        knight: { cdKey: 'WarShout', run: () => { allies.filter(a => a !== me && this.getDistance(me, a.x, a.y, a.size) <= 2).forEach(a => { a.armor = (a.armor || 0) + 10; a.maxArmor = Math.max(a.maxArmor || 0, a.armor); }); }, cd: 3, needEnemyNear: true },
+                        berserker: { cdKey: 'WarCry', run: () => { me.tempDmgTurns = 2; me.tempDmgBonus = 0.25; }, cd: 3, needEnemyNear: true },
+                        vampire: { cdKey: 'Bloodlust', run: () => { me.tempInitTurns = 3; me.tempInitBonus = 15; }, cd: 4, needEnemyNear: true },
+                        sniper: { cdKey: 'AimedShot', run: () => { me.guaranteedCritNext = true; }, cd: 3, needEnemyNear: true, skipIfInRange: true },
+                        frost_mage: { cdKey: 'FrostShield', run: () => { me.armor = (me.armor || 0) + 30; me.maxArmor = Math.max(me.maxArmor || 0, me.armor); }, cd: 3, needEnemyNear: true },
+                        stone_golem: { cdKey: 'StoneBulwark', run: () => { me.armor = (me.armor || 0) + 60; me.maxArmor = Math.max(me.maxArmor || 0, me.armor); }, cd: 4, needEnemyNear: true },
+                        wolf_rider: { cdKey: 'WildCharge', run: () => { me.move += 2; }, cd: 3, needEnemyNear: false }
+                    };
+                    const sb = selfBuffs[me.id];
+                    if (sb && (me.cooldowns[sb.cdKey] || 0) === 0) {
+                        const enemyNearby = enemies.some(e => this.getDistance(me, e.x, e.y, e.size) <= (me.range + me.move + 1));
+                        const skip = sb.skipIfInRange && targetsInRange.length > 0;
+                        if (!skip && (!sb.needEnemyNear || enemyNearby)) {
+                            sb.run();
+                            me.cooldowns[sb.cdKey] = this.getAdjustedCooldown(sb.cd, me.waveLevel || 1, me);
+                            this.playUnitAnim(me.uid, 'unit-anim-buff', 500);
+                            this.spawnFloatingText(me.x, me.y, '✨', '#ffd700');
                             return this.finishAction(340);
                         }
                     }
