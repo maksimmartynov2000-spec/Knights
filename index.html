@@ -1291,7 +1291,7 @@
             ],
             shade: [
                 { id: 'x_shade_1', name: '💃 Кровавый Танец', desc: 'Добивающий удар мгновенно сбрасывает КД Теневого Шага', apply: h => { h.executeRefreshTeleport = true; } },
-                { id: 'x_shade_2', name: '🌑 Смертельная Тень', desc: 'Теневой Шаг наносит урон врагам рядом с точкой прибытия', apply: h => { h.teleportStrikeDmg = true; } },
+                { id: 'x_shade_2', name: '🌑 Смертельная Тень', desc: 'Теневой Шаг наносит 50% от урона Тени всем врагам рядом с точкой прибытия', apply: h => { h.teleportStrikeDmg = true; } },
                 { id: 'x_shade_3', name: '💨 Растворение в Тенях', desc: 'После убийства получает +40% уклонение на 2 хода', apply: h => { h.postKillDodge = true; } },
                 { id: 'x_shade_4', name: '🗡️ Двойной Клинок', desc: '20% шанс атаковать дважды за ход', apply: h => { h.doubleStrikeChance = Math.min(0.5, (h.doubleStrikeChance || 0) + 0.2); } }
             ],
