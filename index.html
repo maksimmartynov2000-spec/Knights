@@ -612,6 +612,33 @@
             box-shadow: 0 20px 50px rgba(0,0,0,0.75), 0 0 30px rgba(212,175,55,0.3);
             animation: modalPopIn 0.22s ease-out;
         }
+        #trials-modal {
+            position: fixed;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(180deg, rgba(28,28,32,0.98), rgba(16,16,19,0.98));
+            padding: 18px;
+            border-radius: 14px;
+            border: 2px solid var(--gold);
+            z-index: 1000;
+            width: 92%;
+            max-width: 400px;
+            max-height: 86vh;
+            overflow-y: auto;
+            color: white;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.75), 0 0 30px rgba(212,175,55,0.3);
+            animation: modalPopIn 0.22s ease-out;
+        }
+        .trial-card {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid #444;
+            border-radius: 10px;
+            padding: 10px 12px;
+        }
+        .trial-card.trial-completed { border-color: #4caf50; }
+        .trial-card-title { font-weight: 700; color: var(--gold-bright); font-size: 14px; margin-bottom: 3px; }
+        .trial-card-desc { font-size: 11px; color: #ccc; margin-bottom: 6px; line-height: 1.4; }
+        .trial-card-meta { font-size: 10.5px; color: #aaa; margin-bottom: 6px; }
         #savecode-modal h3 { font-family: 'Cinzel', serif; color: var(--gold-bright); text-align: center; margin-bottom: 4px; }
         .hero-card {
             display: flex;
@@ -877,6 +904,14 @@
                 </div>
 
                 <button id="start-battle-btn" class="success" style="width: 100%; padding: 8px;">⚔️ НАЧАТЬ КАМПАНИЮ ⚔️</button>
+                <button id="open-trials-btn" class="secondary" style="width: 100%; padding: 7px; margin-top: 4px;">🏆 Испытания</button>
+            </div>
+
+            <div id="trials-modal" class="hidden">
+                <h3 style="text-align:center; color: var(--gold-bright); margin-bottom: 10px;">🏆 Режим Испытаний</h3>
+                <p style="font-size: 11px; color: #aaa; text-align: center; margin-bottom: 10px;">Отдельные боевые сценарии с уникальными правилами. Расставьте отряд как обычно, затем выберите испытание — оно заменит обычный бой.</p>
+                <div id="trials-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 60vh; overflow-y: auto;"></div>
+                <button id="close-trials-btn" style="width: 100%; padding: 9px; margin-top: 10px; background: #333; border: 1px solid #555; border-radius: 6px; color: white;">Закрыть</button>
             </div>
 
             <div id="actions" class="hidden"></div>
@@ -1046,6 +1081,7 @@
 
         const META_SAVE_KEY_HEROES = 'medieval_meta_heroes_v1';
         const META_SAVE_KEY_UNITS = 'medieval_meta_units_v1';
+        const META_SAVE_KEY_TRIALS = 'medieval_meta_trials_v1';
         const UNIT_SIGNATURE_LEVEL = 4;
         const UNIT_SIGNATURE_LEVEL_2 = 8;
         const UNIT_SIGNATURE_LEVEL_3 = 12;
@@ -1327,6 +1363,48 @@
         const ELITE_WAVES = [2, 6, 10, 14];
         const ELITE_MULT = 1.45;
 
+        // ==================== РЕЖИМ ИСПЫТАНИЙ ====================
+        // Отдельные однобойные сценарии с уникальными правилами — не часть обычной кампании.
+        // Каждое испытание проверяет свой навык/подход к бою, а не просто "волна посложнее".
+        const TRIALS = [
+            {
+                id: 'goliath', name: '👹 Испытание Голиафа', icon: '👹',
+                desc: 'Один колоссальный враг (x8 HP/урона обычного юнита) против всего вашего отряда. Проверка на фокус-урон и умение концентрировать атаки.',
+                difficulty: 'Средняя', firstReward: 200, repeatReward: 40,
+                budgetOverride: null, turnLimit: null, blockArmor: false
+            },
+            {
+                id: 'swarm', name: '🐜 Испытание Роя', icon: '🐜',
+                desc: '24 слабых врага (x0.4 статов) при урезанном бюджете (20 вместо обычных 45+). Проверка на эффективность площадного урона.',
+                difficulty: 'Средняя', firstReward: 200, repeatReward: 40,
+                budgetOverride: 20, turnLimit: null, blockArmor: false, swarmCount: 24, swarmStatMult: 0.4
+            },
+            {
+                id: 'fragility', name: '💔 Испытание Хрупкости', icon: '💔',
+                desc: 'Обычная сильная волна врагов, но ваши юниты не могут получать и использовать броню весь бой. Проверка на уклонение, лечение и позиционирование.',
+                difficulty: 'Высокая', firstReward: 250, repeatReward: 50,
+                budgetOverride: null, turnLimit: null, blockArmor: true
+            },
+            {
+                id: 'haste', name: '⏱️ Испытание Скорости', icon: '⏱️',
+                desc: 'Обычная сильная волна врагов, но нужно победить за 10 ходов ИГРОКА, иначе поражение. Проверка на агрессию и скорость убийства.',
+                difficulty: 'Высокая', firstReward: 250, repeatReward: 50,
+                budgetOverride: null, turnLimit: 10, blockArmor: false
+            },
+            {
+                id: 'arcane', name: '🔮 Испытание Аркана', icon: '🔮',
+                desc: 'Все враги наносят Магический урон и имеют +50% HP. Проверка на контр-магические механики (Инженер, Инквизитор, физическая защита).',
+                difficulty: 'Высокая', firstReward: 250, repeatReward: 50,
+                budgetOverride: null, turnLimit: null, blockArmor: false, forceEnemyMagic: true, enemyHpMult: 1.5
+            },
+            {
+                id: 'kings', name: '👑 Испытание Королей', icon: '👑',
+                desc: 'Все 4 босса кампании разом в одной битве, каждый на полной силе. Финальная проверка вашего отряда. Рекомендуется только полностью прокачанный состав.',
+                difficulty: 'Экстремальная', firstReward: 500, repeatReward: 100,
+                budgetOverride: null, turnLimit: null, blockArmor: false, allBosses: true
+            }
+        ];
+
         // ---- Реликвии: один раз выбираются перед стартом похода, действуют на весь забег ----
         const RELICS = [
             { id: 'bloodaltar', name: '🩸 Кровавый Алтарь', desc: 'Юнит, добивающий врага, восстанавливает 20% своего макс. HP', apply: (engine) => {} },
@@ -1370,6 +1448,8 @@
                 this.metaUpgrades = this.loadUpgrades();
                 this.heroSave = this.loadHeroSave();
                 this.unitSave = this.loadUnitSave();
+                this.trialSave = this.loadTrialSave();
+                this.currentTrial = null; // если не null — сейчас идёт бой в режиме испытания, не обычная кампания
                 this.expandedTalentsFor = null;
                 this.placingHero = false;
                 this.glorySessionEarned = 0;
@@ -1555,6 +1635,28 @@
             }
             saveUnitSave() {
                 try { localStorage.setItem(META_SAVE_KEY_UNITS, JSON.stringify(this.unitSave)); }
+                catch (e) { /* хранилище недоступно */ }
+            }
+            // --- Прогресс режима испытаний: сколько раз пройдено каждое, лучший результат по ходам (для Скорости) ---
+            defaultTrialSave() {
+                let trials = {};
+                TRIALS.forEach(t => { trials[t.id] = { timesCompleted: 0, bestTurns: null }; });
+                return { trials };
+            }
+            loadTrialSave() {
+                try {
+                    let raw = JSON.parse(localStorage.getItem(META_SAVE_KEY_TRIALS) || 'null');
+                    if (raw && raw.trials) {
+                        TRIALS.forEach(t => {
+                            if (!raw.trials[t.id]) raw.trials[t.id] = { timesCompleted: 0, bestTurns: null };
+                        });
+                        return raw;
+                    }
+                } catch (e) { /* хранилище недоступно */ }
+                return this.defaultTrialSave();
+            }
+            saveTrialSave() {
+                try { localStorage.setItem(META_SAVE_KEY_TRIALS, JSON.stringify(this.trialSave)); }
                 catch (e) { /* хранилище недоступно */ }
             }
             unitXpToNextLevel(level) {
@@ -1833,6 +1935,15 @@
                     document.getElementById('savecode-modal').classList.add('hidden');
                     document.getElementById('modal-backdrop').classList.add('hidden');
                 });
+                document.getElementById('open-trials-btn').addEventListener('click', () => {
+                    this.renderTrialsModal();
+                    document.getElementById('trials-modal').classList.remove('hidden');
+                    document.getElementById('modal-backdrop').classList.remove('hidden');
+                });
+                document.getElementById('close-trials-btn').addEventListener('click', () => {
+                    document.getElementById('trials-modal').classList.add('hidden');
+                    document.getElementById('modal-backdrop').classList.add('hidden');
+                });
                 document.getElementById('cheat-glory-apply').addEventListener('click', () => {
                     const input = document.getElementById('cheat-glory-input');
                     const amount = parseInt(input.value, 10);
@@ -1918,6 +2029,56 @@
             }
 
             // Формирует код сохранения (Слава + Арсенал + Герои) в текстовое поле
+            // Строит список карточек испытаний — с описанием, сложностью, прогрессом и кнопкой запуска
+            renderTrialsModal() {
+                const list = document.getElementById('trials-list');
+                list.innerHTML = '';
+                TRIALS.forEach(trial => {
+                    const save = this.trialSave.trials[trial.id];
+                    const completed = save.timesCompleted > 0;
+
+                    const card = document.createElement('div');
+                    card.className = 'trial-card' + (completed ? ' trial-completed' : '');
+
+                    const title = document.createElement('div');
+                    title.className = 'trial-card-title';
+                    title.innerText = `${completed ? '✅ ' : ''}${trial.name}`;
+                    card.appendChild(title);
+
+                    const desc = document.createElement('div');
+                    desc.className = 'trial-card-desc';
+                    desc.innerText = trial.desc;
+                    card.appendChild(desc);
+
+                    const meta = document.createElement('div');
+                    meta.className = 'trial-card-meta';
+                    let metaText = `⚔️ Сложность: ${trial.difficulty} • 🎁 Награда: +${trial.firstReward} Славы (первый раз), +${trial.repeatReward} (повтор)`;
+                    if (completed) {
+                        metaText += ` • Пройдено раз: ${save.timesCompleted}`;
+                        if (trial.turnLimit && save.bestTurns !== null) metaText += ` • Лучший результат: ${save.bestTurns} ход.`;
+                    }
+                    meta.innerText = metaText;
+                    card.appendChild(meta);
+
+                    const startBtn = document.createElement('button');
+                    startBtn.className = 'success';
+                    startBtn.style.cssText = 'width: 100%; padding: 7px; font-size: 12px;';
+                    startBtn.innerText = '⚔️ Начать испытание';
+                    startBtn.onclick = () => {
+                        if (this.units.filter(u => u.team === 'player').length === 0) {
+                            alert('Сначала расставьте хотя бы одного юнита на поле!');
+                            return;
+                        }
+                        document.getElementById('trials-modal').classList.add('hidden');
+                        document.getElementById('modal-backdrop').classList.add('hidden');
+                        this.startTrial(trial.id);
+                    };
+                    card.appendChild(startBtn);
+
+                    list.appendChild(card);
+                });
+            }
+
             renderSaveCodeModal() {
                 const data = { glory: this.metaGlory, upgrades: this.metaUpgrades, heroes: this.heroSave, units: this.unitSave, v: 1 };
                 let code = '';
@@ -3201,6 +3362,115 @@
                 }
             }
 
+            // Запускает бой в режиме испытания — отдельный, самодостаточный поток без реликвий и обычной кампании
+            startTrial(trialId) {
+                const trial = TRIALS.find(t => t.id === trialId);
+                if (!trial) return;
+                this.units = this.units.filter(u => u.team === 'player');
+                if (this.units.length === 0) return alert('Поставьте хотя бы одного синего юнита в рамках бюджета!');
+
+                this.currentTrial = trialId;
+                this.trialPlayerTurns = 0;
+                this.activeRelics = [];
+                this.campaignArmorPerWave = 0;
+                this.gameOver = false;
+                this.awaitingWaveBonus = false;
+                this.glorySessionEarned = 0;
+                this.phoenixBlessingUsed = false;
+                this.clearHighlights();
+
+                this.spawnTrialEnemies(trial);
+
+                this.units.forEach(u => {
+                    u.actionPoints = 0;
+                    u.vampireDebuffs = u.vampireDebuffs || 0;
+                    u.bonusDmg = u.bonusDmg || 0;
+                    u.bonusInit = u.bonusInit || 0;
+                    u.golemStacks = u.golemStacks || 0;
+                    u.waveLevel = u.waveLevel || 1;
+                    u.baseInitStat = u.baseInitStat || u.init;
+                    u.lastPhoenixHp = u.lastPhoenixHp || u.hp;
+                    u.lastPhoenixDmg = u.lastPhoenixDmg || u.dmg;
+                    if (trial.blockArmor && u.team === 'player') { u.armor = 0; u.maxArmor = 0; }
+                });
+                this.applyMetaUpgrades();
+                if (!trial.blockArmor) this.applyWaveStartArmor();
+
+                this.state = 'BATTLE';
+                document.getElementById('setup-ui').classList.add('hidden');
+                document.getElementById('actions').classList.remove('hidden');
+                document.getElementById('surrender-btn').classList.remove('hidden');
+                document.getElementById('battle-info-btn').classList.remove('hidden');
+                this.clearHighlights();
+                this.nextTurn();
+            }
+
+            // Спавнит врагов согласно правилам конкретного испытания
+            spawnTrialEnemies(trial) {
+                const regularTypes = ['knight', 'crossbow', 'berserker', 'stone_golem', 'frost_mage', 'vampire', 'dragon', 'ballista', 'ent', 'sniper', 'wolf_rider', 'priest'];
+
+                if (trial.id === 'goliath') {
+                    const type = regularTypes[Math.floor(Math.random() * regularTypes.length)];
+                    const tpl = UNIT_TYPES[type];
+                    let spot = this.findFreeEnemyCell(tpl.size) || { x: 4, y: 2 };
+                    this.pushEnemyUnit(tpl, spot.x, spot.y, 12, 8, { name: `👹 Голиаф (${tpl.name})` });
+                    return;
+                }
+
+                if (trial.id === 'swarm') {
+                    for (let i = 0; i < trial.swarmCount; i++) {
+                        const type = regularTypes[Math.floor(Math.random() * regularTypes.length)];
+                        const tpl = UNIT_TYPES[type];
+                        const spot = this.findFreeEnemyCell(tpl.size);
+                        if (spot) this.pushEnemyUnit(tpl, spot.x, spot.y, 1, trial.swarmStatMult);
+                    }
+                    return;
+                }
+
+                if (trial.id === 'kings') {
+                    Object.keys(BOSS_WAVES).forEach(waveKey => {
+                        const boss = BOSS_WAVES[waveKey];
+                        const tpl = UNIT_TYPES[boss.baseType];
+                        const spot = this.findFreeEnemyCell(tpl.size);
+                        if (spot) {
+                            const overrides = { name: boss.name, isBoss: true, bossAbility: boss.bossAbility };
+                            if (boss.armorRegenPerTurn) overrides.armorRegenPerTurn = boss.armorRegenPerTurn;
+                            if (boss.thornsPct) overrides.thornsPct = boss.thornsPct;
+                            if (boss.lifestealPct) overrides.lifestealPct = boss.lifestealPct;
+                            if (boss.armorPenPct) overrides.armorPenPct = (tpl.armorPenPct || 0) + boss.armorPenPct;
+                            this.pushEnemyUnit(tpl, spot.x, spot.y, 16, boss.mult, overrides);
+                        }
+                    });
+                    return;
+                }
+
+                // fragility / haste — обычная сильная волна из 10 случайных юнитов на масштабе, эквивалентном 12-й волне похода
+                // arcane — то же самое, но с перекраской урона в Магию и +50% HP
+                for (let i = 0; i < 10; i++) {
+                    const type = regularTypes[Math.floor(Math.random() * regularTypes.length)];
+                    const tpl = UNIT_TYPES[type];
+                    const spot = this.findFreeEnemyCell(tpl.size);
+                    if (!spot) continue;
+                    const overrides = {};
+                    if (trial.forceEnemyMagic) overrides.dmgType = 'Магия';
+                    const unit = this.pushEnemyUnit(tpl, spot.x, spot.y, 12, 2.2, overrides);
+                    if (trial.enemyHpMult) {
+                        const bonusHp = Math.round(unit.maxHp * (trial.enemyHpMult - 1));
+                        unit.maxHp += bonusHp; unit.hp += bonusHp;
+                    }
+                }
+            }
+
+            // Находит свободную клетку во вражеской зоне поля для спавна испытания
+            findFreeEnemyCell(size) {
+                for (let attempts = 0; attempts < 100; attempts++) {
+                    let ry = Math.floor(Math.random() * (ENEMY_ZONE_END + 1));
+                    let rx = Math.floor(Math.random() * COLS);
+                    if (this.isCellFree(rx, ry, size)) return { x: rx, y: ry };
+                }
+                return null;
+            }
+
             // Создает вражеского юнита указанного типа на клетке (x,y) с масштабированием по волне
             pushEnemyUnit(tpl, x, y, waveNumber, scale, overrides = null) {
                 // Некромант никогда не масштабируется по HP — иначе он превращается в неубиваемую губку
@@ -3364,7 +3634,46 @@
                 }
             }
 
+            // Проверяет условия победы/поражения ИМЕННО для режима испытаний (отдельно от кампании,
+            // т.к. правила отличаются: нет волн, может быть лимит ходов, награда разовая за бой)
+            checkTrialProgression() {
+                const trial = TRIALS.find(t => t.id === this.currentTrial);
+                if (!trial) return;
+
+                let playerAlive = this.units.some(u => u.team === 'player' && u.hp > 0);
+                if (!playerAlive) {
+                    this.gameOver = true;
+                    this.clearGameState();
+                    this.showTrialResultModal(trial, false, 0, false, false);
+                    return;
+                }
+
+                if (trial.turnLimit && (this.trialPlayerTurns || 0) > trial.turnLimit) {
+                    this.gameOver = true;
+                    this.clearGameState();
+                    this.showTrialResultModal(trial, false, 0, false, true);
+                    return;
+                }
+
+                let enemiesAlive = this.units.some(u => u.team === 'enemy' && u.hp > 0);
+                if (!enemiesAlive) {
+                    this.gameOver = true;
+                    this.clearGameState();
+                    const save = this.trialSave.trials[trial.id];
+                    const isFirstClear = save.timesCompleted === 0;
+                    save.timesCompleted++;
+                    if (trial.turnLimit && (save.bestTurns === null || this.trialPlayerTurns < save.bestTurns)) {
+                        save.bestTurns = this.trialPlayerTurns;
+                    }
+                    this.saveTrialSave();
+                    const reward = isFirstClear ? trial.firstReward : trial.repeatReward;
+                    this.awardGlory(reward);
+                    this.showTrialResultModal(trial, true, reward, isFirstClear, false);
+                }
+            }
+
             checkWaveProgression() {
+                if (this.currentTrial) { this.checkTrialProgression(); return; }
                 let playerAlive = this.units.some(u => u.team === 'player' && u.hp > 0);
                 if (!playerAlive) {
                     let revivable = this.units.filter(u => u.team === 'player' && u.hp <= 0 && u.id !== 'necromancer');
@@ -3561,16 +3870,67 @@
                 document.getElementById('modal-backdrop').classList.remove('hidden');
             }
 
+            // Экран результата испытания — победа/поражение/таймаут/побег, с наградой и статистикой
+            showTrialResultModal(trial, won, reward, isFirstClear, isTimeout, abandoned) {
+                const save = this.trialSave.trials[trial.id];
+                let title;
+                if (abandoned) title = '🏳️ Испытание прервано';
+                else if (won) title = '🏆 Испытание пройдено!';
+                else if (isTimeout) title = '⏱️ Время вышло';
+                else title = '💀 Отряд разбит';
+                document.getElementById('wave-bonus-title').innerText = title;
+
+                const container = document.getElementById('wave-bonus-options');
+                container.innerHTML = '';
+
+                const summary = document.createElement('p');
+                summary.style.cssText = 'font-size:12px; color:#ccc; text-align:center; margin-bottom:10px;';
+                let summaryText = `${trial.icon} ${trial.name}\n`;
+                if (won) {
+                    summaryText += `⭐ Награда: +${reward} Славы${isFirstClear ? ' (первое прохождение!)' : ''}\nПройдено раз: ${save.timesCompleted}`;
+                    if (trial.turnLimit) summaryText += `\nПотрачено ходов: ${this.trialPlayerTurns}${save.bestTurns ? ` (лучший результат: ${save.bestTurns})` : ''}`;
+                } else if (abandoned) {
+                    summaryText += 'Награда не засчитывается — попробуйте снова, когда будете готовы.';
+                } else if (isTimeout) {
+                    summaryText += `Не уложились в лимит ${trial.turnLimit} ходов. Попробуйте более агрессивную тактику.`;
+                } else {
+                    summaryText += 'Отряд полностью уничтожен. Попробуйте другую расстановку или прокачайте юнитов.';
+                }
+                summary.innerText = summaryText;
+                container.appendChild(summary);
+
+                const btn = document.createElement('button');
+                btn.className = 'primary';
+                btn.style.width = '100%';
+                btn.style.padding = '10px';
+                btn.innerText = '🏠 На главный экран';
+                btn.onclick = () => {
+                    document.getElementById('wave-bonus-modal').classList.add('hidden');
+                    document.getElementById('modal-backdrop').classList.add('hidden');
+                    this.returnToMenu();
+                };
+                container.appendChild(btn);
+
+                this.renderGrid();
+                document.getElementById('wave-bonus-modal').classList.remove('hidden');
+                document.getElementById('modal-backdrop').classList.remove('hidden');
+            }
+
             // Досрочное завершение похода игроком — уже заработанная Слава уже начислена по ходу боя и никуда не денется
             surrenderCampaign() {
                 if (this.state !== 'BATTLE' || this.gameOver) return;
-                const ok = confirm('Точно завершить поход досрочно? Уже заработанная Слава останется с вами, но текущий прогресс похода будет потерян.');
+                const ok = confirm(this.currentTrial ? 'Точно покинуть испытание? Прогресс этого боя будет потерян, награда не засчитается.' : 'Точно завершить поход досрочно? Уже заработанная Слава останется с вами, но текущий прогресс похода будет потерян.');
                 if (!ok) return;
                 this.gameOver = true;
                 this.clearGameState();
                 document.getElementById('surrender-btn').classList.add('hidden');
                 document.getElementById('battle-info-btn').classList.add('hidden');
-                this.showCampaignEndScreen(false, true);
+                if (this.currentTrial) {
+                    const trial = TRIALS.find(t => t.id === this.currentTrial);
+                    this.showTrialResultModal(trial, false, 0, false, false, true);
+                } else {
+                    this.showCampaignEndScreen(false, true);
+                }
             }
 
             // Полный сброс к экрану расстановки для нового похода
@@ -3595,6 +3955,8 @@
                 this.campaignPlayerBudget = 45 + 5 * (this.metaUpgrades.budget || 0);
                 this.currentBiome = BIOMES[Math.floor(Math.random() * BIOMES.length)];
                 this.placingHero = false;
+                this.currentTrial = null;
+                this.trialPlayerTurns = 0;
 
                 document.getElementById('setup-ui').classList.remove('hidden');
                 document.getElementById('actions').classList.add('hidden');
@@ -3811,10 +4173,20 @@
                 this.renderGrid();
                 
                 let headerText = `Ходит: ${this.activeUnit.name} (${this.activeUnit.team === 'player' ? 'Игрок' : 'Враг'})`;
-                if (this.campaignWave) headerText += ` | 🏆 Волна ${this.campaignWave}/${this.campaignTotalWaves}`;
+                if (this.currentTrial) {
+                    const trial = TRIALS.find(t => t.id === this.currentTrial);
+                    headerText += ` | ${trial ? trial.icon + ' ' + trial.name : '🏆 Испытание'}`;
+                    if (trial && trial.turnLimit) headerText += ` (ход ${this.trialPlayerTurns || 0}/${trial.turnLimit})`;
+                } else if (this.campaignWave) {
+                    headerText += ` | 🏆 Волна ${this.campaignWave}/${this.campaignTotalWaves}`;
+                }
                 document.getElementById('unit-info-header').innerText = headerText;
                 
                 if (this.activeUnit.team === 'player') {
+                    if (this.currentTrial) this.trialPlayerTurns = (this.trialPlayerTurns || 0) + 1;
+                    if (this.currentTrial === 'fragility') {
+                        this.units.filter(u => u.team === 'player').forEach(u => { u.armor = 0; u.maxArmor = 0; });
+                    }
                     this.renderActionButtons();
                 } else {
                     document.getElementById('actions').innerHTML = '<div style="color:#aaa; font-size:12px;">Атакует...</div>';
@@ -5343,7 +5715,7 @@
                     defender.hp -= 1;
                     actualDealt = 1;
                 } else {
-                    let currentArmor = defender.armor || 0;
+                    let currentArmor = (this.currentTrial === 'fragility' && defender.team === 'player') ? 0 : (defender.armor || 0);
                     // Пробитие Брони: доля урона атакующего игнорирует броню и бьёт сразу по HP
                     let penPct = attacker.armorPenPct || 0;
                     let penDmg = penPct > 0 ? Math.round(rawDmg * penPct) : 0;
