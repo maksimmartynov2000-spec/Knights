@@ -638,6 +638,33 @@
         .trial-card.trial-completed { border-color: #4caf50; }
         .trial-card-title { font-weight: 700; color: var(--gold-bright); font-size: 14px; margin-bottom: 3px; }
         .trial-card-desc { font-size: 11px; color: #ccc; margin-bottom: 6px; line-height: 1.4; }
+        #artifacts-modal {
+            position: fixed;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(180deg, rgba(28,28,32,0.98), rgba(16,16,19,0.98));
+            padding: 18px;
+            border-radius: 14px;
+            border: 2px solid var(--gold);
+            z-index: 1000;
+            width: 92%;
+            max-width: 400px;
+            max-height: 86vh;
+            overflow-y: auto;
+            color: white;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.75), 0 0 30px rgba(212,175,55,0.3);
+            animation: modalPopIn 0.22s ease-out;
+        }
+        .artifact-card {
+            background: rgba(255,255,255,0.05);
+            border-radius: 10px;
+            padding: 9px 11px;
+            border-width: 1px;
+            border-style: solid;
+        }
+        .artifact-card-title { font-weight: 700; font-size: 13px; margin-bottom: 2px; }
+        .artifact-card-desc { font-size: 11px; color: #ccc; margin-bottom: 6px; }
+        .artifact-card-rarity { font-size: 10px; margin-bottom: 6px; font-weight: 700; }
         .trial-card-meta { font-size: 10.5px; color: #aaa; margin-bottom: 6px; }
         #savecode-modal h3 { font-family: 'Cinzel', serif; color: var(--gold-bright); text-align: center; margin-bottom: 4px; }
         .hero-card {
@@ -905,6 +932,7 @@
 
                 <button id="start-battle-btn" class="success" style="width: 100%; padding: 8px;">⚔️ НАЧАТЬ КАМПАНИЮ ⚔️</button>
                 <button id="open-trials-btn" class="secondary" style="width: 100%; padding: 7px; margin-top: 4px;">🏆 Испытания</button>
+                <button id="open-artifacts-btn" class="secondary" style="width: 100%; padding: 7px; margin-top: 4px;">✨ Артефакты (<span id="artifact-count-badge">0</span>)</button>
             </div>
 
             <div id="trials-modal" class="hidden">
@@ -912,6 +940,13 @@
                 <p style="font-size: 11px; color: #aaa; text-align: center; margin-bottom: 10px;">Отдельные боевые сценарии с уникальными правилами. Расставьте отряд как обычно, затем выберите испытание — оно заменит обычный бой.</p>
                 <div id="trials-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 60vh; overflow-y: auto;"></div>
                 <button id="close-trials-btn" style="width: 100%; padding: 9px; margin-top: 10px; background: #333; border: 1px solid #555; border-radius: 6px; color: white;">Закрыть</button>
+            </div>
+
+            <div id="artifacts-modal" class="hidden">
+                <h3 style="text-align:center; color: var(--gold-bright); margin-bottom: 4px;">✨ Артефакты</h3>
+                <p style="font-size: 11px; color: #aaa; text-align: center; margin-bottom: 10px;">Экипируйте найденные предметы на юнитов и героев — по одному артефакту на цель. Выпадают из побед в кампании и испытаниях.</p>
+                <div id="artifacts-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 60vh; overflow-y: auto;"></div>
+                <button id="close-artifacts-btn" style="width: 100%; padding: 9px; margin-top: 10px; background: #333; border: 1px solid #555; border-radius: 6px; color: white;">Закрыть</button>
             </div>
 
             <div id="actions" class="hidden"></div>
@@ -1082,6 +1117,7 @@
         const META_SAVE_KEY_HEROES = 'medieval_meta_heroes_v1';
         const META_SAVE_KEY_UNITS = 'medieval_meta_units_v1';
         const META_SAVE_KEY_TRIALS = 'medieval_meta_trials_v1';
+        const META_SAVE_KEY_ARTIFACTS = 'medieval_meta_artifacts_v1';
         const UNIT_SIGNATURE_LEVEL = 4;
         const UNIT_SIGNATURE_LEVEL_2 = 8;
         const UNIT_SIGNATURE_LEVEL_3 = 12;
@@ -1366,6 +1402,36 @@
         // ==================== РЕЖИМ ИСПЫТАНИЙ ====================
         // Отдельные однобойные сценарии с уникальными правилами — не часть обычной кампании.
         // Каждое испытание проверяет свой навык/подход к бою, а не просто "волна посложнее".
+        // ==================== АРТЕФАКТЫ ====================
+        // Коллекционные предметы, выпадающие из боёв — экипируются на юнитов/героев перед боем,
+        // дают пассивный бонус. Новая ось прокачки, не пересекающаяся с уровнями и талантами.
+        const ARTIFACT_RARITIES = {
+            common: { name: 'Обычный', color: '#aaaaaa', dropWeight: 50 },
+            rare: { name: 'Редкий', color: '#4da6ff', dropWeight: 30 },
+            epic: { name: 'Эпический', color: '#c77dff', dropWeight: 15 },
+            legendary: { name: 'Легендарный', color: '#ffd700', dropWeight: 5 }
+        };
+        const ARTIFACTS = [
+            { id: 'rusty_blade', name: '🗡️ Ржавый Клинок', rarity: 'common', desc: '+5% урона', apply: u => { u.dmg = Math.round(u.dmg * 1.05); } },
+            { id: 'worn_shield', name: '🛡️ Потёртый Щит', rarity: 'common', desc: '+12 брони навсегда', apply: u => { u.armor = (u.armor || 0) + 12; u.maxArmor = Math.max(u.maxArmor || 0, u.armor); } },
+            { id: 'swift_boots', name: '👢 Изношенные Сапоги', rarity: 'common', desc: '+1 к дальности хода', apply: u => { u.move += 1; } },
+            { id: 'iron_will', name: '💪 Железная Воля', rarity: 'common', desc: '+8% макс. HP', apply: u => { u.maxHp = Math.round(u.maxHp * 1.08); u.hp = u.maxHp; } },
+            { id: 'ring_fortitude', name: '💍 Кольцо Стойкости', rarity: 'rare', desc: '+15% макс. HP', apply: u => { u.maxHp = Math.round(u.maxHp * 1.15); u.hp = u.maxHp; } },
+            { id: 'amulet_swiftness', name: '📿 Амулет Быстроты', rarity: 'rare', desc: '+6 к Инициативе', apply: u => { u.bonusInit = (u.bonusInit || 0) + 6; } },
+            { id: 'vampire_gloves', name: '🧤 Перчатки Вампира', rarity: 'rare', desc: '+12% похищения здоровья', apply: u => { u.lifestealPct = (u.lifestealPct || 0) + 0.12; } },
+            { id: 'keen_eye', name: '👁️ Зоркий Глаз', rarity: 'rare', desc: '+10% шанс критического удара', apply: u => { u.critChance = (u.critChance || 0) + 0.10; } },
+            { id: 'piercing_blade', name: '⚔️ Клинок Пробития', rarity: 'epic', desc: '+20% урона игнорирует броню', apply: u => { u.armorPenPct = (u.armorPenPct || 0) + 0.20; } },
+            { id: 'shadow_cloak', name: '🌑 Плащ Тени', rarity: 'epic', desc: '+18% уклонение', apply: u => { u.dodgeChance = (u.dodgeChance || 0) + 0.18; } },
+            { id: 'berserker_ring', name: '🔥 Кольцо Берсерка', rarity: 'epic', desc: '+15% урона, но -8% макс. HP', apply: u => { u.dmg = Math.round(u.dmg * 1.15); u.maxHp = Math.round(u.maxHp * 0.92); u.hp = Math.min(u.hp, u.maxHp); } },
+            { id: 'phoenix_heart', name: '❤️‍🔥 Сердце Феникса', rarity: 'legendary', desc: 'Раз за бой выживает с 1 HP вместо смерти', apply: u => { u.lastStandCharges = (u.lastStandCharges || 0) + 1; } },
+            { id: 'eternity_blade', name: '⏳ Клинок Вечности', rarity: 'legendary', desc: 'Добивающий удар мгновенно сбрасывает ВСЕ перезарядки', apply: u => { u.eternityBlade = true; } },
+            { id: 'crown_kings', name: '👑 Корона Королей', rarity: 'legendary', desc: '+15% к урону, макс. HP и броне одновременно', apply: u => {
+                u.dmg = Math.round(u.dmg * 1.15);
+                u.maxHp = Math.round(u.maxHp * 1.15); u.hp = u.maxHp;
+                u.armor = Math.round((u.armor || 0) * 1.15) + 10; u.maxArmor = Math.max(u.maxArmor || 0, u.armor);
+            } }
+        ];
+
         const TRIALS = [
             {
                 id: 'goliath', name: '👹 Испытание Голиафа', icon: '👹',
@@ -1449,6 +1515,7 @@
                 this.heroSave = this.loadHeroSave();
                 this.unitSave = this.loadUnitSave();
                 this.trialSave = this.loadTrialSave();
+                this.artifactSave = this.loadArtifactSave();
                 this.currentTrial = null; // если не null — сейчас идёт бой в режиме испытания, не обычная кампания
                 this.expandedTalentsFor = null;
                 this.placingHero = false;
@@ -1463,6 +1530,7 @@
                 this.campaignArmorPerWave = 0;
                 
                 this.initDOM();
+                this.updateArtifactBadge();
 
                 // Продолжить сохранённую партию (расстановку или бой), если она есть
                 const saved = this.loadGameState();
@@ -1659,6 +1727,53 @@
                 try { localStorage.setItem(META_SAVE_KEY_TRIALS, JSON.stringify(this.trialSave)); }
                 catch (e) { /* хранилище недоступно */ }
             }
+            // --- Инвентарь артефактов: коллекция найденных предметов + что на кого экипировано ---
+            defaultArtifactSave() {
+                return { inventory: [], equipped: {}, nextInstanceId: 1 };
+            }
+            loadArtifactSave() {
+                try {
+                    let raw = JSON.parse(localStorage.getItem(META_SAVE_KEY_ARTIFACTS) || 'null');
+                    if (raw && raw.inventory) return raw;
+                } catch (e) { /* хранилище недоступно */ }
+                return this.defaultArtifactSave();
+            }
+            saveArtifactSave() {
+                try { localStorage.setItem(META_SAVE_KEY_ARTIFACTS, JSON.stringify(this.artifactSave)); }
+                catch (e) { /* хранилище недоступно */ }
+            }
+            // Взвешенный по редкости случайный дроп одного артефакта — добавляет его в инвентарь и возвращает
+            rollArtifactDrop() {
+                const totalWeight = Object.values(ARTIFACT_RARITIES).reduce((s, r) => s + r.dropWeight, 0);
+                let roll = Math.random() * totalWeight;
+                let chosenRarity = 'common';
+                for (const key of Object.keys(ARTIFACT_RARITIES)) {
+                    const w = ARTIFACT_RARITIES[key].dropWeight;
+                    if (roll < w) { chosenRarity = key; break; }
+                    roll -= w;
+                }
+                const pool = ARTIFACTS.filter(a => a.rarity === chosenRarity);
+                const artifact = pool[Math.floor(Math.random() * pool.length)];
+                const instanceId = 'art_' + (this.artifactSave.nextInstanceId++);
+                this.artifactSave.inventory.push({ instanceId, artifactId: artifact.id });
+                this.saveArtifactSave();
+                this.updateArtifactBadge();
+                return { artifact, instanceId };
+            }
+            // Обновляет число на кнопке "Артефакты" на экране расстановки
+            updateArtifactBadge() {
+                const badge = document.getElementById('artifact-count-badge');
+                if (badge) badge.innerText = String(this.artifactSave.inventory.length);
+            }
+            // Применяет артефакт, экипированный на данного юнита/героя, к его боевому экземпляру
+            applyEquippedArtifact(unit) {
+                const equippedInstanceId = this.artifactSave.equipped[unit.id];
+                if (!equippedInstanceId) return;
+                const owned = this.artifactSave.inventory.find(i => i.instanceId === equippedInstanceId);
+                if (!owned) return; // артефакт мог быть потерян/сброшен — экипировка недействительна
+                const artifact = ARTIFACTS.find(a => a.id === owned.artifactId);
+                if (artifact) artifact.apply(unit);
+            }
             unitXpToNextLevel(level) {
                 return 30 + level * 18;
             }
@@ -1690,6 +1805,7 @@
                 const save = this.unitSave.units[unit.id];
                 if (!save) return;
                 unit.unitLevel = save.level;
+                this.applyEquippedArtifact(unit); // применяется независимо от уровня — иначе юнит 1 уровня не получал бы свой артефакт
                 if (save.level <= 1) return;
                 let scale = 1 + (save.level - 1) * 0.05;
                 // Некромант — исключение из общего роста: его HP всегда ровно 10, независимо от уровня
@@ -1944,6 +2060,15 @@
                     document.getElementById('trials-modal').classList.add('hidden');
                     document.getElementById('modal-backdrop').classList.add('hidden');
                 });
+                document.getElementById('open-artifacts-btn').addEventListener('click', () => {
+                    this.renderArtifactsModal();
+                    document.getElementById('artifacts-modal').classList.remove('hidden');
+                    document.getElementById('modal-backdrop').classList.remove('hidden');
+                });
+                document.getElementById('close-artifacts-btn').addEventListener('click', () => {
+                    document.getElementById('artifacts-modal').classList.add('hidden');
+                    document.getElementById('modal-backdrop').classList.add('hidden');
+                });
                 document.getElementById('cheat-glory-apply').addEventListener('click', () => {
                     const input = document.getElementById('cheat-glory-input');
                     const amount = parseInt(input.value, 10);
@@ -2074,6 +2199,84 @@
                         this.startTrial(trial.id);
                     };
                     card.appendChild(startBtn);
+
+                    list.appendChild(card);
+                });
+            }
+
+            // Строит список карточек артефактов в инвентаре — с выбором цели для экипировки
+            renderArtifactsModal() {
+                const list = document.getElementById('artifacts-list');
+                list.innerHTML = '';
+
+                if (this.artifactSave.inventory.length === 0) {
+                    const empty = document.createElement('p');
+                    empty.style.cssText = 'font-size: 12px; color: #aaa; text-align: center; padding: 20px 0;';
+                    empty.innerText = 'Пока нет ни одного артефакта. Они выпадают случайно после побед в кампании и гарантированно после побед в испытаниях.';
+                    list.appendChild(empty);
+                    return;
+                }
+
+                // Строим обратную карту instanceId -> цель, на которую он экипирован (для отображения статуса)
+                const equippedByInstance = {};
+                Object.keys(this.artifactSave.equipped).forEach(targetId => {
+                    equippedByInstance[this.artifactSave.equipped[targetId]] = targetId;
+                });
+
+                const allTargets = [
+                    ...Object.keys(UNIT_TYPES).filter(id => id !== 'phoenix_egg').map(id => ({ id, name: UNIT_TYPES[id].icon + ' ' + UNIT_TYPES[id].name })),
+                    ...Object.keys(HERO_TYPES).map(id => ({ id, name: HERO_TYPES[id].icon + ' ' + HERO_TYPES[id].name }))
+                ];
+
+                [...this.artifactSave.inventory].reverse().forEach(owned => {
+                    const artifact = ARTIFACTS.find(a => a.id === owned.artifactId);
+                    if (!artifact) return;
+                    const rarity = ARTIFACT_RARITIES[artifact.rarity];
+
+                    const card = document.createElement('div');
+                    card.className = 'artifact-card';
+                    card.style.borderColor = rarity.color;
+
+                    const title = document.createElement('div');
+                    title.className = 'artifact-card-title';
+                    title.style.color = rarity.color;
+                    title.innerText = artifact.name;
+                    card.appendChild(title);
+
+                    const rarityLine = document.createElement('div');
+                    rarityLine.className = 'artifact-card-rarity';
+                    rarityLine.style.color = rarity.color;
+                    rarityLine.innerText = rarity.name;
+                    card.appendChild(rarityLine);
+
+                    const desc = document.createElement('div');
+                    desc.className = 'artifact-card-desc';
+                    desc.innerText = artifact.desc;
+                    card.appendChild(desc);
+
+                    const select = document.createElement('select');
+                    select.style.cssText = 'width: 100%; padding: 6px; background: #333; color: white; border: 1px solid #555; border-radius: 5px; font-size: 12px;';
+                    const noneOpt = document.createElement('option');
+                    noneOpt.value = '';
+                    noneOpt.innerText = '— Не экипирован —';
+                    select.appendChild(noneOpt);
+                    allTargets.forEach(t => {
+                        const opt = document.createElement('option');
+                        opt.value = t.id;
+                        opt.innerText = t.name;
+                        select.appendChild(opt);
+                    });
+                    select.value = equippedByInstance[owned.instanceId] || '';
+                    select.onchange = () => {
+                        // Снимаем этот артефакт с прежней цели (если была)
+                        const prevTarget = equippedByInstance[owned.instanceId];
+                        if (prevTarget) delete this.artifactSave.equipped[prevTarget];
+                        // Если выбрана новая цель — снимаем С НЕЁ любой другой артефакт (один слот на цель) и ставим этот
+                        if (select.value) this.artifactSave.equipped[select.value] = owned.instanceId;
+                        this.saveArtifactSave();
+                        this.renderArtifactsModal();
+                    };
+                    card.appendChild(select);
 
                     list.appendChild(card);
                 });
@@ -2567,6 +2770,8 @@
                     const talent = this.findTalentById(talentId, id);
                     if (talent) talent.apply(hero);
                 });
+
+                this.applyEquippedArtifact(hero);
 
                 return hero;
             }
@@ -3668,7 +3873,8 @@
                     this.saveTrialSave();
                     const reward = isFirstClear ? trial.firstReward : trial.repeatReward;
                     this.awardGlory(reward);
-                    this.showTrialResultModal(trial, true, reward, isFirstClear, false);
+                    const drop = this.rollArtifactDrop(); // испытания гарантированно дают артефакт при победе
+                    this.showTrialResultModal(trial, true, reward, isFirstClear, false, false, drop);
                 }
             }
 
@@ -3698,6 +3904,12 @@
                     this.awardGlory(GLORY_PER_WAVE);
                     this.awardHeroXP(HERO_XP_PER_WAVE);
                     const leveledUnits = this.awardUnitXP(UNIT_XP_PER_WAVE);
+                    // 15% шанс найти артефакт за каждую зачищенную волну похода
+                    if (Math.random() < 0.15) {
+                        const drop = this.rollArtifactDrop();
+                        const rarity = ARTIFACT_RARITIES[drop.artifact.rarity];
+                        alert(`✨ Найден артефакт!\n${drop.artifact.name} (${rarity.name})\n${drop.artifact.desc}\n\nЭкипируйте его на экране расстановки перед следующим боем.`);
+                    }
                     if (this.campaignWave >= this.campaignTotalWaves) {
                         this.gameOver = true;
                         this.awardGlory(GLORY_VICTORY_BONUS);
@@ -3871,7 +4083,7 @@
             }
 
             // Экран результата испытания — победа/поражение/таймаут/побег, с наградой и статистикой
-            showTrialResultModal(trial, won, reward, isFirstClear, isTimeout, abandoned) {
+            showTrialResultModal(trial, won, reward, isFirstClear, isTimeout, abandoned, drop) {
                 const save = this.trialSave.trials[trial.id];
                 let title;
                 if (abandoned) title = '🏳️ Испытание прервано';
@@ -3898,6 +4110,14 @@
                 }
                 summary.innerText = summaryText;
                 container.appendChild(summary);
+
+                if (won && drop) {
+                    const rarity = ARTIFACT_RARITIES[drop.artifact.rarity];
+                    const artCard = document.createElement('div');
+                    artCard.style.cssText = `background: rgba(255,255,255,0.06); border: 1px solid ${rarity.color}; border-radius: 8px; padding: 8px 10px; margin-bottom: 10px; text-align: center;`;
+                    artCard.innerHTML = `<div style="color:${rarity.color}; font-weight:700; font-size:13px;">✨ Найден артефакт: ${drop.artifact.name}</div><div style="font-size:11px; color:#ccc; margin-top:2px;">${rarity.name} • ${drop.artifact.desc}</div>`;
+                    container.appendChild(artCard);
+                }
 
                 const btn = document.createElement('button');
                 btn.className = 'primary';
@@ -5773,6 +5993,11 @@
                             let healAmt = Math.round(attacker.maxHp * 0.2);
                             attacker.hp = Math.min(attacker.maxHp, attacker.hp + healAmt);
                             this.spawnFloatingText(attacker.x, attacker.y, `+${healAmt} 🩸`, '#ff6666');
+                        }
+                        // Артефакт "Клинок Вечности" — добивающий удар мгновенно сбрасывает ВСЕ перезарядки атакующего
+                        if (attacker && attacker.eternityBlade && attacker.cooldowns) {
+                            Object.keys(attacker.cooldowns).forEach(key => { attacker.cooldowns[key] = 0; });
+                            this.spawnFloatingText(attacker.x, attacker.y, '⏳ Все КД сброшены!', '#ffd700');
                         }
                         // Тень: "Кровавый Танец" — добивающий удар мгновенно сбрасывает КД Теневого Шага
                         if (attacker && attacker.id === 'shade' && attacker.executeRefreshTeleport && attacker.cooldowns) {
