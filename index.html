@@ -665,6 +665,37 @@
         .artifact-card-title { font-weight: 700; font-size: 13px; margin-bottom: 2px; }
         .artifact-card-desc { font-size: 11px; color: #ccc; margin-bottom: 6px; }
         .artifact-card-rarity { font-size: 10px; margin-bottom: 6px; font-weight: 700; }
+        #achievements-modal {
+            position: fixed;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(180deg, rgba(28,28,32,0.98), rgba(16,16,19,0.98));
+            padding: 18px;
+            border-radius: 14px;
+            border: 2px solid var(--gold);
+            z-index: 1000;
+            width: 92%;
+            max-width: 400px;
+            max-height: 86vh;
+            overflow-y: auto;
+            color: white;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.75), 0 0 30px rgba(212,175,55,0.3);
+            animation: modalPopIn 0.22s ease-out;
+        }
+        .achievement-card {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid #444;
+            border-radius: 8px;
+            padding: 8px 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+        }
+        .achievement-card.achievement-unlocked { border-color: #ffd700; background: rgba(255,215,0,0.08); }
+        .achievement-card-title { font-weight: 700; font-size: 12.5px; }
+        .achievement-card-desc { font-size: 10.5px; color: #aaa; margin-top: 1px; }
+        .achievement-card-reward { font-size: 11px; color: #ffd700; font-weight: 700; white-space: nowrap; }
         .trial-card-meta { font-size: 10.5px; color: #aaa; margin-bottom: 6px; }
         #savecode-modal h3 { font-family: 'Cinzel', serif; color: var(--gold-bright); text-align: center; margin-bottom: 4px; }
         .hero-card {
@@ -933,6 +964,7 @@
                 <button id="start-battle-btn" class="success" style="width: 100%; padding: 8px;">⚔️ НАЧАТЬ КАМПАНИЮ ⚔️</button>
                 <button id="open-trials-btn" class="secondary" style="width: 100%; padding: 7px; margin-top: 4px;">🏆 Испытания</button>
                 <button id="open-artifacts-btn" class="secondary" style="width: 100%; padding: 7px; margin-top: 4px;">✨ Артефакты (<span id="artifact-count-badge">0</span>)</button>
+                <button id="open-achievements-btn" class="secondary" style="width: 100%; padding: 7px; margin-top: 4px;">🏆 Достижения (<span id="achievement-count-badge">0</span>/18)</button>
             </div>
 
             <div id="trials-modal" class="hidden">
@@ -947,6 +979,13 @@
                 <p style="font-size: 11px; color: #aaa; text-align: center; margin-bottom: 10px;">Экипируйте найденные предметы на юнитов и героев — по одному артефакту на цель. Выпадают из побед в кампании и испытаниях.</p>
                 <div id="artifacts-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 60vh; overflow-y: auto;"></div>
                 <button id="close-artifacts-btn" style="width: 100%; padding: 9px; margin-top: 10px; background: #333; border: 1px solid #555; border-radius: 6px; color: white;">Закрыть</button>
+            </div>
+
+            <div id="achievements-modal" class="hidden">
+                <h3 style="text-align:center; color: var(--gold-bright); margin-bottom: 4px;">🏆 Достижения</h3>
+                <p style="font-size: 11px; color: #aaa; text-align: center; margin-bottom: 10px;">Долгосрочные цели за всё время игры — прогресс никогда не сбрасывается между походами.</p>
+                <div id="achievements-list" style="display: flex; flex-direction: column; gap: 6px; max-height: 60vh; overflow-y: auto;"></div>
+                <button id="close-achievements-btn" style="width: 100%; padding: 9px; margin-top: 10px; background: #333; border: 1px solid #555; border-radius: 6px; color: white;">Закрыть</button>
             </div>
 
             <div id="actions" class="hidden"></div>
@@ -1118,6 +1157,7 @@
         const META_SAVE_KEY_UNITS = 'medieval_meta_units_v1';
         const META_SAVE_KEY_TRIALS = 'medieval_meta_trials_v1';
         const META_SAVE_KEY_ARTIFACTS = 'medieval_meta_artifacts_v1';
+        const META_SAVE_KEY_STATS = 'medieval_meta_stats_v1';
         const UNIT_SIGNATURE_LEVEL = 4;
         const UNIT_SIGNATURE_LEVEL_2 = 8;
         const UNIT_SIGNATURE_LEVEL_3 = 12;
@@ -1411,6 +1451,30 @@
             epic: { name: 'Эпический', color: '#c77dff', dropWeight: 15 },
             legendary: { name: 'Легендарный', color: '#ffd700', dropWeight: 5 }
         };
+        // ==================== ДОСТИЖЕНИЯ ====================
+        // Долгосрочные цели, объединяющие все системы игры — награда выдаётся один раз при разблокировке.
+        // Проверяются против накопленной статистики (statsSave), а не мгновенного состояния боя.
+        const ACHIEVEMENTS = [
+            { id: 'first_kill', name: '⚔️ Первая Кровь', desc: 'Убейте первого врага', reward: 20, check: s => s.totalKills >= 1 },
+            { id: 'kills_100', name: '🗡️ Охотник', desc: 'Убейте 100 врагов за всё время', reward: 40, check: s => s.totalKills >= 100 },
+            { id: 'kills_500', name: '⚔️ Истребитель', desc: 'Убейте 500 врагов за всё время', reward: 80, check: s => s.totalKills >= 500 },
+            { id: 'kills_2000', name: '💀 Легенда Битв', desc: 'Убейте 2000 врагов за всё время', reward: 150, check: s => s.totalKills >= 2000 },
+            { id: 'wave_5', name: '🏕️ Разведчик', desc: 'Дойдите до 5-й волны похода', reward: 30, check: s => s.maxWaveReached >= 5 },
+            { id: 'wave_10', name: '🛡️ Ветеран', desc: 'Дойдите до 10-й волны похода', reward: 60, check: s => s.maxWaveReached >= 10 },
+            { id: 'wave_16', name: '🏆 Победитель Похода', desc: 'Пройдите кампанию целиком (16 волн)', reward: 120, check: s => s.totalCampaignsWon >= 1 },
+            { id: 'campaigns_3', name: '👑 Триумфатор', desc: 'Пройдите кампанию 3 раза', reward: 150, check: s => s.totalCampaignsWon >= 3 },
+            { id: 'trial_any', name: '🎯 Первое Испытание', desc: 'Пройдите любое испытание', reward: 25, check: s => s.totalTrialsCompleted >= 1 },
+            { id: 'all_trials', name: '🌟 Мастер Испытаний', desc: 'Пройдите все 6 испытаний хотя бы по разу', reward: 150, check: s => Object.values(s.trialsCompletedSet || {}).filter(Boolean).length >= 6 },
+            { id: 'trial_kings_done', name: '👑 Убийца Королей', desc: 'Пройдите Испытание Королей', reward: 100, check: s => !!(s.trialsCompletedSet && s.trialsCompletedSet.kings) },
+            { id: 'artifact_first', name: '✨ Первая Находка', desc: 'Найдите первый артефакт', reward: 20, check: s => s.totalArtifactsFound >= 1 },
+            { id: 'artifact_10', name: '💎 Коллекционер', desc: 'Найдите 10 артефактов', reward: 60, check: s => s.totalArtifactsFound >= 10 },
+            { id: 'artifact_legendary', name: '🌟 Реликвия Королей', desc: 'Найдите легендарный артефакт', reward: 80, check: s => s.legendaryArtifactsFound >= 1 },
+            { id: 'all_heroes', name: '🎖️ Полный Отряд', desc: 'Разблокируйте всех 10 героев', reward: 150, check: (s, engine) => Object.values(engine.heroSave.unlocked).filter(Boolean).length >= 10 },
+            { id: 'hero_max_level', name: '⭐ Легендарный Герой', desc: 'Прокачайте любого героя до 15 уровня', reward: 100, check: (s, engine) => Object.values(engine.heroSave.heroes).some(h => h.level >= 15) },
+            { id: 'unit_max_level', name: '📈 Элитный Отряд', desc: 'Прокачайте любой юнит до 12 уровня', reward: 80, check: (s, engine) => Object.values(engine.unitSave.units).some(u => u.level >= 12) },
+            { id: 'boss_slayer', name: '🐲 Победитель Боссов', desc: 'Убейте всех 4 уникальных боссов кампании хотя бы по разу', reward: 100, check: s => Object.values(s.bossKillsByType || {}).filter(v => v > 0).length >= 4 }
+        ];
+
         const ARTIFACTS = [
             { id: 'rusty_blade', name: '🗡️ Ржавый Клинок', rarity: 'common', desc: '+5% урона', apply: u => { u.dmg = Math.round(u.dmg * 1.05); } },
             { id: 'worn_shield', name: '🛡️ Потёртый Щит', rarity: 'common', desc: '+12 брони навсегда', apply: u => { u.armor = (u.armor || 0) + 12; u.maxArmor = Math.max(u.maxArmor || 0, u.armor); } },
@@ -1516,6 +1580,7 @@
                 this.unitSave = this.loadUnitSave();
                 this.trialSave = this.loadTrialSave();
                 this.artifactSave = this.loadArtifactSave();
+                this.statsSave = this.loadStatsSave();
                 this.currentTrial = null; // если не null — сейчас идёт бой в режиме испытания, не обычная кампания
                 this.expandedTalentsFor = null;
                 this.placingHero = false;
@@ -1531,6 +1596,7 @@
                 
                 this.initDOM();
                 this.updateArtifactBadge();
+                this.updateAchievementBadge();
 
                 // Продолжить сохранённую партию (расстановку или бой), если она есть
                 const saved = this.loadGameState();
@@ -1773,6 +1839,45 @@
                 if (!owned) return; // артефакт мог быть потерян/сброшен — экипировка недействительна
                 const artifact = ARTIFACTS.find(a => a.id === owned.artifactId);
                 if (artifact) artifact.apply(unit);
+            }
+            // --- Накопленная статистика за всё время игры (не сбрасывается между походами) — основа для достижений ---
+            defaultStatsSave() {
+                return {
+                    totalKills: 0, maxWaveReached: 0, totalCampaignsWon: 0,
+                    totalTrialsCompleted: 0, trialsCompletedSet: {},
+                    totalArtifactsFound: 0, legendaryArtifactsFound: 0,
+                    bossKillsByType: {}, unlockedAchievements: []
+                };
+            }
+            loadStatsSave() {
+                try {
+                    let raw = JSON.parse(localStorage.getItem(META_SAVE_KEY_STATS) || 'null');
+                    if (raw && typeof raw.totalKills === 'number') {
+                        const def = this.defaultStatsSave();
+                        Object.keys(def).forEach(key => { if (raw[key] === undefined) raw[key] = def[key]; });
+                        return raw;
+                    }
+                } catch (e) { /* хранилище недоступно */ }
+                return this.defaultStatsSave();
+            }
+            saveStatsSave() {
+                try { localStorage.setItem(META_SAVE_KEY_STATS, JSON.stringify(this.statsSave)); }
+                catch (e) { /* хранилище недоступно */ }
+            }
+            // Проверяет ВСЕ достижения против текущей статистики, разблокирует новые и выдаёт награду.
+            // Возвращает массив только что разблокированных (для показа уведомления).
+            checkAchievements() {
+                const newlyUnlocked = [];
+                ACHIEVEMENTS.forEach(ach => {
+                    if (this.statsSave.unlockedAchievements.includes(ach.id)) return;
+                    if (ach.check(this.statsSave, this)) {
+                        this.statsSave.unlockedAchievements.push(ach.id);
+                        this.awardGlory(ach.reward);
+                        newlyUnlocked.push(ach);
+                    }
+                });
+                if (newlyUnlocked.length > 0) { this.saveStatsSave(); this.updateAchievementBadge(); }
+                return newlyUnlocked;
             }
             unitXpToNextLevel(level) {
                 return 30 + level * 18;
@@ -2069,6 +2174,15 @@
                     document.getElementById('artifacts-modal').classList.add('hidden');
                     document.getElementById('modal-backdrop').classList.add('hidden');
                 });
+                document.getElementById('open-achievements-btn').addEventListener('click', () => {
+                    this.renderAchievementsModal();
+                    document.getElementById('achievements-modal').classList.remove('hidden');
+                    document.getElementById('modal-backdrop').classList.remove('hidden');
+                });
+                document.getElementById('close-achievements-btn').addEventListener('click', () => {
+                    document.getElementById('achievements-modal').classList.add('hidden');
+                    document.getElementById('modal-backdrop').classList.add('hidden');
+                });
                 document.getElementById('cheat-glory-apply').addEventListener('click', () => {
                     const input = document.getElementById('cheat-glory-input');
                     const amount = parseInt(input.value, 10);
@@ -2280,6 +2394,46 @@
 
                     list.appendChild(card);
                 });
+            }
+
+            // Строит список карточек достижений — разблокированные подсвечены золотым и идут первыми
+            renderAchievementsModal() {
+                const list = document.getElementById('achievements-list');
+                list.innerHTML = '';
+                const sorted = [...ACHIEVEMENTS].sort((a, b) => {
+                    const aDone = this.statsSave.unlockedAchievements.includes(a.id);
+                    const bDone = this.statsSave.unlockedAchievements.includes(b.id);
+                    return (bDone ? 1 : 0) - (aDone ? 1 : 0);
+                });
+                sorted.forEach(ach => {
+                    const unlocked = this.statsSave.unlockedAchievements.includes(ach.id);
+                    const card = document.createElement('div');
+                    card.className = 'achievement-card' + (unlocked ? ' achievement-unlocked' : '');
+
+                    const left = document.createElement('div');
+                    const title = document.createElement('div');
+                    title.className = 'achievement-card-title';
+                    title.style.color = unlocked ? '#ffd700' : '#eee';
+                    title.innerText = `${unlocked ? '✅ ' : '🔒 '}${ach.name}`;
+                    left.appendChild(title);
+                    const desc = document.createElement('div');
+                    desc.className = 'achievement-card-desc';
+                    desc.innerText = ach.desc;
+                    left.appendChild(desc);
+                    card.appendChild(left);
+
+                    const reward = document.createElement('div');
+                    reward.className = 'achievement-card-reward';
+                    reward.innerText = `+${ach.reward}⭐`;
+                    card.appendChild(reward);
+
+                    list.appendChild(card);
+                });
+            }
+            // Обновляет число на кнопке "Достижения" на экране расстановки
+            updateAchievementBadge() {
+                const badge = document.getElementById('achievement-count-badge');
+                if (badge) badge.innerText = String(this.statsSave.unlockedAchievements.length);
             }
 
             renderSaveCodeModal() {
@@ -3874,7 +4028,13 @@
                     const reward = isFirstClear ? trial.firstReward : trial.repeatReward;
                     this.awardGlory(reward);
                     const drop = this.rollArtifactDrop(); // испытания гарантированно дают артефакт при победе
-                    this.showTrialResultModal(trial, true, reward, isFirstClear, false, false, drop);
+                    this.statsSave.totalArtifactsFound++;
+                    if (drop.artifact.rarity === 'legendary') this.statsSave.legendaryArtifactsFound++;
+                    this.statsSave.totalTrialsCompleted++;
+                    this.statsSave.trialsCompletedSet[trial.id] = true;
+                    const trialAchievements = this.checkAchievements();
+                    this.saveStatsSave();
+                    this.showTrialResultModal(trial, true, reward, isFirstClear, false, false, drop, trialAchievements);
                 }
             }
 
@@ -3904,15 +4064,25 @@
                     this.awardGlory(GLORY_PER_WAVE);
                     this.awardHeroXP(HERO_XP_PER_WAVE);
                     const leveledUnits = this.awardUnitXP(UNIT_XP_PER_WAVE);
+                    this.statsSave.maxWaveReached = Math.max(this.statsSave.maxWaveReached, this.campaignWave);
                     // 15% шанс найти артефакт за каждую зачищенную волну похода
                     if (Math.random() < 0.15) {
                         const drop = this.rollArtifactDrop();
                         const rarity = ARTIFACT_RARITIES[drop.artifact.rarity];
+                        this.statsSave.totalArtifactsFound++;
+                        if (drop.artifact.rarity === 'legendary') this.statsSave.legendaryArtifactsFound++;
                         alert(`✨ Найден артефакт!\n${drop.artifact.name} (${rarity.name})\n${drop.artifact.desc}\n\nЭкипируйте его на экране расстановки перед следующим боем.`);
                     }
+                    const waveAchievements = this.checkAchievements();
+                    this.saveStatsSave();
+                    waveAchievements.forEach(a => alert(`🏆 Достижение разблокировано!\n${a.name}\n${a.desc}\n+${a.reward} Славы`));
                     if (this.campaignWave >= this.campaignTotalWaves) {
                         this.gameOver = true;
                         this.awardGlory(GLORY_VICTORY_BONUS);
+                        this.statsSave.totalCampaignsWon++;
+                        const winAchievements = this.checkAchievements();
+                        this.saveStatsSave();
+                        winAchievements.forEach(a => alert(`🏆 Достижение разблокировано!\n${a.name}\n${a.desc}\n+${a.reward} Славы`));
                         this.clearGameState();
                         this.showCampaignEndScreen(true);
                         return;
@@ -4083,7 +4253,7 @@
             }
 
             // Экран результата испытания — победа/поражение/таймаут/побег, с наградой и статистикой
-            showTrialResultModal(trial, won, reward, isFirstClear, isTimeout, abandoned, drop) {
+            showTrialResultModal(trial, won, reward, isFirstClear, isTimeout, abandoned, drop, achievements) {
                 const save = this.trialSave.trials[trial.id];
                 let title;
                 if (abandoned) title = '🏳️ Испытание прервано';
@@ -4117,6 +4287,15 @@
                     artCard.style.cssText = `background: rgba(255,255,255,0.06); border: 1px solid ${rarity.color}; border-radius: 8px; padding: 8px 10px; margin-bottom: 10px; text-align: center;`;
                     artCard.innerHTML = `<div style="color:${rarity.color}; font-weight:700; font-size:13px;">✨ Найден артефакт: ${drop.artifact.name}</div><div style="font-size:11px; color:#ccc; margin-top:2px;">${rarity.name} • ${drop.artifact.desc}</div>`;
                     container.appendChild(artCard);
+                }
+
+                if (achievements && achievements.length > 0) {
+                    achievements.forEach(a => {
+                        const achCard = document.createElement('div');
+                        achCard.style.cssText = 'background: rgba(255,215,0,0.08); border: 1px solid #ffd700; border-radius: 8px; padding: 8px 10px; margin-bottom: 6px; text-align: center;';
+                        achCard.innerHTML = `<div style="color:#ffd700; font-weight:700; font-size:13px;">🏆 Достижение: ${a.name}</div><div style="font-size:11px; color:#ccc; margin-top:2px;">${a.desc} • +${a.reward} Славы</div>`;
+                        container.appendChild(achCard);
+                    });
                 }
 
                 const btn = document.createElement('button');
@@ -6039,6 +6218,20 @@
                                 }
                             });
                             this.spawnFloatingText(defender.x, defender.y, '🏆 ТРОФЕЙ БОССА!', '#ffb347');
+                        }
+                        // Статистика для достижений: считаем убийства игрока и отдельно — убийства именных боссов
+                        if (defender.team === 'enemy') {
+                            this.statsSave.totalKills++;
+                            if (defender.isBoss) {
+                                this.statsSave.bossKillsByType[defender.id] = (this.statsSave.bossKillsByType[defender.id] || 0) + 1;
+                            }
+                            const newAchievements = this.checkAchievements();
+                            if (newAchievements.length > 0) {
+                                this.saveStatsSave();
+                                newAchievements.forEach(a => this.spawnFloatingText(defender.x, defender.y - 1, `🏆 ${a.name}!`, '#ffd700'));
+                            } else {
+                                this.saveStatsSave();
+                            }
                         }
                         this.triggerHarvestOnDeath(defender.team);
                     }
