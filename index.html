@@ -3516,6 +3516,9 @@
                 if (unit.lastStandCharges) buffs.push(['positive', `🕯️ Стойкий Дух x${unit.lastStandCharges}`]);
                 if (unit.armorRegenPerTurn) buffs.push(['positive', `🔧 Саморемонт +${unit.armorRegenPerTurn}/ход`]);
                 if (unit.cdReductionCampaign) buffs.push(['positive', `🔄 Мастерство -${Math.round(unit.cdReductionCampaign * 100)}% КД`]);
+                if (unit.activeSynergies && unit.activeSynergies.length > 0) {
+                    unit.activeSynergies.forEach(s => buffs.push(['positive', s]));
+                }
 
                 const buffsList = document.getElementById('info-buffs-list');
                 buffsList.innerHTML = '';
@@ -3623,6 +3626,8 @@
                     let perTile = slv >= UNIT_SIGNATURE_LEVEL_3 ? 0.22 : (slv >= UNIT_SIGNATURE_LEVEL_2 ? 0.18 : (slv >= UNIT_SIGNATURE_LEVEL ? 0.14 : 0.10)); // Мастер Прицела (3 ступени)
                     dmg = Math.floor(dmg * (1 + perTile * dist));
                 }
+
+                if (unit.synergyDmgMult && unit.synergyDmgMult !== 1) dmg = Math.round(dmg * unit.synergyDmgMult); // Синергии Отряда
 
                 return Math.max(1, dmg);
             }
@@ -4372,8 +4377,50 @@
                 if (biomeEl) biomeEl.innerText = this.currentBiome.name;
             }
 
+            // ==================== СИНЕРГИИ ОТРЯДА ====================
+            // Тактические бонусы за продуманное соседство юнитов — полностью зависят от ТЕКУЩЕЙ позиции на поле,
+            // пересчитываются каждый тик ауры (как Дракон/Чародейка), не накапливаются между вызовами.
+            applySquadSynergies(targetList) {
+                targetList.forEach(u => {
+                    u.synergyDmgMult = 1;
+                    u.synergyArmorBonus = 0;
+                    u.synergyLifestealBonus = 0;
+                    u.activeSynergies = [];
+                });
+
+                const alive = targetList.filter(u => u.hp > 0);
+                alive.forEach(u => {
+                    const neighbors = alive.filter(o => o !== u && o.team === u.team && this.getDistance(u, o.x, o.y, o.size) <= 1);
+
+                    // Боевое Братство: рядом союзник ТОГО ЖЕ типа юнита — сплочённый строй бьёт сильнее
+                    if (neighbors.some(n => n.id === u.id)) {
+                        u.synergyDmgMult *= 1.08;
+                        u.activeSynergies.push('⚔️ Боевое Братство (+8% урона)');
+                    }
+
+                    // Каменная Стена: Энт + Каменный Голем рядом — оба черпают друг у друга прочность
+                    if ((u.id === 'ent' || u.id === 'stone_golem') && neighbors.some(n => n.id === 'ent' || n.id === 'stone_golem')) {
+                        u.synergyArmorBonus += 25;
+                        u.activeSynergies.push('🪨 Каменная Стена (+25 брони)');
+                    }
+
+                    // Хватка Хищников: Вампир + Берсерк рядом — оба жаднее пьют силу из ран врагов
+                    if ((u.id === 'vampire' || u.id === 'berserker') && neighbors.some(n => n.id === 'vampire' || n.id === 'berserker')) {
+                        u.synergyLifestealBonus += 0.10;
+                        u.activeSynergies.push('🩸 Хватка Хищников (+10% похищения HP)');
+                    }
+
+                    // Знамя Героя: рядом со своим героем союзники сражаются увереннее
+                    if (!u.isHero && neighbors.some(n => n.isHero)) {
+                        u.synergyDmgMult *= 1.10;
+                        u.activeSynergies.push('🚩 Знамя Героя (+10% урона)');
+                    }
+                });
+            }
+
             applyGlobalAuras(simUnitsList = null) {
                 let targetList = simUnitsList || this.units;
+                this.applySquadSynergies(targetList);
                 
                 targetList.forEach(u => {
                     u.init = (u.baseInitStat || UNIT_TYPES[u.id].init) + (u.bonusInit || 0);
@@ -6114,7 +6161,9 @@
                     defender.hp -= 1;
                     actualDealt = 1;
                 } else {
-                    let currentArmor = (this.currentTrial === 'fragility' && defender.team === 'player') ? 0 : (defender.armor || 0);
+                    let baseArmor = (this.currentTrial === 'fragility' && defender.team === 'player') ? 0 : (defender.armor || 0);
+                    let synergyBonus = (this.currentTrial === 'fragility' && defender.team === 'player') ? 0 : (defender.synergyArmorBonus || 0);
+                    let currentArmor = baseArmor + synergyBonus;
                     // Пробитие Брони: доля урона атакующего игнорирует броню и бьёт сразу по HP
                     let penPct = attacker.armorPenPct || 0;
                     let penDmg = penPct > 0 ? Math.round(rawDmg * penPct) : 0;
@@ -6129,7 +6178,10 @@
                             defender.armor = 0;
                             defender.hp -= remainder;
                         } else {
-                            defender.armor -= normalDmg;
+                            // Синергийный бонус временный и не хранится отдельно — урон сначала "съедает" его,
+                            // и только остаток списывается с настоящей брони (иначе она могла уйти в минус)
+                            let armorDamage = Math.max(0, normalDmg - synergyBonus);
+                            defender.armor = Math.max(0, defender.armor - armorDamage);
                         }
                     } else {
                         defender.hp -= normalDmg;
@@ -6246,8 +6298,8 @@
                         defender.vampireDebuffs = (defender.vampireDebuffs || 0) + Math.round(1 * scale);
                         defender.vampireDebuffTurns = 2;
                         this.spawnFloatingText(attacker.x, attacker.y, `+${actualDealt}`, '#00ff88');
-                    } else if (attacker.lifestealPct && attacker.id !== 'necromancer') {
-                        let healAmount = Math.floor(actualDealt * attacker.lifestealPct);
+                    } else if ((attacker.lifestealPct || attacker.synergyLifestealBonus) && attacker.id !== 'necromancer') {
+                        let healAmount = Math.floor(actualDealt * ((attacker.lifestealPct || 0) + (attacker.synergyLifestealBonus || 0)));
                         if (healAmount > 0) {
                             attacker.hp = Math.min(attacker.maxHp, attacker.hp + healAmount);
                             this.spawnFloatingText(attacker.x, attacker.y, `+${healAmount}`, '#00ff88');
