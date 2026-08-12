@@ -962,9 +962,11 @@
                 </div>
 
                 <button id="start-battle-btn" class="success" style="width: 100%; padding: 8px;">⚔️ НАЧАТЬ КАМПАНИЮ ⚔️</button>
-                <button id="open-trials-btn" class="secondary" style="width: 100%; padding: 7px; margin-top: 4px;">🏆 Испытания</button>
-                <button id="open-artifacts-btn" class="secondary" style="width: 100%; padding: 7px; margin-top: 4px;">✨ Артефакты (<span id="artifact-count-badge">0</span>)</button>
-                <button id="open-achievements-btn" class="secondary" style="width: 100%; padding: 7px; margin-top: 4px;">🏆 Достижения (<span id="achievement-count-badge">0</span>/18)</button>
+                <div style="display: flex; gap: 4px; margin-top: 4px;">
+                    <button id="open-trials-btn" class="secondary" style="flex: 1; padding: 6px 2px; font-size: 11px;">🏆 Испытания</button>
+                    <button id="open-artifacts-btn" class="secondary" style="flex: 1; padding: 6px 2px; font-size: 11px;">✨ Артефакты (<span id="artifact-count-badge">0</span>)</button>
+                    <button id="open-achievements-btn" class="secondary" style="flex: 1; padding: 6px 2px; font-size: 11px;">🏆 Награды (<span id="achievement-count-badge">0</span>/18)</button>
+                </div>
             </div>
 
             <div id="trials-modal" class="hidden">
@@ -3413,6 +3415,30 @@
                         row.className = 'info-buff-row buff-neutral';
                         row.innerText = `🔒 Ур. ${tier} (ещё ${levelsAway} ур., ~${levelsAway * this.unitXpToNextLevel(save.level)} опыта): новая способность / усиление`;
                     }
+                    forecastEl.appendChild(row);
+                });
+
+                // Синергии Отряда: подсказка, с кем выгодно ставить этого юнита рядом — иначе о синергиях
+                // можно узнать только реактивно в бою, когда уже поздно менять расстановку
+                const synHeader = document.createElement('div');
+                synHeader.style.cssText = 'font-size: 12px; font-weight: 700; color: var(--gold-bright); margin-top: 8px;';
+                synHeader.innerText = '🤝 Синергии Отряда (расставьте рядом)';
+                forecastEl.appendChild(synHeader);
+
+                const synergyNotes = [`⚔️ Другой ${tpl.name} рядом: +8% урона обоим`];
+                if (type === 'ent' || type === 'stone_golem') {
+                    synergyNotes.push('🪨 Энт + Каменный Голем рядом: +25 брони обоим');
+                }
+                if (type === 'vampire' || type === 'berserker') {
+                    synergyNotes.push('🩸 Вампир + Берсерк рядом: +10% похищения HP обоим');
+                }
+                synergyNotes.push('🚩 Рядом со своим героем: +10% урона');
+
+                synergyNotes.forEach(note => {
+                    const row = document.createElement('div');
+                    row.className = 'info-buff-row buff-positive';
+                    row.style.fontSize = '11px';
+                    row.innerText = note;
                     forecastEl.appendChild(row);
                 });
             }
